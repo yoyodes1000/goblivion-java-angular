@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────
+# Contenu sous droits — Goblivion © Goblivion Games
+# Les scans de cartes restent en local et ne doivent JAMAIS partir
+# sur le dépôt public. Le code les référence par nom de fichier,
+# il ne les embarque pas.
+# ─────────────────────────────────────────────────────────────
+cartes bleues/
+cartes boss/
+cartes dorees/
+cartes ennemis-objets/
+cartes roi-reines/
+medias/
+*.pdf
+
+# ─────────────────────────────────────────────────────────────
+# Backend Java / Maven
+# ─────────────────────────────────────────────────────────────
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.log
+application-local.properties
+application-local.yml
+
+# ─────────────────────────────────────────────────────────────
+# Frontend Angular / Node
+# ─────────────────────────────────────────────────────────────
+node_modules/
+dist/
+.angular/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# ─────────────────────────────────────────────────────────────
+# Éditeurs & OS
+# ─────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# ─────────────────────────────────────────────────────────────
+# Outillage local
+# ─────────────────────────────────────────────────────────────
+.claude/settings.local.json
+organiseur-sauvegarde-*.json
