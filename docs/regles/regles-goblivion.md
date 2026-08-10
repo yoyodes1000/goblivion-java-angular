@@ -20,6 +20,14 @@ Deckbuilder de défense. On élimine d'abord les troupes ennemies, puis les Boss
 Les ressources sont les points de survie. Elles ne servent pas de monnaie
 d'achat : on les dépense pour combler un déficit de force.
 
+**Pas de plafond.** La valeur portée par la carte Roi/Reine est le montant de
+*départ*, pas une limite : la mise en place dit « Placez ici un nombre de jetons
+ressource égal à celui indiqué sur votre carte Roi/Reine. Ceci représente vos
+points de survie » (p4), et le symbole Ressource se contente de « Gagnez /
+Perdez des jetons ressources de votre plateau Joueur » (p7). Aucun passage
+consulté n'introduit de maximum. Les 16 jetons de la boîte sont une contrainte
+de matériel, pas une règle — le moteur ne les modélise pas.
+
 ---
 
 ## 2. Matériel et quantités
