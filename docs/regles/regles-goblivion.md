@@ -157,9 +157,37 @@ L'entraînement n'est jamais obligatoire, et peut être abandonné à l'étape 4
 
 ## 7. Phase 2 — L'Ennemi Avance
 
-Les cartes Ennemi glissent d'une case en suivant les flèches du plateau, à la
-queue leu leu, **en comblant toujours le vide derrière elles**. Une carte face
-cachée reste cachée, une carte révélée reste révélée.
+### Géographie du plateau Ennemi
+
+Quatre cases, puis les Portes du château :
+
+```
+ [1]        [2]   [3]   [4]        Portes du château
+ paquet  →   ·  →  ·  →  ·   →     [ · ][ · ][ · ]
+```
+
+La case 1 porte la pioche ennemie. Les cases 2 à 4 forment la piste
+d'approche — **trois positions seulement**. Les Portes accueillent au maximum
+3 ennemis.
+
+À chaque avancée, tout le monde glisse d'un cran et la case 2 est réalimentée
+depuis le paquet :
+
+| Avancée | Mouvements |
+|---|---|
+| 1re | paquet → 2 |
+| 2e | 2 → 3, paquet → 2 |
+| 3e | 3 → 4, 2 → 3, paquet → 2 |
+| 4e | **4 → Portes**, 3 → 4, 2 → 3, paquet → 2 |
+
+**Un ennemi met donc 4 avancées à atteindre les Portes.** À raison d'une
+avancée par tour, le premier ennemi arrive au combat du 4e tour — les trois
+premiers tours servent à entraîner et à faire tourner le deck. Toute avancée
+supplémentaire (action de carte, Château vide, difficulté Difficile) accélère
+d'autant cette horloge.
+
+Les cartes glissent à la queue leu leu, **en comblant toujours le vide derrière
+elles**. Une carte face cachée reste cachée, une carte révélée reste révélée.
 
 **Vision** (symbole œil) : certaines actions alliées révèlent une carte Ennemi
 aux emplacements marqués du plateau. Conséquence capitale :
