@@ -28,11 +28,17 @@ Ennemi, ni le Garde du corps — que le livret exclut explicitement. La même
 notion sert au calcul de force, au décompte des Soldats et au ciblage des
 actions : une seule fonction, réutilisée partout.
 
-**4. Une révélation porte une date, pas un booléen.**
-Une action ennemie ne part que si l'ennemi est révélé **pendant le combat en
-cours**. Révélé plus tôt par une Vision, il arrive aux Portes déjà retourné et
-son action ne partira jamais. `révélée: boolean` ne suffit pas, il faut
-`tourDeRévélation`.
+**4. L'action ennemie se déclenche à la révélation, une seule fois.**
+Ce n'est pas un état à réinterroger chaque tour, c'est un **événement**. À
+l'instant où l'on retourne la carte : révélation pendant la phase Combat →
+l'action part ; révélation par une Vision → elle ne part pas. Et ensuite plus
+jamais : un ennemi qui survit au combat reste révélé, on le recombat sans que son
+action se redéclenche. Seul son jeton Bonus Ennemi continue de peser.
+
+Un simple `révélé: boolean` suffit donc, à condition de traiter la révélation
+comme une **transition** et non comme une condition à évaluer. J'avais d'abord
+écrit qu'il fallait mémoriser un `tourDeRévélation` : c'était plus compliqué que
+nécessaire, parce que je raisonnais en état plutôt qu'en événement.
 
 **5. Un seul visuel par carte Ennemi/Objet.**
 Dos commun, recto unique portant les deux moitiés tête-bêche. Côté objet, c'est
@@ -45,7 +51,39 @@ atteindre les Portes, d'où un premier combat réel au 4e tour. Le plateau
 plafonne à 6 ennemis simultanés (3 sur la piste, 3 aux Portes) pour une pioche
 de 15.
 
-## Les quatre points tranchés en discussion
+**7. Quatre points d'entrée pour les effets, pas un.**
+Un « exécuter l'action de la carte » unique ne suffira pas. Le moteur d'effets
+doit porter :
+
+| Déclencheur | Quand | Exemples |
+|---|---|---|
+| `Pivoter` | activation volontaire d'une carte en jeu | Boulanger, Grimoire |
+| `Testament` | au moment où la carte est détruite | Duc, Traître |
+| `Devient Garde du corps` | à l'échange, sur la carte qui entre | Oracle, Patron |
+| révélation ennemie | pendant le combat uniquement, une fois | toutes les cartes Ennemi |
+
+Les trois premiers sont lisibles directement dans les données de cartes — les
+actions commencent par « Pivoter: », « Testament: » ou « Quand cette carte
+devient Garde du Corps: ». Le vocabulaire est déjà là, il reste à le formaliser.
+
+## Décision de nommage
+
+Dans les données de cartes, la clé `bannière` devient **`force`** : c'est ce que
+le livret en dit lui-même (« la bannière représente la force au combat », p5), et
+le mot parle plus que le nom du dessin.
+
+Pour ne pas entrer en conflit avec la contrainte n°1, on garde deux mots
+distincts :
+
+- **`force`** dans les données — la valeur imprimée sur la carte. Vaut `null`
+  pour le Soldat et le Joker, dont la carte ne porte pas de nombre.
+- **`forceEffective(carte, état)`** dans le moteur — ce que la carte apporte
+  réellement ici et maintenant, jetons bonus et effets de Boss compris.
+
+Sans cette séparation, `force` désignerait deux choses différentes et le piège se
+refermerait exactement sur les cartes où il fait mal.
+
+## Les points tranchés en discussion
 
 | Question | Réponse | Source |
 |---|---|---|
@@ -54,6 +92,9 @@ de 15.
 | Seuil de victoire au combat | inclusif : `force alliée >= force ennemie` | table + p20 |
 | Plafond de ressources | aucun — la valeur Roi/Reine est un montant de départ | p4, p7 |
 | Seuil de défaite | `ressources <= 0` | p1 |
+| Une action ennemie peut-elle repartir ? | Non — une fois par partie, à la révélation | table |
+| Apport du Garde du corps au combat | 0, dans les deux phases | table + p11 |
+| Échange du Garde du corps | 1× par phase, avec le Champ de bataille ou le terrain d'entraînement | table |
 
 ## Ce qui reste hors des règles
 
@@ -61,9 +102,14 @@ Le livret ne contient **aucune donnée de carte** : forces, niveaux, actions et
 coûts d'entraînement viennent du matériel physique. Ils sont saisis dans les
 fichiers `description-*.txt`, non versionnés. C'est l'objet du ticket suivant.
 
-## Trois questions pour vérifier
+## Questions de relecture — répondues
 
-1. Pourquoi `force` ne peut-elle pas être un champ du modèle de carte ?
-2. Un Gobelin Magicien est révélé par une Vision au tour 3, et arrive aux Portes
-   au tour 5. Son action se déclenche-t-elle ?
-3. Le Garde du corps porte une bannière de 3. Combien apporte-t-il au combat ?
+1. *Pourquoi `force` ne peut-elle pas être un simple champ du modèle ?* Parce que
+   le Soldat et le Joker n'ont pas de valeur imprimée : elle dépend de l'état de
+   la partie. D'où la séparation `force` (donnée) / `forceEffective()` (moteur)
+   décidée ci-dessus.
+2. *Un Gobelin Magicien révélé par une Vision au tour 3 arrive aux Portes au tour
+   5 : son action part-elle ?* Non — et elle ne partira jamais.
+3. *Le Garde du corps porte une force de 3, combien apporte-t-il au combat ?*
+   Zéro. Il n'est pas « En jeu ». Son intérêt est l'échange, pas sa force au
+   repos.

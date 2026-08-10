@@ -222,6 +222,11 @@ aux emplacements marqués du plateau. Conséquence capitale :
 
 La vision est donc le principal outil pour neutraliser les actions ennemies.
 
+L'action d'un ennemi ne part donc **qu'une seule fois dans la partie**, à
+l'instant de sa révélation. Un ennemi qui survit au combat reste révélé : aux
+tours suivants, on le recombat sans que son action se redéclenche. Seul son
+jeton Bonus Ennemi, acquis une fois pour toutes, continue de peser.
+
 Un ennemi arrive aux Portes **face cachée** : il n'est retourné qu'à l'étape 1
 de la phase Combat, qui suit immédiatement. Comme les deux phases s'enchaînent
 dans le même tour, retourner la carte dès son arrivée — ce qu'on fait
@@ -280,14 +285,25 @@ l'autre. C'est le principal levier tactique du jeu.
 
 - Il ne part pas à l'Hôpital en fin de phase.
 - Il **n'est pas « En jeu »** : sa force ne compte ni en entraînement ni en
-  combat.
-- Pour l'utiliser, on l'échange contre une carte du Champ de bataille, qui
-  prend sa place.
-- **Une seule fois par phase.**
+  combat. Une carte de force 3 mise au Garde du corps apporte **0**.
+- Pour l'utiliser, on l'échange contre une carte en jeu — du **Champ de
+  bataille** en phase Combat, du **terrain d'entraînement** en phase
+  Entraînement — qui prend sa place.
+- **Une seule fois par phase**, mais dans les deux phases.
 - On ne peut pas l'échanger contre une carte déjà activée (pivotée à 90°).
 
+L'échange a deux effets immédiats :
+
+1. **La force totale est recalculée** — la carte qui entre en jeu ajoute la
+   sienne, celle qui sort retire la sienne.
+2. **La carte qui devient Garde du corps peut déclencher une action.** Certaines
+   cartes portent un déclencheur « Quand cette carte devient Garde du corps » :
+   l'Oracle (Visionner) et le Patron (Piocher 1). C'est une troisième famille de
+   déclencheurs, à côté de Pivoter et de Testament.
+
 Le mode d'emploi est donc : mettre de côté une grosse carte pendant une phase
-où l'on a de la force en excédent, la ressortir à la phase suivante.
+où l'on a de la force en excédent, la ressortir à la phase suivante — et, avec
+l'Oracle ou le Patron, se servir de l'échange lui-même comme d'une action.
 
 ---
 
