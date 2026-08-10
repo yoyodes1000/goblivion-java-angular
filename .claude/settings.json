@@ -1,0 +1,56 @@
+{
+  "$comment": [
+    "Garde-fous du depot, versionnes et partages. Voir CLAUDE.md pour la regle complete.",
+    "Les entrees 'ask' declenchent une demande de confirmation : elles couvrent les",
+    "commandes qui effacent ou reecrivent. Elles ne remplacent pas la regle de conduite,",
+    "elles la doublent la ou un motif de commande peut l'attraper.",
+    "Les preferences personnelles non partagees vont dans settings.local.json (gitignore)."
+  ],
+  "permissions": {
+    "ask": [
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "Bash(mv:*)",
+      "Bash(git rm:*)",
+      "Bash(git mv:*)",
+      "Bash(git reset:*)",
+      "Bash(git restore:*)",
+      "Bash(git checkout --:*)",
+      "Bash(git clean:*)",
+      "Bash(git revert:*)",
+      "Bash(git rebase:*)",
+      "Bash(git commit --amend:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --delete:*)",
+      "Bash(git branch -d:*)",
+      "Bash(git branch -D:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git stash drop:*)",
+      "Bash(git stash clear:*)",
+      "PowerShell(Remove-Item:*)",
+      "PowerShell(Clear-Content:*)",
+      "PowerShell(Move-Item:*)",
+      "PowerShell(Rename-Item:*)",
+      "Edit(.gitignore)",
+      "Write(.gitignore)",
+      "Edit(.github/workflows/**)",
+      "Write(.github/workflows/**)"
+    ],
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(node scripts/valider-cartes.mjs)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)"
+    ]
+  }
+}
