@@ -233,7 +233,13 @@ restants aux Portes et on passe au combat des Boss.
 
 ## 8. Phase 3 — Combat
 
-Le combat est gagné si **force alliée ≥ force ennemie**.
+Le combat est gagné si **force alliée ≥ force ennemie**. Le seuil est inclusif :
+égaler la force de l'ennemi suffit à le vaincre.
+
+> 4 de bannières (bonus compris) contre un ennemi de force 4 → vaincu.
+> Les mêmes 4 contre un ennemi de force 5 → échec : le joueur perd 1 ressource
+> (la différence), et l'ennemi survivant gagne son jeton Bonus Ennemi, qu'il
+> conservera au tour suivant.
 
 1. Révéler l'ennemi le plus à gauche aux Portes, piocher le nombre de cartes
    indiqué sur sa carte, puis lancer son action — **seulement s'il est révélé
@@ -344,7 +350,12 @@ Ces cas particuliers sont autant de tests unitaires à écrire.
   du Champ de bataille, jamais sur le plateau Ennemi — ni d'ailleurs sur le
   Garde du corps, qui n'est pas « En jeu ».
 - **Les jumeaux** (Boss) : on ne compte la force que d'un seul exemplaire de
-  chaque doublon en jeu.
+  chaque doublon en jeu. Les exemplaires en trop sont **ignorés**, ce qui va
+  plus loin qu'une simple soustraction : ils sortent aussi du décompte qui sert
+  aux forces variables. Trois Soldats face aux Jumeaux ne valent donc pas 4
+  (§ pour 3 Soldats, compté une fois) mais **2** — un seul Soldat subsiste au
+  décompte, et la formule redescend à son premier palier. Les Jumeaux sont donc
+  particulièrement redoutables contre une armée de Soldats.
 
 ---
 
