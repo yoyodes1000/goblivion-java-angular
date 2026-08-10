@@ -60,3 +60,17 @@ Pour jouer au vrai jeu : https://www.gobliviongames.com
 
 Les tickets vivent dans l'Organiseur (tableau `goblivion`).
 Un ticket = une branche `feature/NN-nom` = une note dans `docs/notes/`.
+
+## Flux Git
+
+```
+feature/NN-nom ──PR──> dev ──ff──> staging ──ff──> main
+                        ▲            ▲               ▲
+                        CI verte   tests manuels   production validée
+```
+
+`main` est la production, `staging` la version en cours de test, `dev`
+l'intégration. Les promotions se font en fast-forward, jamais par merge :
+les trois branches sont des étiquettes sur une seule histoire linéaire.
+
+Le détail du flux et les règles de contribution sont dans [CLAUDE.md](CLAUDE.md).
