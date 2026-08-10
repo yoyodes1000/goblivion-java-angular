@@ -74,6 +74,9 @@ git checkout dev && git pull --ff-only && git checkout -b feature/NN-nom
 Puis PR vers `dev`. La CI (`.github/workflows/ci.yml`) tourne sur la PR : backend
 `mvnw test`, frontend `npm ci` + tests + build.
 
+À la fusion, GitHub supprime la branche **distante** tout seul (`delete_branch_on_merge`).
+La copie **locale** survit, elle : `git branch -d feature/NN-nom && git fetch --prune`.
+
 Promouvoir vers `staging`, une fois la CI verte :
 
 ```bash
@@ -88,6 +91,35 @@ git push origin staging:main
 
 Ces deux pushes échouent d'eux-mêmes s'ils ne sont pas des fast-forward — c'est
 le filet : un refus signifie que quelqu'un a commité directement sur la cible.
+
+Un `Everything up-to-date` n'est jamais un échec : c'est une promotion déjà faite.
+Un vrai refus s'affiche en `! [rejected]`.
+
+### Marquer la version
+
+Toute promotion vers `main` se conclut par un tag. Sans lui, `main` avance sans
+que rien ne distingue une version d'une autre, et l'historique perd la seule
+information que `main` est censée porter : ce qui a été joué et validé, et quand.
+
+```bash
+git tag -a v0.2.0 -m "Ce que cette version apporte"
+git push origin v0.2.0
+```
+
+Tag **annoté** (`-a`), pas léger : il porte un auteur, une date et un message,
+là où un tag léger n'est qu'un pointeur anonyme. Et il faut le **pousser
+explicitement** — un `git push` ordinaire n'emporte pas les tags.
+
+Numérotation :
+
+| Forme | Quand |
+|---|---|
+| `v0.x.0` | tant que le jeu n'est pas jouable de bout en bout — chaque promotion apportant du contenu |
+| `v0.x.y` | promotion de correction seule, sans apport |
+| `v1.0.0` | première partie complète jouable, du début à la victoire ou la défaite |
+
+`git tag -n` liste les versions avec leur message, `git describe` situe n'importe
+quel commit par rapport à la dernière.
 
 **Pas de chemin `hotfix`.** À un seul développeur sur un jeu local, une branche
 partant de `main` casserait la linéarité pour rien. Un bug urgent se corrige sur
