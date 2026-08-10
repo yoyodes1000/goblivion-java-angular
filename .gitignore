@@ -12,6 +12,12 @@ cartes roi-reines/
 medias/
 *.pdf
 
+# Donnees de cartes normalisees : noms, actions et valeurs sont du contenu
+# Goblivion Games au meme titre que les scans. Seul le schema est versionne,
+# dans docs/modele-cartes.md, et scripts/valider-cartes.mjs verifie que les
+# donnees locales le respectent.
+data/cartes/
+
 # ─────────────────────────────────────────────────────────────
 # Backend Java / Maven
 # ─────────────────────────────────────────────────────────────
