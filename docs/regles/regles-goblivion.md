@@ -85,14 +85,30 @@ actions ne visent que l'une des deux.
 
 ### Ennemi / Objet
 
-Une seule carte physique, deux faces à 180°.
+Attention, ce ne sont **pas** deux faces. La carte a un **dos commun**, et son
+unique recto porte les deux moitiés à la fois : l'ennemi en haut, l'objet en
+bas et **tête-bêche**. Faire pivoter la carte de 180° ne révèle rien — ça rend
+simplement lisible la moitié que l'on veut consulter, en retournant l'autre.
 
-Côté ennemi : bannière (force), niveau en épées, **nombre de cartes à piocher**
-pour l'affronter, et une action.
-Côté objet : bannière et action, comme un Paysan.
+```
+   ┌─────────────┐         ┌─────────────┐
+   │   ENNEMI    │  180°   │  ǝɯǝuuǝ ↑   │
+   ├─────────────┤  ────►  ├─────────────┤
+   │  ʇǝظqo ↓    │         │    OBJET    │
+   └─────────────┘         └─────────────┘
+```
 
-Un ennemi vaincu est retourné et rejoint l'Hôpital : la récompense entre dans
-le deck du joueur. C'est le moteur du deckbuilding.
+Moitié ennemi : bannière (force), niveau en épées, **nombre de cartes à
+piocher** pour l'affronter, et une action.
+Moitié objet : bannière et action, comme un Paysan.
+
+Conséquence pour l'implémentation : **un seul visuel par carte**, affiché tel
+quel côté ennemi et pivoté de 180° côté objet. Pas de second scan à produire —
+ce que confirment les données, qui n'ont qu'un champ `scan carte` et un seul
+fichier image par carte.
+
+Un ennemi vaincu est pivoté et rejoint l'Hôpital : la récompense entre dans le
+deck du joueur. C'est le moteur du deckbuilding.
 
 ### Boss
 
@@ -321,6 +337,12 @@ Ces cas particuliers sont autant de tests unitaires à écrire.
   vide » du plateau Joueur ne se déclenche pas.
 - **Soldat** : sa force dépend du nombre de Soldats en jeu — 1→2, 2→3, 3→4,
   4 et plus→5. Chaque Soldat vaut cette valeur.
+- Un Soldat existe aussi comme récompense, au dos du Gobelin Trappeur. Il ne
+  compte dans le décompte **que lorsqu'il est réellement en jeu** comme carte du
+  joueur. Tant que la carte est aux Portes du château, c'est sa moitié ennemie
+  qui est active : elle ne vaut pas un Soldat. Le décompte porte sur les cartes
+  du Champ de bataille, jamais sur le plateau Ennemi — ni d'ailleurs sur le
+  Garde du corps, qui n'est pas « En jeu ».
 - **Les jumeaux** (Boss) : on ne compte la force que d'un seul exemplaire de
   chaque doublon en jeu.
 
