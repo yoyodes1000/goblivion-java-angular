@@ -104,10 +104,14 @@ porteur et deux sous-objets, plutôt que deux cartes distinctes :
 `exemplaires` porte sur la carte entière : deux Gobelins Assassins, c'est aussi
 deux Lames Toxiques.
 
-## Ce qu'il reste à relever sur le matériel
+## État des données
 
-| Carte | Champ | Raison |
+Les 74 cartes sont saisies et le script de validation passe sans anomalie.
+
+Deux valeurs ne venaient pas de la saisie initiale et ont été relevées sur le
+matériel physique :
+
+| Carte | Champ | Origine |
 |---|---|---|
-| Gobelin Nudiste | `ennemi.force` | valeur absente de la source (`"bannière ennemie":,`) |
-
-Le script de validation échoue tant que cette valeur manque : c'est voulu.
+| Gobelin Nudiste | `ennemi.force` = 1 | valeur absente de la source (`"bannière ennemie":,`) |
+| Archer | `action` | guillemet non fermé ; reconstruit d'après le livret p6, puis confirmé sur la carte |
