@@ -62,6 +62,9 @@ divergence à rattraper, et `git log main..dev` dit exactement ce qui attend d'�
 validé. La contrepartie : on ne commite **jamais** directement sur `staging` ni sur
 `main`, sinon le fast-forward casse.
 
+`dev` est la **branche par défaut du dépôt** : une PR ouverte sans `--base` la
+vise d'elle-même, et un clone frais atterrit dessus. `main` reste la production.
+
 Développer un ticket :
 
 ```bash
