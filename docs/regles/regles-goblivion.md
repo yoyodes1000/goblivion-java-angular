@@ -345,6 +345,11 @@ capital non renouvelable.
 Les jetons Bonus Allié retournent à la banque à la fin de chaque phase. Les
 jetons Bonus Ennemi ne reviennent que lorsque l'ennemi est tué.
 
+**Hors périmètre.** La boîte contient aussi un **jeton étoile** et un **jeton
+feu** : ils servent au mode campagne, que ce portage ne couvre pas. Aucune carte
+n'y fait référence dans nos données. Ne pas les modéliser — c'est une décision,
+pas un oubli.
+
 ---
 
 ## 12. Précisions du livret (FAQ)
