@@ -15,7 +15,8 @@ Périmètre : **solo uniquement**. Les règles coop sont signalées quand elles
 Deckbuilder de défense. On élimine d'abord les troupes ennemies, puis les Boss.
 
 - **Victoire** : tous les Boss vaincus.
-- **Défaite** : les ressources tombent à zéro.
+- **Défaite** : les ressources tombent à zéro — seuil **inclusif**,
+  `ressources <= 0`. Atteindre exactement 0 fait perdre la partie.
 
 Les ressources sont les points de survie. Elles ne servent pas de monnaie
 d'achat : on les dépense pour combler un déficit de force.
