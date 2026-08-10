@@ -197,6 +197,15 @@ aux emplacements marqués du plateau. Conséquence capitale :
 
 La vision est donc le principal outil pour neutraliser les actions ennemies.
 
+Un ennemi arrive aux Portes **face cachée** : il n'est retourné qu'à l'étape 1
+de la phase Combat, qui suit immédiatement. Comme les deux phases s'enchaînent
+dans le même tour, retourner la carte dès son arrivée — ce qu'on fait
+naturellement à la table — donne le même résultat. La distinction ne devient
+visible que pour une carte révélée **plus tôt**, sur la piste d'approche, par
+une Vision : celle-là arrive aux Portes déjà retournée, et son action ne partira
+jamais. Le moteur doit donc retenir *quand* une carte a été révélée, pas
+seulement *si* elle l'est.
+
 **Portes du château** : maximum 3 ennemis. Si un ennemi doit avancer alors que
 les Portes sont pleines, il avance quand même et **la prochaine carte qui
 serait arrivée est détruite** — on perd sa récompense.
