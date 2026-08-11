@@ -1,0 +1,78 @@
+/*
+  Le bandeau est hors de la grille : il touche les trois bords du haut et ne
+  bouge jamais. Tout le reste vit dans `.plateau__corps`.
+
+    ┌──────────────────────────────────────────┐
+    │ bandeau                                  │
+    ├────────┬─────────────────────────────────┤
+    │ dorées │ avancée des monstres            │
+    │        ├──────────────┬──────────────────┤
+    │        │ zone de jeu  │ roi/reine + GdC  │
+    │        │              ├──────────────────┤
+    │        │              │ château/hôpital  │
+    └────────┴──────────────┴──────────────────┘
+*/
+/*
+  La table tient dans l'écran, une bonne fois : `height` et non `min-height`.
+  C'est ce qui donne au corps une hauteur définie, et donc aux blocs qui
+  débordent la possibilité de défiler chez eux plutôt que de pousser le reste.
+*/
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.plateau__corps {
+  display: grid;
+  flex: 1;
+  grid-template-areas:
+    'gauche avancee avancee'
+    'gauche zone    royales'
+    'gauche zone    chateau';
+  grid-template-columns: minmax(7rem, 11vw) minmax(0, 1fr) minmax(13rem, 22vw);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
+  min-height: 0;
+}
+
+/*
+  Colonne de gauche : le compteur de ressources, puis le marché. Les ressources
+  sont les points de survie du joueur (§1) et le marché est ce qui les consomme
+  — les mettre l'un au-dessus de l'autre met le chiffre là où le regard va déjà.
+
+  `min-height: 0` est ce qui rend possible le défilement interne du marché :
+  sans lui, un élément de grille refuse de descendre sous la taille de son
+  contenu, et le `overflow-y` posé plus bas ne se déclencherait jamais.
+*/
+.plateau__gauche {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  grid-area: gauche;
+  min-height: 0;
+}
+
+/* Le compteur garde sa taille, le marché prend ce qui reste et défile. */
+.plateau__gauche app-cartes-dorees {
+  flex: 1;
+  min-height: 0;
+}
+
+.plateau__avancee {
+  grid-area: avancee;
+}
+
+.plateau__zone {
+  grid-area: zone;
+}
+
+.plateau__royales {
+  grid-area: royales;
+}
+
+.plateau__chateau {
+  grid-area: chateau;
+}

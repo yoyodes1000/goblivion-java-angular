@@ -1,0 +1,42 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dorees__titre {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+/* Le titre reste visible : c'est la grille seule qui défile quand les douze
+   emplacements ne tiennent pas dans la hauteur disponible. */
+.dorees__grille {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* 63 × 88 mm : le format des cartes du jeu. Garder le ratio évite que les
+   emplacements se déforment quand la colonne se resserre. */
+.dorees__emplacement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 63 / 88;
+  font-size: 0.75rem;
+  color: #7b8794;
+  background: #1a2027;
+  border: 1px dashed #52606d;
+  border-radius: 0.3rem;
+}

@@ -1,0 +1,62 @@
+:host {
+  display: block;
+  padding: 0.5rem 0.6rem;
+  background: #1a2027;
+  border: 1px solid #323f4b;
+  border-radius: 0.4rem;
+}
+
+.compteur__titre {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+.compteur__valeur {
+  display: flex;
+  flex-direction: column;
+  margin: 0.15rem 0 0;
+}
+
+.compteur__nombre {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.compteur__unite {
+  font-size: 0.65rem;
+  color: #7b8794;
+}
+
+.compteur__reglage {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+}
+
+.compteur__reglage button {
+  flex: 1;
+  padding: 0.15rem 0;
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  color: inherit;
+  cursor: pointer;
+  background: #323f4b;
+  border: 1px solid transparent;
+  border-radius: 0.2rem;
+}
+
+.compteur__reglage button:hover {
+  background: #3e4c59;
+}
+
+.compteur__reglage button:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}

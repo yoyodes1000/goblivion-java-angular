@@ -1,0 +1,37 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.zone__titre {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+/*
+  La délimitation elle-même : un cadre en pointillés qui prend la couleur de la
+  phase en cours (variable posée par `[data-phase='…']` dans styles.scss). Le
+  nom affiché au-dessus reste le repère principal — la couleur ne fait que le
+  confirmer.
+*/
+.zone__aire {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 10rem;
+  border: 2px dashed var(--fond-phase, #52606d);
+  border-radius: 0.5rem;
+}
+
+.zone__vide {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #7b8794;
+}

@@ -1,0 +1,33 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.avancee__titre {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+/*
+  `position: relative` est exigé par `ngSrc` + `fill` : l'image se pose en
+  absolu dans ce cadre. La hauteur est plafonnée, sinon le scan (2500 × 1254,
+  presque 2:1) mangerait la moitié de l'écran sur un grand moniteur.
+*/
+.avancee__scan {
+  position: relative;
+  height: clamp(9rem, 30dvh, 22rem);
+  overflow: hidden;
+  background: #1a2027;
+  border: 1px solid #323f4b;
+  border-radius: 0.4rem;
+}
+
+.avancee__scan img {
+  object-fit: contain;
+}

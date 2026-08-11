@@ -1,0 +1,31 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.chateau__titre {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+/* `position: relative` est exigé par `ngSrc` + `fill`. Le scan est presque
+   carré (2900 × 2910) : `contain` le centre dans ce qui reste de hauteur. */
+.chateau__scan {
+  position: relative;
+  flex: 1;
+  min-height: 8rem;
+  overflow: hidden;
+  background: #1a2027;
+  border: 1px solid #323f4b;
+  border-radius: 0.4rem;
+}
+
+.chateau__scan img {
+  object-fit: contain;
+}

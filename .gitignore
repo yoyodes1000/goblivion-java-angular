@@ -12,6 +12,17 @@ cartes roi-reines/
 medias/
 *.pdf
 
+# Scans des plateaux : meme statut que les scans de cartes. `plateaux/` est la
+# copie de travail, `frontend/public/plateaux/` celle que le serveur Angular
+# sert au navigateur. Les deux restent locales.
+plateaux/
+frontend/public/plateaux/
+
+# Les scans de cartes devront eux aussi passer par le dossier servi par Angular.
+# Les regles ci-dessus les attrapent deja tant que les dossiers gardent leur nom
+# exact ; cette regle-ci tient meme si on les reorganise en `cartes/dorees/`.
+frontend/public/cartes*/
+
 # Donnees de cartes normalisees : noms, actions et valeurs sont du contenu
 # Goblivion Games au meme titre que les scans. Seul le schema est versionne,
 # dans docs/modele-cartes.md, et scripts/valider-cartes.mjs verifie que les

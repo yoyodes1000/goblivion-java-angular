@@ -1,0 +1,55 @@
+/*
+  Le fond et la couleur du texte viennent des variables posées par
+  `[data-phase='…']` dans src/styles.scss.
+*/
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.55rem 1rem;
+  color: var(--texte-phase, #fff);
+  background: var(--fond-phase, #1f2933);
+}
+
+.bandeau__phase {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.bandeau__selecteur {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.bandeau__choix {
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: inherit;
+  cursor: pointer;
+  background: rgb(0 0 0 / 25%);
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+}
+
+.bandeau__choix:hover {
+  background: rgb(0 0 0 / 40%);
+}
+
+/* L'état actif ne repose pas que sur la couleur : la graisse et le cadre le
+   disent aussi, et `aria-pressed` le dit aux lecteurs d'écran. */
+.bandeau__choix[aria-pressed='true'] {
+  font-weight: 700;
+  border-color: currentcolor;
+}
+
+.bandeau__choix:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}

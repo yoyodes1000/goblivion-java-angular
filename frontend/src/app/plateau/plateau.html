@@ -1,0 +1,13 @@
+<app-bandeau-phase [phase]="phase()" (changementDemande)="changerPhase($event)" />
+
+<main class="plateau__corps" [attr.data-phase]="phase()">
+  <div class="plateau__gauche">
+    <app-compteur-ressources [ressources]="ressources()" (ajustementDemande)="ajusterRessources($event)" />
+    <app-cartes-dorees />
+  </div>
+
+  <app-plateau-avancee class="plateau__avancee" />
+  <app-zone-jeu class="plateau__zone" [phase]="phase()" />
+  <app-cartes-royales class="plateau__royales" />
+  <app-chateau-hopital class="plateau__chateau" />
+</main>

@@ -13,12 +13,16 @@ describe('App', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('affiche le titre du jeu dans le bandeau', async () => {
+  it('ne rend que le point de montage des routes', async () => {
     const fixture = TestBed.createComponent(App);
     // whenStable() attend que le rendu soit à jour : sans zone.js, c'est ce qui
     // remplace le detectChanges() manuel que tu croiseras dans le code ancien.
     await fixture.whenStable();
     const rendu = fixture.nativeElement as HTMLElement;
-    expect(rendu.querySelector('h1')?.textContent).toContain('Goblivion');
+
+    expect(rendu.querySelector('router-outlet')).toBeTruthy();
+    // Le titre du jeu ne s'affiche plus ici : depuis le ticket 9, le haut de
+    // l'écran est le bandeau de phase, testé avec son propre composant.
+    expect(rendu.querySelector('h1')).toBeNull();
   });
 });
