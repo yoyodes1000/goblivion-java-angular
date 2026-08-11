@@ -27,7 +27,6 @@ const TRANSFERTS = [
   { source: 'cartes dorees', destination: 'cartes/scans/dorees', extensions: ['.webp'] },
   { source: 'cartes ennemis-objets', destination: 'cartes/scans/ennemis-objets', extensions: ['.webp'] },
   { source: 'cartes roi-reines', destination: 'cartes/scans/roi-reines', extensions: ['.webp'] },
-  { source: 'plateaux', destination: 'plateaux', extensions: ['.png', '.jpg', '.jpeg', '.webp'] },
 ];
 
 /**
