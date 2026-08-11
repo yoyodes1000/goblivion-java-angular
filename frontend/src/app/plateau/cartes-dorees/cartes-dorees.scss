@@ -27,16 +27,20 @@
   list-style: none;
 }
 
-/* 63 × 88 mm : le format des cartes du jeu. Garder le ratio évite que les
-   emplacements se déforment quand la colonne se resserre. */
+/* 63 × 88 mm : le format des cartes du jeu, que les scans respectent (434 × 600).
+   `position: relative` est exigé par `ngSrc` + `fill`. */
 .dorees__emplacement {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
   aspect-ratio: 63 / 88;
-  font-size: 0.75rem;
-  color: #7b8794;
+  overflow: hidden;
+  border-radius: 0.3rem;
+}
+
+.dorees__emplacement--vide {
   background: #1a2027;
   border: 1px dashed #52606d;
-  border-radius: 0.3rem;
+}
+
+.dorees__emplacement img {
+  object-fit: contain;
 }

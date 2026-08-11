@@ -23,25 +23,23 @@
 
 .royales__titre {
   margin: 0;
+  overflow: hidden;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #9aa5b1;
-  white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* `position: relative` est exigé par `ngSrc` + `fill`. */
 .royales__emplacement {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
-  text-align: center;
-  color: #7b8794;
-  background: #1a2027;
-  border: 1px dashed #52606d;
+  overflow: hidden;
   border-radius: 0.3rem;
 }
 
@@ -51,4 +49,22 @@
 
 .royales__emplacement[data-orientation='allongee'] {
   aspect-ratio: 88 / 63;
+}
+
+.royales__emplacement img {
+  object-fit: contain;
+}
+
+.royales__attente {
+  padding: 0.2rem;
+  font-size: 0.7rem;
+  text-align: center;
+  color: #7b8794;
+}
+
+/* Le cadre en pointillés ne concerne que l'emplacement vide : une fois la carte
+   posée, c'est son propre bord qui fait la limite. */
+.royales__emplacement:has(.royales__attente) {
+  background: #1a2027;
+  border: 1px dashed #52606d;
 }

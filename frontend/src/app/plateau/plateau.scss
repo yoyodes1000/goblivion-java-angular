@@ -2,15 +2,16 @@
   Le bandeau est hors de la grille : il touche les trois bords du haut et ne
   bouge jamais. Tout le reste vit dans `.plateau__corps`.
 
-    ┌──────────────────────────────────────────┐
-    │ bandeau                                  │
-    ├────────┬─────────────────────────────────┤
-    │ dorées │ avancée des monstres            │
-    │        ├──────────────┬──────────────────┤
-    │        │ zone de jeu  │ roi/reine + GdC  │
-    │        │              ├──────────────────┤
-    │        │              │ château/hôpital  │
-    └────────┴──────────────┴──────────────────┘
+    ┌────────────────────────────────────────────────┐
+    │ bandeau                                        │
+    ├────────┬──────┬────────────────────────────────┤
+    │ resso. │ pile │ avancée des monstres           │
+    ├────────┤ ennemi                                │
+    │ dorées ├──────┴───────────────┬────────────────┤
+    │ 6 × 2  │ zone de jeu          │ GdC + roi/reine│
+    │        │                      ├────────────────┤
+    │        │                      │ château/hôpital│
+    └────────┴──────────────────────┴────────────────┘
 */
 /*
   La table tient dans l'écran, une bonne fois : `height` et non `min-height`.
@@ -28,10 +29,10 @@
   display: grid;
   flex: 1;
   grid-template-areas:
-    'gauche avancee avancee'
-    'gauche zone    royales'
-    'gauche zone    chateau';
-  grid-template-columns: minmax(7rem, 11vw) minmax(0, 1fr) minmax(13rem, 22vw);
+    'gauche pile avancee avancee'
+    'gauche zone zone    royales'
+    'gauche zone zone    chateau';
+  grid-template-columns: minmax(7rem, 11vw) minmax(4.5rem, 7vw) minmax(0, 1fr) minmax(13rem, 22vw);
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 0.75rem;
   padding: 0.75rem;
@@ -58,6 +59,13 @@
 /* Le compteur garde sa taille, le marché prend ce qui reste et défile. */
 .plateau__gauche app-cartes-dorees {
   flex: 1;
+  min-height: 0;
+}
+
+/* La pile est au départ de la piste, à sa gauche : c'est de là que sortent les
+   ennemis qui entrent à la caverne. */
+.plateau__pile {
+  grid-area: pile;
   min-height: 0;
 }
 

@@ -3,11 +3,12 @@
 <main class="plateau__corps" [attr.data-phase]="phase()">
   <div class="plateau__gauche">
     <app-compteur-ressources [ressources]="ressources()" (ajustementDemande)="ajusterRessources($event)" />
-    <app-cartes-dorees />
+    <app-cartes-dorees [cartes]="dorees()" />
   </div>
 
+  <app-pile-monstres class="plateau__pile" [nombre]="nombreEnnemis()" />
   <app-plateau-avancee class="plateau__avancee" />
   <app-zone-jeu class="plateau__zone" [phase]="phase()" />
-  <app-cartes-royales class="plateau__royales" />
+  <app-cartes-royales class="plateau__royales" [roiReine]="roiReine()" [gardeDuCorps]="gardeDuCorps()" />
   <app-chateau-hopital class="plateau__chateau" />
 </main>
