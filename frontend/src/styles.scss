@@ -1,1 +1,50 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* ─── Socle ──────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: #f5f7fa;
+  background: #11151a;
+}
+
+/* ─── Couleurs des phases (ticket 9, étape 1) ─────────────────────────────
+   Une phase = un fond et une couleur de texte, posés en variables sur tout
+   élément portant `data-phase`. Elles sont ici, et pas dans le composant
+   bandeau, parce que la zone de jeu s'en sert aussi pour sa délimitation.
+
+   Les quatre paires tiennent le contraste WCAG AA (4.5:1 minimum) : le jaune
+   du combat est le seul assez clair pour exiger un texte sombre. Changer une
+   couleur, c'est refaire le calcul. */
+
+[data-phase='entrainement'] {
+  --fond-phase: #1d4ed8; /* bleu — contraste 6.7:1 sur blanc */
+  --texte-phase: #ffffff;
+}
+
+[data-phase='avancee'] {
+  --fond-phase: #c2410c; /* orange — contraste 5.2:1 sur blanc */
+  --texte-phase: #ffffff;
+}
+
+[data-phase='combat'] {
+  --fond-phase: #facc15; /* jaune — contraste 11.4:1 sur texte sombre */
+  --texte-phase: #1c1917;
+}
+
+[data-phase='boss'] {
+  --fond-phase: #b91c1c; /* rouge — contraste 6.5:1 sur blanc */
+  --texte-phase: #ffffff;
+}

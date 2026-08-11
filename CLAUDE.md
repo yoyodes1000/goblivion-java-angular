@@ -135,6 +135,23 @@ données de cartes bougent.
 node scripts/valider-cartes.mjs
 ```
 
+## Médias locaux
+
+Le navigateur ne sait lire que `frontend/public/`. Les scans et les données de
+cartes vivent hors dépôt, il faut donc les y copier — **avant le premier
+`npm start`**, et à chaque fois que les sources bougent :
+
+```bash
+node scripts/copier-medias.mjs
+```
+
+Le script repart d'un dossier vide à chaque passage, et **refuse d'écrire si
+`git check-ignore` ne confirme pas que la destination est ignorée**. Desserrer
+une règle du `.gitignore` ne suffirait donc pas à provoquer une fuite en
+silence : la copie s'arrête d'elle-même.
+
+Sans cette copie, l'application démarre mais n'affiche aucune carte.
+
 ## Conventions d'écriture
 
 - Documentation et commentaires en français.

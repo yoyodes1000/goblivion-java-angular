@@ -1,0 +1,40 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.avancee__titre {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+/*
+  Les trois cases sont de largeur égale et gardent le format des cartes. L'ordre
+  visuel porte le sens : la pile est à gauche, les Portes à droite, donc la
+  troisième case est celle qui va tomber aux Portes.
+*/
+.avancee__cases {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  /* Sans plafond, les trois cases s'étaleraient sur toute la largeur restante
+     et feraient des cartes géantes. Le gabarit est celui des Portes, en face. */
+  max-width: 24rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.avancee__case {
+  aspect-ratio: 63 / 88;
+  max-height: 100%;
+  background: #1a2027;
+  border: 1px dashed #52606d;
+  border-radius: 0.3rem;
+}

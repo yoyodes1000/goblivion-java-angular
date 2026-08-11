@@ -1,0 +1,143 @@
+:host {
+  display: block;
+  min-height: 0;
+}
+
+.ch {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ch__bloc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.ch__titre {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+/* `position: relative` sert deux fois : au `fill` de l'image, et au voile qui
+   se pose par-dessus. */
+.ch__case {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  padding: 0;
+  overflow: hidden;
+  aspect-ratio: 63 / 88;
+  max-height: 9rem;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: #1a2027;
+  border: 1px solid #3e4c59;
+  border-radius: 0.3rem;
+}
+
+.ch__case:focus-visible {
+  outline: 2px solid #f5f7fa;
+  outline-offset: 2px;
+}
+
+.ch__case img {
+  object-fit: contain;
+}
+
+.ch__case--hopital {
+  border-style: dashed;
+  border-color: #52606d;
+}
+
+/* Le voile ne remplace pas la carte : il se pose dessus, pour que la pioche
+   reste reconnaissable pendant qu'on lit son compte. */
+.ch__voile {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  background: rgb(17 21 26 / 88%);
+}
+
+.ch__nombre {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ch__unite {
+  font-size: 0.62rem;
+  color: #9aa5b1;
+}
+
+/*
+  La fenêtre de l'hôpital est en `fixed` : la table est en `overflow: hidden`,
+  et n'importe quel positionnement absolu se ferait rogner par ce cadre.
+*/
+.hopital {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+  width: min(46rem, calc(100vw - 2rem));
+  max-height: 70dvh;
+  padding: 0.75rem;
+  overflow-y: auto;
+  background: #11151a;
+  border: 1px solid #3e4c59;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 55%);
+}
+
+.hopital__titre {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+.hopital__vide {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #7b8794;
+}
+
+.hopital__grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hopital__carte {
+  position: relative;
+  aspect-ratio: 63 / 88;
+  overflow: hidden;
+  border-radius: 0.25rem;
+}
+
+.hopital__carte img {
+  object-fit: contain;
+}

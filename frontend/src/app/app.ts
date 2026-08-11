@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 /**
  * Coquille de l'application : elle ne contient volontairement rien d'autre
- * que le point de montage des routes. Le plateau de jeu viendra plus tard
- * dans un composant dédié, monté par le routeur.
+ * que le point de montage des routes. Depuis le ticket 9, le haut de l'écran
+ * appartient au bandeau de phase du plateau — la coquille n'a donc plus
+ * d'en-tête à elle.
  */
 @Component({
   selector: 'app-root',
@@ -15,6 +16,4 @@ import { RouterOutlet } from '@angular/router';
   // C'est le mode par défaut à viser sur tous nos composants.
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {
-  protected readonly titre = signal('Goblivion');
-}
+export class App {}

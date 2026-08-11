@@ -1,0 +1,35 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.portes__titre {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+.portes__cases {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  max-width: 24rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Le liseré rouge distingue les Portes de la piste : c'est là que le combat se
+   déclenche. La couleur ne dit rien à elle seule — le titre porte le sens. */
+.portes__case {
+  aspect-ratio: 63 / 88;
+  max-height: 100%;
+  background: #1a2027;
+  border: 1px dashed #9b3b3b;
+  border-radius: 0.3rem;
+}

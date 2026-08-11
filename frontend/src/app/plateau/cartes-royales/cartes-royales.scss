@@ -1,0 +1,70 @@
+/*
+  Les deux colonnes sont dans le rapport des deux formats de carte : le Garde du
+  corps est droit (63 × 88), le Roi/Reine allongé (88 × 63). Des largeurs dans
+  ce rapport donnent aux deux emplacements exactement la même hauteur, sans
+  qu'aucune valeur en pixels n'ait à être écrite.
+*/
+.royales {
+  display: grid;
+  grid-template-columns: 0.72fr 1.4fr;
+  gap: 0.5rem;
+  align-items: end;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.royales__carte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.royales__titre {
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* `position: relative` est exigé par `ngSrc` + `fill`. */
+.royales__emplacement {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 0.3rem;
+}
+
+.royales__emplacement[data-orientation='droite'] {
+  aspect-ratio: 63 / 88;
+}
+
+.royales__emplacement[data-orientation='allongee'] {
+  aspect-ratio: 88 / 63;
+}
+
+.royales__emplacement img {
+  object-fit: contain;
+}
+
+.royales__attente {
+  padding: 0.2rem;
+  font-size: 0.7rem;
+  text-align: center;
+  color: #7b8794;
+}
+
+/* Le cadre en pointillés ne concerne que l'emplacement vide : une fois la carte
+   posée, c'est son propre bord qui fait la limite. */
+.royales__emplacement:has(.royales__attente) {
+  background: #1a2027;
+  border: 1px dashed #52606d;
+}

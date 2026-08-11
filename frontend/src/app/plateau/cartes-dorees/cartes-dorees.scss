@@ -1,0 +1,183 @@
+/*
+  La fenêtre est en `position: fixed` : la table est en `overflow: hidden`, et
+  tout positionnement absolu se ferait rogner par ce cadre.
+
+  Pas de voile derrière : l'entraînement n'est jamais obligatoire (§6), et un
+  fond assombri laisserait croire qu'il faut répondre pour continuer.
+*/
+.marche {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 20;
+  translate: -50% -50%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(64rem, 94vw);
+  max-height: 88dvh;
+  padding: 0.9rem;
+  background: #11151a;
+  border: 1px solid #3e4c59;
+  border-radius: 0.6rem;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 65%);
+}
+
+.marche__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.marche__titre {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.marche__fermer {
+  padding: 0.3rem 0.8rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: inherit;
+  cursor: pointer;
+  background: #323f4b;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+}
+
+.marche__fermer:hover {
+  background: #3e4c59;
+}
+
+.marche__grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.carte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  background: #1a2027;
+  border: 1px solid #323f4b;
+  border-radius: 0.4rem;
+}
+
+/* Le verrou ne repose pas que sur l'opacité : le bouton disparaît, et la raison
+   est écrite en toutes lettres à sa place. */
+.carte--verrouillee {
+  opacity: 0.55;
+}
+
+.carte__scan {
+  position: relative;
+  aspect-ratio: 63 / 88;
+  overflow: hidden;
+  border-radius: 0.25rem;
+}
+
+.carte__scan img {
+  object-fit: contain;
+}
+
+.carte__nom {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/*
+  Les trois valeurs du processus d'entraînement, en texte. C'est tout l'objet de
+  cette fenêtre : sur le scan, à cette taille, elles sont illisibles.
+*/
+.carte__processus {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+  font-size: 0.7rem;
+}
+
+.carte__processus > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.carte__processus dt {
+  color: #9aa5b1;
+}
+
+.carte__processus dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Le stock n'est pas décoratif : la carte du Garde du corps sort du marché, et
+   un type épuisé ne peut plus être choisi. */
+.carte__stock {
+  margin: 0;
+  font-size: 0.68rem;
+  color: #9aa5b1;
+  font-variant-numeric: tabular-nums;
+}
+
+.carte__stock--epuise {
+  font-weight: 600;
+  color: #d98080;
+}
+
+.carte__choisir {
+  margin-top: auto;
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #11151a;
+  cursor: pointer;
+  background: #e0b341;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+}
+
+.carte__choisir:hover {
+  background: #f0c65a;
+}
+
+.carte__choisir:focus-visible,
+.marche__fermer:focus-visible {
+  outline: 2px solid #f5f7fa;
+  outline-offset: 2px;
+}
+
+.carte__verrou {
+  margin: auto 0 0;
+  font-size: 0.66rem;
+  line-height: 1.25;
+  color: #9aa5b1;
+}
+
+.marche__pied {
+  padding-top: 0.4rem;
+  border-top: 1px solid #323f4b;
+}
+
+.marche__simulation {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: #9aa5b1;
+  cursor: pointer;
+}

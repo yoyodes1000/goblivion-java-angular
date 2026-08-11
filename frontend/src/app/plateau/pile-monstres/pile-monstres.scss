@@ -1,0 +1,72 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.pile__titre {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+.pile__cartes {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Les épaisseurs sont deux cadres décalés derrière la carte du dessus. Elles
+   n'ajoutent aucune hauteur : tout est en absolu dans le même cadre. */
+.pile__epaisseur,
+.pile__dessus {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: 63 / 88;
+  max-height: 100%;
+  margin: 0 auto;
+  border-radius: 0.3rem;
+}
+
+.pile__epaisseur {
+  background: #1a2027;
+  border: 1px solid #3e4c59;
+}
+
+.pile__epaisseur--deux {
+  translate: 5px 5px;
+}
+
+.pile__epaisseur--une {
+  translate: 2.5px 2.5px;
+}
+
+.pile__dessus {
+  overflow: hidden;
+}
+
+.pile__dessus img {
+  object-fit: contain;
+}
+
+.pile__compte {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.pile__nombre {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pile__unite {
+  font-size: 0.65rem;
+  color: #7b8794;
+}

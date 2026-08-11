@@ -1,15 +1,5 @@
 /*
-  Le bandeau de phase du ticket 9 prendra la place de cet en-tête :
-  il gardera la même position et changera seulement de couleur et de texte.
+  Rien ici : la coquille ne dessine plus rien depuis le ticket 9. Le bandeau
+  de phase est passé dans src/app/plateau/bandeau-phase/, et c'est le plateau
+  qui occupe toute la page.
 */
-.bandeau {
-  padding: 0.75rem 1rem;
-  background: #1f2933;
-  color: #fff;
-}
-
-.bandeau h1 {
-  margin: 0;
-  font-size: 1.25rem;
-  letter-spacing: 0.05em;
-}
