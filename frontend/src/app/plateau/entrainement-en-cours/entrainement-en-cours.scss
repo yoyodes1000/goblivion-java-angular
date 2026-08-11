@@ -1,0 +1,86 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 0;
+}
+
+.entrainement__titre {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+/* `position: relative` est exigé par `ngSrc` + `fill`. */
+.entrainement__scan {
+  position: relative;
+  aspect-ratio: 63 / 88;
+  overflow: hidden;
+  border-radius: 0.3rem;
+}
+
+.entrainement__scan img {
+  object-fit: contain;
+}
+
+.entrainement__nom {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.entrainement__processus {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  margin: 0;
+  font-size: 0.68rem;
+}
+
+.entrainement__processus > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.entrainement__processus dt {
+  color: #9aa5b1;
+}
+
+.entrainement__processus dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.entrainement__vide {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: #7b8794;
+}
+
+.entrainement__ouvrir {
+  margin-top: auto;
+  padding: 0.3rem 0.4rem;
+  font: inherit;
+  font-size: 0.72rem;
+  color: inherit;
+  cursor: pointer;
+  background: #323f4b;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+}
+
+.entrainement__ouvrir:hover {
+  background: #3e4c59;
+}
+
+.entrainement__ouvrir:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}

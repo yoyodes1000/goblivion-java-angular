@@ -10,7 +10,7 @@ describe('CartesDorees', () => {
     }).compileComponents();
   });
 
-  function doree(id: string): CarteDoree {
+  function doree(id: string, niveau: number): CarteDoree {
     return {
       id,
       nom: `Carte ${id}`,
@@ -18,37 +18,79 @@ describe('CartesDorees', () => {
       scan: `${id}.webp`,
       force: 2,
       forceVariable: null,
-      niveau: 1,
+      niveau,
       action: null,
-      entrainement: { pioche: 3, valeur: 2, sacrifice: 'HUMAIN' },
+      entrainement: { pioche: 3, valeur: 6, sacrifice: 'OBJET' },
       exemplaires: 4,
     };
   }
 
-  async function monter(cartes: CarteDoree[]) {
+  const MARCHE = [doree('archer', 1), doree('chevalier', 2)];
+
+  async function monter(combatGagne = false, cartes = MARCHE) {
     const fixture = TestBed.createComponent(CartesDorees);
     fixture.componentRef.setInput('cartes', cartes);
+    fixture.componentRef.setInput('combatGagne', combatGagne);
     await fixture.whenStable();
     return fixture;
   }
 
-  it('affiche le scan de chaque carte, nommé pour les lecteurs d’écran', async () => {
-    const fixture = await monter([doree('archer'), doree('catapulte')]);
-    const images = [...(fixture.nativeElement as HTMLElement).querySelectorAll('img')];
+  it('affiche les trois valeurs du processus en texte', async () => {
+    // C'est la raison d'être de cette fenêtre : sur un scan de 64 pixels, ces
+    // nombres sont illisibles.
+    const fixture = await monter();
+    const valeurs = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.carte__processus dd')].map(
+      (d) => d.textContent?.trim(),
+    );
 
-    expect(images).toHaveLength(2);
-    expect(images[0].getAttribute('alt')).toBe('Carte archer');
-    // NgOptimizedImage recopie `ngSrc` dans `src` : c'est là qu'on le vérifie.
-    expect(images[0].getAttribute('src')).toContain('/cartes/scans/dorees/archer.webp');
+    expect(valeurs.slice(0, 3)).toEqual(['3', '6', 'objet']);
   });
 
-  it('garde la forme de la grille tant que les données ne sont pas là', async () => {
-    // Douze emplacements sur deux colonnes : les six lignes du ticket 9. Sans
-    // ça la colonne s'effondrerait au chargement, puis sauterait.
-    const fixture = await monter([]);
+  it('verrouille les 2 épées tant qu’aucun combat n’est gagné', async () => {
+    const fixture = await monter(false);
     const rendu = fixture.nativeElement as HTMLElement;
 
-    expect(rendu.querySelectorAll('.dorees__emplacement')).toHaveLength(12);
-    expect(rendu.querySelectorAll('img')).toHaveLength(0);
+    // Les douze restent visibles : savoir ce qu'on débloquera fait partie du plan.
+    expect(rendu.querySelectorAll('.carte')).toHaveLength(2);
+    expect(rendu.querySelectorAll('.carte--verrouillee')).toHaveLength(1);
+    // Un seul bouton Entraîner : celui de la 1 épée.
+    expect(rendu.querySelectorAll('.carte__choisir')).toHaveLength(1);
+    // Et la raison est écrite, pas seulement suggérée par un grisé.
+    expect(rendu.querySelector('.carte__verrou')?.textContent).toContain('combat gagné');
+  });
+
+  it('ouvre les 2 épées une fois un combat gagné', async () => {
+    const fixture = await monter(true);
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(rendu.querySelectorAll('.carte--verrouillee')).toHaveLength(0);
+    expect(rendu.querySelectorAll('.carte__choisir')).toHaveLength(2);
+  });
+
+  it('demande l’entraînement sur la carte cliquée', async () => {
+    const fixture = await monter(true);
+    const demandes: CarteDoree[] = [];
+    fixture.componentInstance.entrainementDemande.subscribe((carte) => demandes.push(carte));
+
+    const boutons = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.carte__choisir');
+    boutons[1].click();
+    await fixture.whenStable();
+
+    expect(demandes.map((c) => c.id)).toEqual(['chevalier']);
+  });
+
+  it('se laisse fermer sans rien choisir', async () => {
+    // L'entraînement n'est jamais obligatoire (§6).
+    const fixture = await monter();
+    let fermetures = 0;
+    fixture.componentInstance.fermeture.subscribe(() => fermetures++);
+
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.marche__fermer')?.click();
+    await fixture.whenStable();
+    expect(fermetures).toBe(1);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+    expect(fermetures).toBe(2);
   });
 });

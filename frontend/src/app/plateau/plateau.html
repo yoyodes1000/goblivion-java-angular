@@ -3,7 +3,7 @@
 <main class="plateau__corps" [attr.data-phase]="phase()">
   <div class="plateau__gauche">
     <app-compteur-ressources [ressources]="ressources()" (ajustementDemande)="ajusterRessources($event)" />
-    <app-cartes-dorees [cartes]="dorees()" />
+    <app-entrainement-en-cours [carte]="entrainementChoisi()" (marcheDemande)="marcheOuvert.set(true)" />
   </div>
 
   <app-pile-monstres class="plateau__pile" [nombre]="taillePile" />
@@ -14,3 +14,13 @@
   <app-cartes-royales class="plateau__royales" [roiReine]="roiReine()" [gardeDuCorps]="gardeDuCorps()" />
   <app-chateau-hopital class="plateau__chateau" [nombreChateau]="nombreChateau" [cartes]="cartesHopital()" />
 </main>
+
+@if (marcheOuvert()) {
+  <app-cartes-dorees
+    [cartes]="dorees()"
+    [combatGagne]="combatGagne()"
+    (entrainementDemande)="choisirEntrainement($event)"
+    (combatGagneBascule)="combatGagne.set($event)"
+    (fermeture)="marcheOuvert.set(false)"
+  />
+}

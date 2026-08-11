@@ -1,11 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 
 import { Cartes, TAILLE_CHATEAU_DEPART, TAILLE_PILE_ENNEMIE, afficherBleue } from '../cartes/cartes';
+import type { CarteDoree } from '../cartes/modele';
 import { BandeauPhase } from './bandeau-phase/bandeau-phase';
 import { CartesDorees } from './cartes-dorees/cartes-dorees';
 import { CartesRoyales } from './cartes-royales/cartes-royales';
 import { ChateauHopital } from './chateau-hopital/chateau-hopital';
 import { CompteurRessources } from './compteur-ressources/compteur-ressources';
+import { EntrainementEnCours } from './entrainement-en-cours/entrainement-en-cours';
 import { PileMonstres } from './pile-monstres/pile-monstres';
 import { PlateauAvancee } from './plateau-avancee/plateau-avancee';
 import { type Phase } from './phase';
@@ -16,7 +25,7 @@ import { ZoneJeu } from './zone-jeu/zone-jeu';
  * La table de jeu — ticket 9.
  *
  * Ce composant place les blocs et tient l'état que plusieurs d'entre eux
- * partagent : la phase en cours, et les ressources.
+ * partagent : la phase en cours, les ressources, et l'entraînement choisi.
  *
  * Il choisit aussi la carte Roi/Reine. Ce choix est en réalité une étape de la
  * mise en place (§3), et il entraîne deux choses : les ressources de départ, et
@@ -32,6 +41,7 @@ import { ZoneJeu } from './zone-jeu/zone-jeu';
     CartesRoyales,
     ChateauHopital,
     CompteurRessources,
+    EntrainementEnCours,
     PileMonstres,
     PlateauAvancee,
     PortesChateau,
@@ -61,6 +71,23 @@ export class Plateau {
   protected readonly ressources = linkedSignal(() => this.roiReine()?.ressourcesDepart ?? 0);
 
   /**
+   * Le marché s'ouvre au début de la phase d'entraînement et se referme en la
+   * quittant — mais reste inscriptible entre les deux, parce que l'entraînement
+   * n'est jamais obligatoire (§6) : on doit pouvoir le congédier, et le rouvrir.
+   * Encore `linkedSignal`, cette fois piloté par la phase.
+   */
+  protected readonly marcheOuvert = linkedSignal({
+    source: this.phase,
+    computation: (phase) => phase === 'entrainement',
+  });
+
+  /** La carte du marché sur laquelle on s'entraîne ce tour-ci. */
+  protected readonly entrainementChoisi = signal<CarteDoree | undefined>(undefined);
+
+  /** Provisoire : c'est le moteur qui saura si un combat a été gagné (§6). */
+  protected readonly combatGagne = signal(false);
+
+  /**
    * Tailles de départ, fixées par les règles (§3). Elles deviendront l'état réel
    * des deux piles quand le moteur tiendra la partie.
    */
@@ -85,5 +112,10 @@ export class Plateau {
     // Pas de plancher ici : la défaite se déclenche à zéro (seuil inclusif),
     // et c'est au moteur de jeu de la prononcer, pas à l'affichage.
     this.ressources.update((actuelles) => actuelles + delta);
+  }
+
+  protected choisirEntrainement(carte: CarteDoree): void {
+    this.entrainementChoisi.set(carte);
+    this.marcheOuvert.set(false);
   }
 }

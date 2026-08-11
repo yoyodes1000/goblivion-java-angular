@@ -7,13 +7,16 @@
 
     ┌──────────────────────────────────────────────────┐
     │ bandeau                                          │
-    ├────────┬──────┬──────────────┬───────────────────┤
-    │ resso. │ pile │ avancée (3)  │ portes (3)        │
-    ├────────┤      ├──────────────┴───┬───────────────┤
-    │ dorées │ zone de jeu             │ GdC+roi/reine │
-    │ 6 × 2  │                         ├───────────────┤
-    │        │                         │ chât. │ hôpit.│
-    └────────┴─────────────────────────┴───────────────┘
+    ├───────┬──────┬───────────────┬───────────────────┤
+    │ resso.│ pile │ avancée (3)   │ portes (3)        │
+    ├───────┤      ├───────────────┴───┬───────────────┤
+    │ entr. │ zone de jeu              │ GdC+roi/reine │
+    │ en    │                          ├───────────────┤
+    │ cours │                          │ chât. │ hôpit.│
+    └───────┴──────────────────────────┴───────────────┘
+
+  Le marché d'entraînement n'est pas dans la grille : c'est une fenêtre, ouverte
+  au début de la phase d'entraînement puis congédiable.
 
   La table tient dans l'écran, une bonne fois : `height` et non `min-height`.
   C'est ce qui donne au corps une hauteur définie, et donc aux blocs qui
@@ -33,7 +36,7 @@
     'gauche pile avancee portes'
     'gauche zone zone    royales'
     'gauche zone zone    chateau';
-  grid-template-columns: minmax(9rem, 14vw) minmax(4.5rem, 7vw) minmax(0, 1fr) minmax(13rem, 22vw);
+  grid-template-columns: minmax(6.5rem, 9vw) minmax(4.5rem, 7vw) minmax(0, 1fr) minmax(13rem, 22vw);
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0.75rem;
   padding: 0.75rem;
@@ -41,13 +44,13 @@
 }
 
 /*
-  Colonne de gauche : le compteur de ressources, puis le marché. Les ressources
-  sont les points de survie du joueur (§1) et le marché est ce qui les consomme
-  — les mettre l'un au-dessus de l'autre met le chiffre là où le regard va déjà.
+  Colonne de gauche : les ressources, puis l'entraînement en cours. Les
+  ressources sont les points de survie du joueur (§1) et l'entraînement est ce
+  qui les consomme quand la cible n'est pas atteinte — les mettre l'un au-dessus
+  de l'autre met les deux chiffres qui comptent au même endroit.
 
-  `min-height: 0` est ce qui rend possible le défilement interne du marché :
-  sans lui, un élément de grille refuse de descendre sous la taille de son
-  contenu, et le `overflow-y` posé plus bas ne se déclencherait jamais.
+  Elle est fine : les douze cartes du marché ont déménagé dans une fenêtre, où
+  leurs valeurs sont enfin lisibles.
 */
 .plateau__gauche {
   display: flex;
@@ -57,8 +60,8 @@
   min-height: 0;
 }
 
-/* Le compteur garde sa taille, le marché prend ce qui reste et défile. */
-.plateau__gauche app-cartes-dorees {
+/* Le compteur garde sa taille, l'entraînement prend ce qui reste. */
+.plateau__gauche app-entrainement-en-cours {
   flex: 1;
   min-height: 0;
 }

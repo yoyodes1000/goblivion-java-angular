@@ -79,13 +79,56 @@ describe('Plateau', () => {
 
     expect(rendu.querySelector('app-bandeau-phase')).toBeTruthy();
     expect(rendu.querySelector('app-compteur-ressources')).toBeTruthy();
-    expect(rendu.querySelector('app-cartes-dorees')).toBeTruthy();
+    expect(rendu.querySelector('app-entrainement-en-cours')).toBeTruthy();
     expect(rendu.querySelector('app-pile-monstres')).toBeTruthy();
     expect(rendu.querySelector('app-plateau-avancee')).toBeTruthy();
     expect(rendu.querySelector('app-portes-chateau')).toBeTruthy();
     expect(rendu.querySelector('app-zone-jeu')).toBeTruthy();
     expect(rendu.querySelector('app-cartes-royales')).toBeTruthy();
     expect(rendu.querySelector('app-chateau-hopital')).toBeTruthy();
+  });
+
+  it('ouvre le marché au début de la phase d’entraînement, et le referme en la quittant', async () => {
+    const fixture = await monter();
+    const rendu = fixture.nativeElement as HTMLElement;
+    const choix = rendu.querySelectorAll<HTMLButtonElement>('.bandeau__choix');
+
+    // La partie démarre en Entraînement : le marché est ouvert d'emblée.
+    expect(rendu.querySelector('app-cartes-dorees')).toBeTruthy();
+
+    choix[PHASES.indexOf('combat')].click();
+    await fixture.whenStable();
+    expect(rendu.querySelector('app-cartes-dorees')).toBeNull();
+
+    choix[PHASES.indexOf('entrainement')].click();
+    await fixture.whenStable();
+    expect(rendu.querySelector('app-cartes-dorees')).toBeTruthy();
+  });
+
+  it('se laisse congédier sans changer de phase', async () => {
+    // L'entraînement n'est jamais obligatoire (§6) : fermer le marché ne doit
+    // pas obliger à quitter la phase.
+    const fixture = await monter();
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    rendu.querySelector<HTMLButtonElement>('.marche__fermer')?.click();
+    await fixture.whenStable();
+
+    expect(rendu.querySelector('app-cartes-dorees')).toBeNull();
+    expect(rendu.querySelector('app-bandeau-phase')?.getAttribute('data-phase')).toBe('entrainement');
+  });
+
+  it('garde la carte choisie dans la colonne et referme le marché', async () => {
+    const fixture = await monter();
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    rendu.querySelector<HTMLButtonElement>('.carte__choisir')?.click();
+    await fixture.whenStable();
+
+    expect(rendu.querySelector('app-cartes-dorees')).toBeNull();
+    expect(rendu.querySelector('.entrainement__nom')?.textContent?.trim()).toBe('Catapulte');
+    const valeurs = [...rendu.querySelectorAll('.entrainement__processus dd')].map((d) => d.textContent?.trim());
+    expect(valeurs).toEqual(['4', '5', 'OBJET']);
   });
 
   it('n’affiche plus aucun scan de plateau', async () => {
