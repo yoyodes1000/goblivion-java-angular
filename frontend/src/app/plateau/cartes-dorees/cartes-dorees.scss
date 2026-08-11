@@ -124,6 +124,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Le stock n'est pas décoratif : la carte du Garde du corps sort du marché, et
+   un type épuisé ne peut plus être choisi. */
+.carte__stock {
+  margin: 0;
+  font-size: 0.68rem;
+  color: #9aa5b1;
+  font-variant-numeric: tabular-nums;
+}
+
+.carte__stock--epuise {
+  font-weight: 600;
+  color: #d98080;
+}
+
 .carte__choisir {
   margin-top: auto;
   padding: 0.3rem 0.5rem;

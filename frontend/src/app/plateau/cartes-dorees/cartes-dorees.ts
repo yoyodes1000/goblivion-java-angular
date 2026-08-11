@@ -2,7 +2,7 @@ import { LowerCasePipe, NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 import { urlScan } from '../../cartes/cartes';
-import type { CarteDoree } from '../../cartes/modele';
+import type { CarteDoree, OffreMarche } from '../../cartes/modele';
 
 /**
  * Le marché d'entraînement, en fenêtre.
@@ -16,6 +16,10 @@ import type { CarteDoree } from '../../cartes/modele';
  * seulement après un premier combat gagné (§6). Les secondes restent visibles,
  * grisées : dans un deckbuilder, savoir ce qu'on va débloquer fait partie du
  * plan.
+ *
+ * Chaque type affiche aussi ce qu'il en reste. Le stock n'est pas décoratif :
+ * la carte servant de Garde du corps initial sort du marché, et un type épuisé
+ * ne peut plus être choisi.
  *
  * L'entraînement n'est jamais obligatoire : la fenêtre se ferme sans rien
  * choisir, et se rouvre à la demande.
@@ -35,26 +39,38 @@ import type { CarteDoree } from '../../cartes/modele';
       </header>
 
       <ol class="marche__grille">
-        @for (carte of cartes(); track carte.id) {
-          <li class="carte" [class.carte--verrouillee]="!disponible(carte)">
+        @for (offre of offres(); track offre.carte.id) {
+          <li class="carte" [class.carte--verrouillee]="!disponible(offre)">
             <div class="carte__scan">
-              <img [ngSrc]="url(carte)" fill sizes="10vw" [alt]="carte.nom" />
+              <img [ngSrc]="url(offre.carte)" fill sizes="10vw" [alt]="offre.carte.nom" />
             </div>
 
-            <h3 class="carte__nom">{{ carte.nom }}</h3>
+            <h3 class="carte__nom">{{ offre.carte.nom }}</h3>
 
             <dl class="carte__processus">
-              <div><dt>Pioche</dt><dd>{{ carte.entrainement.pioche }}</dd></div>
-              <div><dt>Cible</dt><dd>{{ carte.entrainement.valeur }}</dd></div>
-              <div><dt>Sacrifice</dt><dd>{{ carte.entrainement.sacrifice | lowercase }}</dd></div>
+              <div><dt>Pioche</dt><dd>{{ offre.carte.entrainement.pioche }}</dd></div>
+              <div><dt>Cible</dt><dd>{{ offre.carte.entrainement.valeur }}</dd></div>
+              <div><dt>Sacrifice</dt><dd>{{ offre.carte.entrainement.sacrifice | lowercase }}</dd></div>
             </dl>
 
-            @if (disponible(carte)) {
-              <button type="button" class="carte__choisir" (click)="entrainementDemande.emit(carte)">
+            <p class="carte__stock" [class.carte__stock--epuise]="offre.restant === 0">
+              @if (offre.restant === 0) {
+                Épuisé
+              } @else {
+                Reste {{ offre.restant }}
+              }
+            </p>
+
+            @if (disponible(offre)) {
+              <button
+                type="button"
+                class="carte__choisir"
+                (click)="entrainementDemande.emit(offre.carte)"
+              >
                 Entraîner
               </button>
             } @else {
-              <p class="carte__verrou">Après un premier combat gagné</p>
+              <p class="carte__verrou">{{ raisonIndisponible(offre) }}</p>
             }
           </li>
         }
@@ -80,7 +96,7 @@ import type { CarteDoree } from '../../cartes/modele';
   styleUrl: './cartes-dorees.scss',
 })
 export class CartesDorees {
-  readonly cartes = input.required<readonly CarteDoree[]>();
+  readonly offres = input.required<readonly OffreMarche[]>();
   readonly combatGagne = input.required<boolean>();
 
   readonly entrainementDemande = output<CarteDoree>();
@@ -88,8 +104,14 @@ export class CartesDorees {
   readonly combatGagneBascule = output<boolean>();
 
   /** Les 2 épées ne s'ouvrent qu'après un premier combat gagné (§6). */
-  protected disponible(carte: CarteDoree): boolean {
-    return carte.niveau === 1 || this.combatGagne();
+  protected disponible(offre: OffreMarche): boolean {
+    return offre.restant > 0 && (offre.carte.niveau === 1 || this.combatGagne());
+  }
+
+  /** La raison est écrite : un grisé seul ne dit rien à qui ne le distingue pas. */
+  protected raisonIndisponible(offre: OffreMarche): string {
+    if (offre.restant === 0) return 'Plus aucun exemplaire';
+    return 'Après un premier combat gagné';
   }
 
   protected url(carte: CarteDoree): string {

@@ -1,4 +1,4 @@
-import { afficherBleue, trouverGardeDuCorps, urlDos, urlScan } from './cartes';
+import { afficherBleue, composerMarche, trouverGardeDuCorps, urlDos, urlScan } from './cartes';
 import type { CarteBleue, CarteDoree, RoiReine } from './modele';
 
 /**
@@ -73,6 +73,35 @@ describe('cartes', () => {
     it('rend undefined si la cible manque, plutôt que de lever', () => {
       // L'affichage doit survivre à une donnée incomplète.
       expect(trouverGardeDuCorps([doree('archer')], roiReine)).toBeUndefined();
+    });
+  });
+
+  describe('composerMarche', () => {
+    const archer = { ...doree('archer'), exemplaires: 4 };
+    const champion = { ...doree('champion'), exemplaires: 2 };
+    const margot: RoiReine = { ...roiReine, id: 'margot', gardeDuCorps: 'archer' };
+
+    it('retire du marché la carte partie au Garde du corps', () => {
+      // Reine Margot prend un Archer : il en reste trois à l'entraînement,
+      // pas quatre.
+      const marche = composerMarche([archer, champion], margot);
+
+      expect(marche.find((o) => o.carte.id === 'archer')?.restant).toBe(3);
+      expect(marche.find((o) => o.carte.id === 'champion')?.restant).toBe(2);
+    });
+
+    it('laisse le marché entier sans Roi/Reine', () => {
+      const marche = composerMarche([archer, champion], undefined);
+      expect(marche.map((o) => o.restant)).toEqual([4, 2]);
+    });
+
+    it('ne touche qu’au type designé', () => {
+      // Le lien se fait par id : les autres types gardent leur compte.
+      const marche = composerMarche([archer, champion], { ...roiReine, gardeDuCorps: 'champion' });
+      expect(marche.map((o) => [o.carte.id, o.restant])).toEqual([
+        ['archer', 4],
+        ['champion', 1],
+      ]);
     });
   });
 

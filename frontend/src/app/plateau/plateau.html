@@ -17,7 +17,7 @@
 
 @if (marcheOuvert()) {
   <app-cartes-dorees
-    [cartes]="dorees()"
+    [offres]="offres()"
     [combatGagne]="combatGagne()"
     (entrainementDemande)="choisirEntrainement($event)"
     (combatGagneBascule)="combatGagne.set($event)"

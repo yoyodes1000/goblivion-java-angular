@@ -18,7 +18,9 @@ describe('Plateau', () => {
       niveau: 1,
       action: null,
       entrainement: { pioche: 4, valeur: 5, sacrifice: 'OBJET' },
-      exemplaires: 2,
+      // Quatre exemplaires, comme dans les vraies données : les sept rôles
+      // désignent tous un type à 4, jamais un type à 2.
+      exemplaires: 4,
     },
   ];
 
@@ -116,6 +118,16 @@ describe('Plateau', () => {
 
     expect(rendu.querySelector('app-cartes-dorees')).toBeNull();
     expect(rendu.querySelector('app-bandeau-phase')?.getAttribute('data-phase')).toBe('entrainement');
+  });
+
+  it('retire du marché la carte partie au Garde du corps', async () => {
+    // Bella prend la Catapulte, qui existe en 4 exemplaires : il en reste 3 à
+    // l'entraînement.
+    const fixture = await monter();
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(rendu.querySelector('.carte__stock')?.textContent?.trim()).toBe('Reste 3');
+    expect(rendu.querySelector('app-cartes-royales img')?.getAttribute('src')).toContain('catapulte.webp');
   });
 
   it('garde la carte choisie dans la colonne et referme le marché', async () => {

@@ -7,7 +7,13 @@ import {
   signal,
 } from '@angular/core';
 
-import { Cartes, TAILLE_CHATEAU_DEPART, TAILLE_PILE_ENNEMIE, afficherBleue } from '../cartes/cartes';
+import {
+  Cartes,
+  TAILLE_CHATEAU_DEPART,
+  TAILLE_PILE_ENNEMIE,
+  afficherBleue,
+  composerMarche,
+} from '../cartes/cartes';
 import type { CarteDoree } from '../cartes/modele';
 import { BandeauPhase } from './bandeau-phase/bandeau-phase';
 import { CartesDorees } from './cartes-dorees/cartes-dorees';
@@ -55,12 +61,18 @@ export class Plateau {
 
   protected readonly phase = signal<Phase>('entrainement');
 
-  protected readonly dorees = this.cartes.dorees.value;
-
   /** Provisoire : la mise en place fera choisir ce rôle au joueur. */
   protected readonly roiReine = computed(() => this.cartes.roiReines.value()[0]);
 
   protected readonly gardeDuCorps = computed(() => this.cartes.gardeDuCorpsDe(this.roiReine()));
+
+  /**
+   * Le marché dépend du Roi/Reine : la carte qui part au Garde du corps n'est
+   * plus disponible à l'entraînement.
+   */
+  protected readonly offres = computed(() =>
+    composerMarche(this.cartes.dorees.value(), this.roiReine()),
+  );
 
   /**
    * Les ressources partent de ce que porte la carte Roi/Reine, puis vivent leur

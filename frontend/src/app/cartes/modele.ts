@@ -67,6 +67,18 @@ export interface RoiReine {
 }
 
 /**
+ * Un type du marché d'entraînement, avec ce qu'il en reste.
+ *
+ * Le stock n'est pas `exemplaires` : la carte qui sert de Garde du corps
+ * initial sort du marché à la mise en place. Un rôle dont le Garde du corps est
+ * un Archer laisse donc **trois** Archers à l'entraînement, pas quatre.
+ */
+export interface OffreMarche {
+  readonly carte: CarteDoree;
+  readonly restant: number;
+}
+
+/**
  * Ce qu'il faut savoir d'une carte pour la montrer, quelle que soit sa famille.
  *
  * L'hôpital mélange des Bleues et des Dorées : l'affichage n'a pas besoin d'en

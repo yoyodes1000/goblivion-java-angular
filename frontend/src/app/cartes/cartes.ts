@@ -1,7 +1,7 @@
 import { httpResource } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 
-import type { CarteAffichable, CarteBleue, CarteDoree, Famille, RoiReine } from './modele';
+import type { CarteAffichable, CarteBleue, CarteDoree, Famille, OffreMarche, RoiReine } from './modele';
 
 /** Où les fichiers atterrissent, une fois `node scripts/copier-medias.mjs` joué. */
 const DONNEES = '/cartes/donnees';
@@ -53,6 +53,27 @@ export function trouverGardeDuCorps(
 /** Réduit une carte Bleue à ce qu'il faut pour la montrer. */
 export function afficherBleue(carte: CarteBleue): CarteAffichable {
   return { id: carte.id, nom: carte.nom, scan: carte.scan, famille: 'bleues' };
+}
+
+/**
+ * Le marché d'entraînement tel qu'il se présente au début d'une partie.
+ *
+ * La carte qui sert de Garde du corps initial **sort du marché** : elle est
+ * posée sur son emplacement, elle n'est plus disponible à l'entraînement. Les
+ * sept rôles désignent tous un type à 4 exemplaires, qui démarre donc à 3.
+ *
+ * Le compte ne descend pas plus bas ici : consommer une carte en s'entraînant
+ * est l'affaire du moteur, et l'entraînement peut d'ailleurs être abandonné en
+ * cours de route (§6).
+ */
+export function composerMarche(
+  dorees: readonly CarteDoree[],
+  roiReine: RoiReine | undefined,
+): OffreMarche[] {
+  return dorees.map((carte) => ({
+    carte,
+    restant: carte.exemplaires - (roiReine?.gardeDuCorps === carte.id ? 1 : 0),
+  }));
 }
 
 /**

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import type { CarteDoree } from '../../cartes/modele';
+import type { CarteDoree, OffreMarche } from '../../cartes/modele';
 import { CartesDorees } from './cartes-dorees';
 
 describe('CartesDorees', () => {
@@ -25,11 +25,14 @@ describe('CartesDorees', () => {
     };
   }
 
-  const MARCHE = [doree('archer', 1), doree('chevalier', 2)];
+  const MARCHE: OffreMarche[] = [
+    { carte: doree('archer', 1), restant: 3 },
+    { carte: doree('chevalier', 2), restant: 2 },
+  ];
 
-  async function monter(combatGagne = false, cartes = MARCHE) {
+  async function monter(combatGagne = false, offres: OffreMarche[] = MARCHE) {
     const fixture = TestBed.createComponent(CartesDorees);
-    fixture.componentRef.setInput('cartes', cartes);
+    fixture.componentRef.setInput('offres', offres);
     fixture.componentRef.setInput('combatGagne', combatGagne);
     await fixture.whenStable();
     return fixture;
@@ -46,11 +49,30 @@ describe('CartesDorees', () => {
     expect(valeurs.slice(0, 3)).toEqual(['3', '6', 'objet']);
   });
 
+  it('annonce ce qu’il reste de chaque type', async () => {
+    // Trois Archers, pas quatre : le quatrième est parti au Garde du corps.
+    const fixture = await monter();
+    const stocks = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.carte__stock')].map((p) =>
+      p.textContent?.trim(),
+    );
+
+    expect(stocks).toEqual(['Reste 3', 'Reste 2']);
+  });
+
+  it('ferme un type épuisé, en le disant', async () => {
+    const fixture = await monter(true, [{ carte: doree('archer', 1), restant: 0 }]);
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(rendu.querySelector('.carte__stock')?.textContent?.trim()).toBe('Épuisé');
+    expect(rendu.querySelectorAll('.carte__choisir')).toHaveLength(0);
+    expect(rendu.querySelector('.carte__verrou')?.textContent?.trim()).toBe('Plus aucun exemplaire');
+  });
+
   it('verrouille les 2 épées tant qu’aucun combat n’est gagné', async () => {
     const fixture = await monter(false);
     const rendu = fixture.nativeElement as HTMLElement;
 
-    // Les douze restent visibles : savoir ce qu'on débloquera fait partie du plan.
+    // Les deux restent visibles : savoir ce qu'on débloquera fait partie du plan.
     expect(rendu.querySelectorAll('.carte')).toHaveLength(2);
     expect(rendu.querySelectorAll('.carte--verrouillee')).toHaveLength(1);
     // Un seul bouton Entraîner : celui de la 1 épée.
