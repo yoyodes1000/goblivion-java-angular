@@ -20,9 +20,12 @@
 .dorees__grille {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.35rem;
+  /* Assez d'air pour que deux scans voisins ne se touchent pas : leurs bords
+     clairs se confondraient, et on lirait une seule grande carte. */
+  gap: 0.6rem;
   margin: 0;
-  padding: 0;
+  /* Marge à droite pour l'ascenseur, sinon il mord sur la deuxième colonne. */
+  padding: 0 0.35rem 0 0;
   overflow-y: auto;
   list-style: none;
 }

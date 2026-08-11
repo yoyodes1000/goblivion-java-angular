@@ -22,8 +22,8 @@ import type { CarteDoree } from '../../cartes/modele';
       @for (carte of cartes(); track carte.id) {
         <li class="dorees__emplacement">
           <!-- sizes n'accepte que des unites responsives, pas de pixels : la
-               colonne fait 11vw au plus, deux cartes par ligne, ~5.5vw chacune. -->
-          <img [ngSrc]="url(carte)" fill sizes="6vw" [alt]="carte.nom" />
+               colonne fait 14vw au plus, deux cartes par ligne, ~7vw chacune. -->
+          <img [ngSrc]="url(carte)" fill sizes="7vw" [alt]="carte.nom" />
         </li>
       } @empty {
         <!-- Le temps que les données arrivent, la grille garde sa forme :

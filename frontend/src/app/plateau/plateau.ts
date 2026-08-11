@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
 
-import { Cartes } from '../cartes/cartes';
+import { Cartes, TAILLE_CHATEAU_DEPART, TAILLE_PILE_ENNEMIE, afficherBleue } from '../cartes/cartes';
 import { BandeauPhase } from './bandeau-phase/bandeau-phase';
 import { CartesDorees } from './cartes-dorees/cartes-dorees';
 import { CartesRoyales } from './cartes-royales/cartes-royales';
@@ -9,6 +9,7 @@ import { CompteurRessources } from './compteur-ressources/compteur-ressources';
 import { PileMonstres } from './pile-monstres/pile-monstres';
 import { PlateauAvancee } from './plateau-avancee/plateau-avancee';
 import { type Phase } from './phase';
+import { PortesChateau } from './portes-chateau/portes-chateau';
 import { ZoneJeu } from './zone-jeu/zone-jeu';
 
 /**
@@ -33,6 +34,7 @@ import { ZoneJeu } from './zone-jeu/zone-jeu';
     CompteurRessources,
     PileMonstres,
     PlateauAvancee,
+    PortesChateau,
     ZoneJeu,
   ],
   templateUrl: './plateau.html',
@@ -44,7 +46,6 @@ export class Plateau {
   protected readonly phase = signal<Phase>('entrainement');
 
   protected readonly dorees = this.cartes.dorees.value;
-  protected readonly nombreEnnemis = this.cartes.nombreEnnemis;
 
   /** Provisoire : la mise en place fera choisir ce rôle au joueur. */
   protected readonly roiReine = computed(() => this.cartes.roiReines.value()[0]);
@@ -58,6 +59,23 @@ export class Plateau {
    * là où un `computed` refuserait toute écriture.
    */
   protected readonly ressources = linkedSignal(() => this.roiReine()?.ressourcesDepart ?? 0);
+
+  /**
+   * Tailles de départ, fixées par les règles (§3). Elles deviendront l'état réel
+   * des deux piles quand le moteur tiendra la partie.
+   */
+  protected readonly taillePile = TAILLE_PILE_ENNEMIE;
+  protected readonly nombreChateau = TAILLE_CHATEAU_DEPART;
+
+  /**
+   * Provisoire. L'hôpital est **vide** au début d'une partie : les cartes n'y
+   * arrivent qu'en fin de phase. On y pose quelques Bleues pour que la fenêtre
+   * de consultation soit vérifiable avant que le moteur n'existe. À retirer au
+   * ticket 12, où l'hôpital se remplira tout seul.
+   */
+  protected readonly cartesHopital = computed(() =>
+    this.cartes.bleues.value().slice(0, 7).map(afficherBleue),
+  );
 
   protected changerPhase(phase: Phase): void {
     this.phase.set(phase);

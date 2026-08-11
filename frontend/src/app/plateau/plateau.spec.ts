@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import type { CarteDoree, CarteEnnemiObjet, RoiReine } from '../cartes/modele';
+import type { CarteBleue, CarteDoree, RoiReine } from '../cartes/modele';
 import { LIBELLES, PHASES } from './phase';
 import { Plateau } from './plateau';
 
@@ -33,13 +33,17 @@ describe('Plateau', () => {
     },
   ];
 
-  const ENNEMIS: CarteEnnemiObjet[] = [
+  const BLEUES: CarteBleue[] = [
     {
-      id: 'assassin',
-      scan: 'assassin.webp',
-      exemplaires: 2,
-      ennemi: { nom: 'Assassin', niveau: 1, pioche: 2, force: 3, action: null },
-      objet: { nom: 'Lame', type: 'OBJET', force: 1, forceVariable: null, action: null },
+      id: 'fermier',
+      nom: 'Fermier',
+      type: 'HUMAIN',
+      scan: 'fermier.webp',
+      force: 1,
+      forceVariable: null,
+      niveau: 0,
+      action: null,
+      exemplaires: 12,
     },
   ];
 
@@ -61,15 +65,15 @@ describe('Plateau', () => {
     fixture.detectChanges();
 
     const http = TestBed.inject(HttpTestingController);
+    http.expectOne('/cartes/donnees/bleues.json').flush(BLEUES);
     http.expectOne('/cartes/donnees/dorees.json').flush(DOREES);
     http.expectOne('/cartes/donnees/roi-reines.json').flush(ROI_REINES);
-    http.expectOne('/cartes/donnees/ennemis-objets.json').flush(ENNEMIS);
 
     await fixture.whenStable();
     return fixture;
   }
 
-  it('pose les huit blocs de la table', async () => {
+  it('pose les neuf blocs de la table', async () => {
     const fixture = await monter();
     const rendu = fixture.nativeElement as HTMLElement;
 
@@ -78,9 +82,31 @@ describe('Plateau', () => {
     expect(rendu.querySelector('app-cartes-dorees')).toBeTruthy();
     expect(rendu.querySelector('app-pile-monstres')).toBeTruthy();
     expect(rendu.querySelector('app-plateau-avancee')).toBeTruthy();
+    expect(rendu.querySelector('app-portes-chateau')).toBeTruthy();
     expect(rendu.querySelector('app-zone-jeu')).toBeTruthy();
     expect(rendu.querySelector('app-cartes-royales')).toBeTruthy();
     expect(rendu.querySelector('app-chateau-hopital')).toBeTruthy();
+  });
+
+  it('n’affiche plus aucun scan de plateau', async () => {
+    // Les deux images de plateau ont été abandonnées : la table se dessine
+    // toute seule, en cases.
+    const fixture = await monter();
+    const sources = [...(fixture.nativeElement as HTMLElement).querySelectorAll('img')].map((i) =>
+      i.getAttribute('src'),
+    );
+
+    expect(sources.some((s) => s?.includes('/plateaux/'))).toBe(false);
+  });
+
+  it('aligne la piste, les Portes et la pile sur les règles', async () => {
+    const fixture = await monter();
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(rendu.querySelectorAll('.avancee__case')).toHaveLength(3);
+    expect(rendu.querySelectorAll('.portes__case')).toHaveLength(3);
+    // 15 ennemis en jeu sur les 23 qui existent (§3).
+    expect(rendu.querySelector('.pile__nombre')?.textContent?.trim()).toBe('15');
   });
 
   it('démarre sur la phase d’entraînement', async () => {
@@ -125,12 +151,12 @@ describe('Plateau', () => {
     expect(sources[1]).toContain('/cartes/scans/roi-reines/bella.webp');
   });
 
-  it('compte la pile Ennemi en exemplaires', async () => {
+  it('donne au Château sa hauteur de départ', async () => {
     const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
+    const bouton = (fixture.nativeElement as HTMLElement).querySelector('.ch__case');
 
-    // Une carte, deux exemplaires : deux cartes dans la pile.
-    expect(rendu.querySelector('.pile__nombre')?.textContent?.trim()).toBe('2');
+    // 20 cartes Bleu tirées parmi les 40 (§3).
+    expect(bouton?.getAttribute('aria-label')).toContain('20 cartes restantes');
   });
 
   it('ajuste les ressources quand le compteur le demande', async () => {

@@ -1,32 +1,32 @@
-import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 /**
- * Plateau d'avancée des monstres — étape 3 du ticket 9.
+ * L'avancée des monstres — les cases 2 à 4 du plateau Ennemi.
  *
- * Posé sous le bandeau, il court du bord du bloc des cartes dorées jusqu'au
- * bord droit. Ici, seul le fond est en place : poser les ennemis sur les cases
- * de la piste est le ticket 10.
+ * **Trois positions seulement** (§7). La case 1 des règles, c'est la pile
+ * posée juste à gauche : elle a son propre composant. Un ennemi met donc quatre
+ * avancées à rejoindre les Portes — une pour entrer sur la piste, puis une par
+ * case. À une avancée par tour, le premier ennemi arrive au combat du 4e tour.
  *
- * Le scan est servi depuis `frontend/public/plateaux/`, qui est hors dépôt —
- * c'est du contenu Goblivion Games, au même titre que les cartes.
+ * Les cartes glissent à la queue leu leu en comblant toujours le vide derrière
+ * elles : c'est ce déplacement que le ticket 10 mettra en œuvre. Ici, on pose
+ * les trois cases.
  */
 @Component({
   selector: 'app-plateau-avancee',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgOptimizedImage],
   template: `
     <h2 class="avancee__titre">Avancée des monstres</h2>
 
-    <div class="avancee__scan">
-      <img
-        ngSrc="/plateaux/plateau-bataille.png"
-        fill
-        priority
-        alt="Piste d'avancée des monstres : la caverne, le marais, la montagne et la forêt, puis les Portes du château."
-      />
-    </div>
+    <ol class="avancee__cases">
+      @for (position of positions; track position) {
+        <li class="avancee__case"></li>
+      }
+    </ol>
   `,
   styleUrl: './plateau-avancee.scss',
 })
-export class PlateauAvancee {}
+export class PlateauAvancee {
+  /** Les trois positions de la piste d'approche, de la pile vers les Portes. */
+  protected readonly positions = [1, 2, 3];
+}

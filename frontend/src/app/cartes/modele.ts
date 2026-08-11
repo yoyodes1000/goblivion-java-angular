@@ -28,6 +28,19 @@ export interface ProcessusEntrainement {
   readonly sacrifice: TypeCarte;
 }
 
+export interface CarteBleue {
+  readonly id: string;
+  readonly nom: string;
+  readonly type: TypeCarte;
+  readonly scan: string;
+  readonly force: number | null;
+  readonly forceVariable: ForceVariable | null;
+  /** Toujours 0 pour les Bleues : elles ne s'achètent pas. */
+  readonly niveau: number;
+  readonly action: string | null;
+  readonly exemplaires: number;
+}
+
 export interface CarteDoree {
   readonly id: string;
   readonly nom: string;
@@ -51,6 +64,20 @@ export interface RoiReine {
   /** `id` d'une carte de `dorees.json` : le Garde du corps initial. */
   readonly gardeDuCorps: string;
   readonly action: string;
+}
+
+/**
+ * Ce qu'il faut savoir d'une carte pour la montrer, quelle que soit sa famille.
+ *
+ * L'hôpital mélange des Bleues et des Dorées : l'affichage n'a pas besoin d'en
+ * savoir plus que le nom et le scan, et n'a donc pas à connaître les deux types
+ * complets.
+ */
+export interface CarteAffichable {
+  readonly id: string;
+  readonly nom: string;
+  readonly scan: string;
+  readonly famille: Famille;
 }
 
 /**

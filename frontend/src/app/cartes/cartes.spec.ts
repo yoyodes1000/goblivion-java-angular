@@ -1,9 +1,9 @@
-import { compterEnnemis, trouverGardeDuCorps, urlDos, urlScan } from './cartes';
-import type { CarteDoree, CarteEnnemiObjet, RoiReine } from './modele';
+import { afficherBleue, trouverGardeDuCorps, urlDos, urlScan } from './cartes';
+import type { CarteBleue, CarteDoree, RoiReine } from './modele';
 
 /**
- * Ces quatre fonctions sont pures : pas de TestBed, pas de HTTP. C'est
- * précisément pourquoi elles ont été sorties du service.
+ * Ces fonctions sont pures : pas de TestBed, pas de HTTP. C'est précisément
+ * pourquoi elles ont été sorties du service.
  */
 describe('cartes', () => {
   function doree(id: string): CarteDoree {
@@ -21,13 +21,17 @@ describe('cartes', () => {
     };
   }
 
-  function ennemi(id: string, exemplaires: number): CarteEnnemiObjet {
+  function bleue(id: string): CarteBleue {
     return {
       id,
+      nom: `Carte ${id}`,
+      type: 'HUMAIN',
       scan: `${id}.webp`,
-      exemplaires,
-      ennemi: { nom: id, niveau: 1, pioche: 1, force: 1, action: null },
-      objet: { nom: id, type: 'OBJET', force: 1, forceVariable: null, action: null },
+      force: 1,
+      forceVariable: null,
+      niveau: 0,
+      action: null,
+      exemplaires: 12,
     };
   }
 
@@ -72,14 +76,16 @@ describe('cartes', () => {
     });
   });
 
-  describe('compterEnnemis', () => {
-    it('compte les exemplaires, pas les cartes distinctes', () => {
-      // Deux Gobelins Assassins, c'est deux cartes dans la pile.
-      expect(compterEnnemis([ennemi('assassin', 2), ennemi('troll', 1)])).toBe(3);
-    });
-
-    it('compte zéro sur une pile vide', () => {
-      expect(compterEnnemis([])).toBe(0);
+  describe('afficherBleue', () => {
+    it('ne garde que ce qu’il faut pour montrer la carte', () => {
+      // L'hôpital mélange les familles : il lui faut le dossier de scan, pas la
+      // force ni l'action.
+      expect(afficherBleue(bleue('fermier'))).toEqual({
+        id: 'fermier',
+        nom: 'Carte fermier',
+        scan: 'fermier.webp',
+        famille: 'bleues',
+      });
     });
   });
 });

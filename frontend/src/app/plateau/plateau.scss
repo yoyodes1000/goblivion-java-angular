@@ -2,18 +2,19 @@
   Le bandeau est hors de la grille : il touche les trois bords du haut et ne
   bouge jamais. Tout le reste vit dans `.plateau__corps`.
 
-    ┌────────────────────────────────────────────────┐
-    │ bandeau                                        │
-    ├────────┬──────┬────────────────────────────────┤
-    │ resso. │ pile │ avancée des monstres           │
-    ├────────┤ ennemi                                │
-    │ dorées ├──────┴───────────────┬────────────────┤
-    │ 6 × 2  │ zone de jeu          │ GdC + roi/reine│
-    │        │                      ├────────────────┤
-    │        │                      │ château/hôpital│
-    └────────┴──────────────────────┴────────────────┘
-*/
-/*
+  La rangée du haut suit la géographie du plateau Ennemi (§7), de gauche à
+  droite : le paquet, les trois cases d'approche, puis les Portes.
+
+    ┌──────────────────────────────────────────────────┐
+    │ bandeau                                          │
+    ├────────┬──────┬──────────────┬───────────────────┤
+    │ resso. │ pile │ avancée (3)  │ portes (3)        │
+    ├────────┤      ├──────────────┴───┬───────────────┤
+    │ dorées │ zone de jeu             │ GdC+roi/reine │
+    │ 6 × 2  │                         ├───────────────┤
+    │        │                         │ chât. │ hôpit.│
+    └────────┴─────────────────────────┴───────────────┘
+
   La table tient dans l'écran, une bonne fois : `height` et non `min-height`.
   C'est ce qui donne au corps une hauteur définie, et donc aux blocs qui
   débordent la possibilité de défiler chez eux plutôt que de pousser le reste.
@@ -29,11 +30,11 @@
   display: grid;
   flex: 1;
   grid-template-areas:
-    'gauche pile avancee avancee'
+    'gauche pile avancee portes'
     'gauche zone zone    royales'
     'gauche zone zone    chateau';
-  grid-template-columns: minmax(7rem, 11vw) minmax(4.5rem, 7vw) minmax(0, 1fr) minmax(13rem, 22vw);
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(9rem, 14vw) minmax(4.5rem, 7vw) minmax(0, 1fr) minmax(13rem, 22vw);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0.75rem;
   padding: 0.75rem;
   min-height: 0;
@@ -62,8 +63,8 @@
   min-height: 0;
 }
 
-/* La pile est au départ de la piste, à sa gauche : c'est de là que sortent les
-   ennemis qui entrent à la caverne. */
+/* La pile est au départ de la piste : c'est la case 1 des règles, celle d'où
+   sortent les ennemis qui entrent ensuite sur les trois cases d'approche. */
 .plateau__pile {
   grid-area: pile;
   min-height: 0;
@@ -73,8 +74,13 @@
   grid-area: avancee;
 }
 
+.plateau__portes {
+  grid-area: portes;
+}
+
 .plateau__zone {
   grid-area: zone;
+  min-height: 0;
 }
 
 .plateau__royales {
