@@ -25,28 +25,28 @@ import fr.goblivion.cartes.TypeCarte;
  * parce que la mise en place en dépend : tirer 20 cartes sur 40 ou 7 ennemis
  * parmi 11 n'a de sens que si les comptes tiennent.
  */
-final class CataloguesFictifs {
+public final class CataloguesFictifs {
 
-    static final String BLEUE_HUMAIN = "bleue-humain";
-    static final String BLEUE_OBJET = "bleue-objet";
-    static final String BLEUE_NULLE = "bleue-nulle";
+    public static final String BLEUE_HUMAIN = "bleue-humain";
+    public static final String BLEUE_OBJET = "bleue-objet";
+    public static final String BLEUE_NULLE = "bleue-nulle";
 
-    static final String DORE_ACCESSIBLE = "dore-accessible";
-    static final String DORE_VERROUILLE = "dore-verrouille";
-    static final String DORE_SOLDAT = "dore-soldat";
+    public static final String DORE_ACCESSIBLE = "dore-accessible";
+    public static final String DORE_VERROUILLE = "dore-verrouille";
+    public static final String DORE_SOLDAT = "dore-soldat";
 
-    static final String ROLE = "role-fictif";
+    public static final String ROLE = "role-fictif";
 
-    static final String ENNEMI_FAIBLE = "ennemi-faible";
-    static final String ENNEMI_FORT = "ennemi-fort";
+    public static final String ENNEMI_FAIBLE = "ennemi-faible";
+    public static final String ENNEMI_FORT = "ennemi-fort";
 
     /** Force de l'ennemi à 1 épée — la seule qui arrive aux Portes en début de partie. */
-    static final int FORCE_ENNEMI_FAIBLE = 3;
+    public static final int FORCE_ENNEMI_FAIBLE = 3;
 
     private CataloguesFictifs() {
     }
 
-    static Catalogue catalogue() {
+    public static Catalogue catalogue() {
         return new Catalogue(bleues(), dorees(), roles(), boss(), ennemis());
     }
 

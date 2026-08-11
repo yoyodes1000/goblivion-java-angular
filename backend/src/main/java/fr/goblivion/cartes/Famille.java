@@ -1,5 +1,7 @@
 package fr.goblivion.cartes;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Les cinq familles de cartes.
  *
@@ -21,7 +23,16 @@ public enum Famille {
         this.libelle = libelle;
     }
 
-    /** Le nom utilisé par les fichiers et les dossiers — {@code ennemis-objets}, pas {@code ENNEMIS_OBJETS}. */
+    /**
+     * Le nom utilisé par les fichiers et les dossiers — {@code ennemis-objets},
+     * pas {@code ENNEMIS_OBJETS}.
+     *
+     * <p>{@code @JsonValue} en fait aussi la forme envoyée sur l'API : c'est déjà
+     * ce que le frontend appelle {@code Famille}, et ce dont il compose ses
+     * adresses de scans. Sans lui, il faudrait une table de conversion des deux
+     * côtés.
+     */
+    @JsonValue
     public String libelle() {
         return libelle;
     }
