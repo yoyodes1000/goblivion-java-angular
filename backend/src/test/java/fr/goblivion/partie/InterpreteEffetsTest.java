@@ -268,6 +268,56 @@ class InterpreteEffetsTest {
                 .hasMessageContaining("pas encore jouable");
     }
 
+    // ------------------------------------------------ declenche par le moteur
+
+    /**
+     * Un effet que le moteur déclenche n'a personne à qui refuser : le joueur
+     * ne pouvait rien joindre à une révélation qu'il n'avait pas vue venir.
+     * L'écart part au journal, en toutes lettres, et le tour continue.
+     */
+    @Test
+    void un_effet_automatique_qui_exige_une_designation_est_note_pas_lance() {
+        CarteEnJeu ennemi = poserEnJeu(CataloguesFictifs.BLEUE_HUMAIN);
+        int avant = partie.ressources();
+
+        interprete.declencherAutomatiquement(
+                new EffetCarte(Declencheur.REVELATION, new Effet.Detruire(Cible.UN_PAYSAN_HUMAIN)),
+                ennemi, "Sorciere fictive");
+
+        assertThat(partie.journal().getLast())
+                .contains("Sorciere fictive")
+                .contains("effet non applique");
+        assertThat(partie.ressources()).isEqualTo(avant);
+    }
+
+    /** Ce qui peut partir part : la majorité des révélations ne demande rien. */
+    @Test
+    void un_effet_automatique_sans_designation_s_applique() {
+        CarteEnJeu ennemi = poserEnJeu(CataloguesFictifs.BLEUE_HUMAIN);
+        int avant = partie.ressources();
+
+        interprete.declencherAutomatiquement(
+                new EffetCarte(Declencheur.REVELATION, new Effet.Ressource(-2)), ennemi,
+                "Gobelin fictif");
+
+        assertThat(partie.ressources()).isEqualTo(avant - 2);
+    }
+
+    /**
+     * Une brique pas encore jouable ne doit pas bloquer un tour non plus — elle
+     * est notée au même titre qu'une désignation manquante.
+     */
+    @Test
+    void une_brique_pas_encore_jouable_declenchee_par_le_moteur_est_notee() {
+        CarteEnJeu carte = poserEnJeu(CataloguesFictifs.BLEUE_HUMAIN);
+
+        interprete.declencherAutomatiquement(
+                new EffetCarte(Declencheur.TESTAMENT, new Effet.Visionner()), carte,
+                "Pyromane fictif");
+
+        assertThat(partie.journal().getLast()).contains("pas encore jouable");
+    }
+
     /** Un effet continu n'est pas un effet à jouer : le rencontrer ne fait rien. */
     @Test
     void un_effet_continu_ne_fait_rien_quand_on_l_execute() {

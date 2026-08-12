@@ -6,6 +6,7 @@ import java.util.List;
 
 import fr.goblivion.cartes.TypeCarte;
 import fr.goblivion.effets.Cible;
+import fr.goblivion.effets.Declencheur;
 import fr.goblivion.effets.Effet;
 import fr.goblivion.effets.EffetCarte;
 
@@ -95,6 +96,30 @@ class InterpreteEffets {
     void executer(EffetCarte porte, CarteEnJeu source, Choix choix) {
         verifier(porte, source, choix);
         parcourir(porte.effet(), source, new Passe(true, choix));
+    }
+
+    /**
+     * Joue un effet que le <strong>moteur</strong> déclenche, pas le joueur.
+     *
+     * <p>Une révélation d'ennemi ou un Testament arrivent au milieu d'un tour :
+     * le joueur n'a rien pu joindre à sa demande, puisqu'il ne savait pas ce qui
+     * allait sortir du paquet. Un refus n'aurait donc personne à qui s'adresser
+     * et bloquerait le tour.
+     *
+     * <p>D'où le traitement : ce qui peut partir part, le reste est
+     * <strong>inscrit au journal en toutes lettres</strong>. L'écart avec le jeu
+     * de plateau reste visible plutôt que silencieux — c'est ce qui permettra de
+     * le combler plus tard sans avoir à le redécouvrir.
+     *
+     * <p>La double passe garantit qu'un effet refusé n'a rien modifié : on note
+     * un effet <em>non appliqué</em>, jamais un effet à moitié appliqué.
+     */
+    void declencherAutomatiquement(EffetCarte porte, CarteEnJeu source, String quoi) {
+        try {
+            executer(porte, source, Choix.aucun());
+        } catch (ActionInterdite refus) {
+            partie.noter("%s : effet non applique — %s".formatted(quoi, refus.getMessage()));
+        }
     }
 
     /**
@@ -228,7 +253,27 @@ class InterpreteEffets {
             return;
         }
         ciblesDe(cible, source, passe)
-                .forEach(carte -> siApplique(passe, () -> partie.detruire(carte)));
+                .forEach(carte -> siApplique(passe, () -> {
+                    partie.detruire(carte);
+                    testament(carte);
+                }));
+    }
+
+    /**
+     * Le Testament part à la <strong>destruction</strong>, pas à la défausse.
+     *
+     * <p>Une carte défaussée rejoint l'Hôpital et reviendra : elle n'a rien
+     * légué. Le Duc ne rapporte donc ses 3 ressources qu'en sortant du jeu pour
+     * de bon — sans quoi l'Alchimiste, qui défausse, en ferait une rente.
+     *
+     * <p>Le legs est un effet du moteur, pas une demande du joueur : il ne peut
+     * rien désigner au moment où sa carte tombe.
+     */
+    private void testament(CarteEnJeu detruite) {
+        partie.effetsDe(detruite).stream()
+                .filter(effet -> effet.declencheur() == Declencheur.TESTAMENT)
+                .forEach(effet -> declencherAutomatiquement(effet, detruite,
+                        "Testament de %s".formatted(partie.nomDe(detruite))));
     }
 
     private void versLHopital(CarteEnJeu carte) {

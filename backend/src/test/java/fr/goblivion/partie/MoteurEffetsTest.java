@@ -25,8 +25,8 @@ import fr.goblivion.effets.EffetCarte;
  */
 class MoteurEffetsTest {
 
-    private MoteurPartie moteurAvec(EffetCarte effet) {
-        Catalogue catalogue = CataloguesFictifs.avecEffetSurHumain(effet);
+    private MoteurPartie moteurAvec(EffetCarte... effets) {
+        Catalogue catalogue = CataloguesFictifs.avecEffetSurHumain(effets);
         Partie partie = new MiseEnPlace(catalogue, new Random(3))
                 .creer(Difficulte.NORMAL, null);
         return new MoteurPartie(partie);
@@ -110,6 +110,49 @@ class MoteurEffetsTest {
         moteur.appliquer(Action.surCarte(TypeAction.PIVOTER, carte.id()));
 
         assertThat(partie.ressources()).isEqualTo(avant);
+    }
+
+    // ------------------------------------------------------------- Testament
+
+    /**
+     * Le partage tranché à la relecture : le Testament part à la destruction,
+     * pas à la défausse. Ces deux tests sont la même situation à un mot près,
+     * et c'est le mot qui décide.
+     */
+    @Test
+    void le_testament_part_quand_la_carte_est_detruite() {
+        MoteurPartie moteur = moteurAvec(
+                new EffetCarte(Declencheur.PIVOTER, new Effet.Detruire(Cible.UNE_CARTE_EN_JEU)),
+                new EffetCarte(Declencheur.TESTAMENT, new Effet.Ressource(3)));
+        Partie partie = moteur.partie();
+        CarteEnJeu bourreau = unHumainEnJeu(partie);
+        CarteEnJeu victime = unHumainEnJeu(partie);
+        int avant = partie.ressources();
+
+        moteur.appliquer(Action.surCarteAvecChoix(TypeAction.PIVOTER, bourreau.id(),
+                List.of(victime.id()), List.of()));
+
+        assertThat(partie.champDeBataille()).doesNotContain(victime);
+        assertThat(partie.ressources()).as("le legs de la carte detruite").isEqualTo(avant + 3);
+    }
+
+    @Test
+    void le_testament_ne_part_pas_quand_la_carte_est_seulement_defaussee() {
+        MoteurPartie moteur = moteurAvec(
+                new EffetCarte(Declencheur.PIVOTER, new Effet.Defausser(1)),
+                new EffetCarte(Declencheur.TESTAMENT, new Effet.Ressource(3)));
+        Partie partie = moteur.partie();
+        CarteEnJeu source = unHumainEnJeu(partie);
+        CarteEnJeu defaussee = unHumainEnJeu(partie);
+        int avant = partie.ressources();
+
+        moteur.appliquer(Action.surCarteAvecChoix(TypeAction.PIVOTER, source.id(),
+                List.of(defaussee.id()), List.of()));
+
+        assertThat(partie.hopital()).contains(defaussee);
+        assertThat(partie.ressources())
+                .as("defaussee, donc elle reviendra : rien a leguer")
+                .isEqualTo(avant);
     }
 
     /**

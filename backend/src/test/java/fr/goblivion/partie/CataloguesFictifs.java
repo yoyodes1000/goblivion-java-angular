@@ -57,13 +57,13 @@ public final class CataloguesFictifs {
      * exactement pareil. Seule la carte agit, ce qui permet de vérifier que le
      * moteur déclenche vraiment ce que la transcription annonce.
      */
-    public static Catalogue avecEffetSurHumain(fr.goblivion.effets.EffetCarte effet) {
+    public static Catalogue avecEffetSurHumain(fr.goblivion.effets.EffetCarte... effets) {
         Catalogue base = catalogue();
         List<CarteBleue> bleues = base.bleues().stream()
                 .map(carte -> carte.id().equals(BLEUE_HUMAIN)
                         ? new CarteBleue(carte.id(), carte.nom(), carte.type(), carte.scan(),
                                 carte.force(), carte.forceVariable(), carte.niveau(),
-                                carte.action(), carte.exemplaires(), List.of(effet))
+                                carte.action(), carte.exemplaires(), List.of(effets))
                         : carte)
                 .toList();
         return new Catalogue(bleues, base.dorees(), base.roiReines(), base.boss(),

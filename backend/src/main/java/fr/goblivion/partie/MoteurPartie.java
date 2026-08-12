@@ -313,6 +313,9 @@ public final class MoteurPartie {
 
         if (revelationImmediate) {
             partie.noter("%s est revele et lance son action.".formatted(fiche.nom()));
+            effetsDeclenches(Declencheur.REVELATION, ennemi)
+                    .forEach(effet -> interprete.declencherAutomatiquement(effet, ennemi,
+                            fiche.nom()));
         } else {
             // Révélé avant ce tour — par une Vision, ou parce qu'il a survécu au
             // combat précédent : son action ne repart pas (§7).
