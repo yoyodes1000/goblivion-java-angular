@@ -150,12 +150,23 @@ public sealed interface Effet {
     /**
      * {@code Copie un paysan Humain en jeu} (le Joker), {@code copie une action
      * Pivoter} (le Chapeau magique). La cible dit lequel des deux.
+     *
+     * <p>Le Joker prend <strong>toutes</strong> les caractéristiques de sa
+     * cible — force et action comprises — le temps d'une {@link Duree#PHASE},
+     * puis redevient un Joker. Repioché plus tard, il pourra en copier une
+     * autre : la copie n'est pas un choix définitif.
      */
-    record Copier(Cible cible) implements Effet {
+    record Copier(Cible cible, Duree duree) implements Effet {
     }
 
-    /** {@code considère-le comme un Soldat pour cette phase} — le Héros du village. */
-    record CompterCommeSoldat() implements Effet {
+    /**
+     * {@code considère-le comme un Soldat pour cette phase} — le Héros du village.
+     *
+     * <p>Il <em>devient</em> un Soldat : il compte dans le total dont dépend la
+     * force de tous les autres Soldats (§12), il ne se contente pas d'en prendre
+     * la force.
+     */
+    record CompterCommeSoldat(Duree duree) implements Effet {
     }
 
     // -------------------------------------------------------------- combinateurs
@@ -185,8 +196,12 @@ public sealed interface Effet {
      *
      * <p>Ces cinq derniers effets ne s'exécutent pas : ils se consultent au
      * moment de calculer une force. D'où le déclencheur {@link Declencheur#PERMANENT}.
+     *
+     * <p>La durée les sépare : le Goblinosaurus ignore les jetons tant qu'il est
+     * là ({@link Duree#PERMANENTE}), le Gobelin Pestilent seulement
+     * {@link Duree#COMBAT}.
      */
-    record IgnorerJetonsBanniere() implements Effet {
+    record IgnorerJetonsBanniere(Duree duree) implements Effet {
     }
 
     /** {@code Ignore la force des Objets} — la Reine Troll. */
@@ -202,6 +217,6 @@ public sealed interface Effet {
     }
 
     /** {@code Vous ne gagnez aucune ressource pour ce combat} — le Troll Saboteur. */
-    record PriverDeRessources() implements Effet {
+    record PriverDeRessources(Duree duree) implements Effet {
     }
 }

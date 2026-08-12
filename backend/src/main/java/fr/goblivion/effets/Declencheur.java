@@ -37,7 +37,16 @@ public enum Declencheur {
      */
     REVELATION,
 
-    /** Le pouvoir du Roi ou de la Reine — une fois par partie (§6.3). */
+    /**
+     * Le pouvoir du Roi ou de la Reine — une fois par partie (§6.3).
+     *
+     * <p>Cinq cartes royales sur sept impriment {@code Pivoter:}, mais le geste
+     * n'en est pas un : la carte royale se <strong>retourne</strong>. C'est
+     * pourquoi les sept se déclenchent de la même façon, y compris le Roi Brad
+     * et la Reine Jade dont le texte ne porte aucun préfixe — et pourquoi le
+     * Hochet royal, qui « réactive une carte Roi/Reine », rend le pouvoir en la
+     * remettant à l'endroit.
+     */
     POUVOIR_ROYAL,
 
     /** {@code Lorsque tu entraînes cette carte…} — le Chevalier, et lui seul. */

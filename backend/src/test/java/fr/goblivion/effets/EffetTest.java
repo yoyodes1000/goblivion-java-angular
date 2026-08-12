@@ -2,10 +2,13 @@ package fr.goblivion.effets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.annotation.JsonSubTypes;
 
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -71,6 +74,37 @@ class EffetTest {
         assertThat(carte.effet()).isEqualTo(new Effet.PourChaque(
                 Quantite.OBJET_A_L_HOPITAL,
                 new Effet.JetonBanniere(1, Cible.SOI_MEME)));
+    }
+
+    @Test
+    @DisplayName("toute brique du vocabulaire est declaree a Jackson")
+    void aucuneBriqueOubliee() {
+        // L'interface est scellee : le compilateur connait la liste complete. Si
+        // une brique ajoutee demain n'est pas declaree dans @JsonSubTypes, elle
+        // compile, se serialise sans « type », et ne se relit jamais. Le seul
+        // moment ou ca se verrait serait au chargement des vraies donnees.
+        Class<?>[] briques = Effet.class.getPermittedSubclasses();
+        assertThat(briques).isNotEmpty();
+
+        JsonSubTypes declaration = Effet.class.getAnnotation(JsonSubTypes.class);
+        List<Class<?>> declarees = Arrays.stream(declaration.value())
+                .<Class<?>>map(JsonSubTypes.Type::value)
+                .toList();
+
+        assertThat(declarees)
+                .as("chaque brique de Effet doit porter un nom dans @JsonSubTypes")
+                .containsExactlyInAnyOrder(briques);
+    }
+
+    @Test
+    @DisplayName("la duree separe le Goblinosaurus du Gobelin Pestilent")
+    void laDureeSepareDeuxEffetsIdentiques() {
+        Effet boss = new Effet.IgnorerJetonsBanniere(Duree.PERMANENTE);
+        Effet ennemi = new Effet.IgnorerJetonsBanniere(Duree.COMBAT);
+
+        assertThat(boss).isNotEqualTo(ennemi);
+        assertThat(mapper.readValue(mapper.writeValueAsString(ennemi), Effet.class))
+                .isEqualTo(ennemi);
     }
 
     @Test

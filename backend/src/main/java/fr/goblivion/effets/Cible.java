@@ -46,6 +46,15 @@ public enum Cible {
     /** Une carte Roi/Reine — le Hochet royal, qui la réactive. */
     UNE_CARTE_ROYALE,
 
+    /**
+     * L'action Pivoter d'une carte en jeu — le Chapeau magique.
+     *
+     * <p>N'importe laquelle, <strong>y compris une action pas encore jouée</strong> :
+     * copier n'est pas déclencher, la carte copiée garde son propre Pivoter
+     * intact. Deux exemplaires du même effet partent donc, pas un seul déplacé.
+     */
+    UNE_ACTION_PIVOTER,
+
     /** Le Paysan Humain de plus forte force, désigné par la règle — le Dragon Serpent. */
     HUMAIN_LE_PLUS_FORT,
 
