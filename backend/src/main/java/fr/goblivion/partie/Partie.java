@@ -451,6 +451,65 @@ public final class Partie {
         return champDeBataille.stream().filter(c -> c.id() == id).findFirst();
     }
 
+    public Optional<CarteEnJeu> chercherALHopital(long id) {
+        return hopital.stream().filter(c -> c.id() == id).findFirst();
+    }
+
+    /**
+     * Détruire, c'est sortir du jeu <strong>définitivement</strong> — ni
+     * l'Hôpital, ni le Château, plus rien.
+     *
+     * <p>À ne pas confondre avec défausser, qui envoie à l'Hôpital et laisse
+     * donc la carte revenir un jour. C'est la différence entre le Bourreau, qui
+     * détruit, et l'Alchimiste, qui défausse.
+     */
+    void detruire(CarteEnJeu carte) {
+        boolean retiree = champDeBataille.remove(carte) || hopital.remove(carte);
+        if (!retiree) {
+            throw new ActionInterdite("Cette carte n'est ni en jeu ni a l'Hopital.");
+        }
+        noter("%s est detruite.".formatted(nomDe(carte)));
+    }
+
+    /**
+     * La carte du dessus du Château, retirée sans être regardée — le Dragon
+     * Bleu, Trollolole. Rend {@code null} sur un Château vide : détruire ce qui
+     * n'existe pas n'est pas une faute du joueur, c'est un coup dans le vide.
+     */
+    CarteEnJeu retirerDuDessusDuChateau() {
+        return chateau.pollFirst();
+    }
+
+    CarteEnJeu retirerDeLHopital(long id) {
+        CarteEnJeu carte = chercherALHopital(id)
+                .orElseThrow(() -> new ActionInterdite("Cette carte n'est pas a l'Hopital."));
+        hopital.remove(carte);
+        return carte;
+    }
+
+    /**
+     * Le Château reprend tout l'Hôpital, puis se mélange — la Reine Margot.
+     *
+     * <p>Les cartes reviennent <strong>redressées</strong> : une carte remise en
+     * jeu plus tard doit pouvoir être pivotée, sans quoi le mélange rendrait le
+     * deck progressivement inerte.
+     */
+    void melangerHopitalAuChateau() {
+        hopital.forEach(CarteEnJeu::redresser);
+        chateau.addAll(hopital);
+        hopital.clear();
+        melangerChateau();
+        noter("L'Hopital rejoint le Chateau, qui est melange.");
+    }
+
+    /** Mélanger le Château seul : rien n'entre, on perd l'ordre connu. */
+    void melangerChateau() {
+        List<CarteEnJeu> cartes = new ArrayList<>(chateau);
+        Collections.shuffle(cartes, alea);
+        chateau.clear();
+        cartes.forEach(chateau::addLast);
+    }
+
     public Optional<CarteEnJeu> chercherAuxPortes(long id) {
         return portes.stream().filter(c -> c.id() == id).findFirst();
     }
