@@ -1,5 +1,9 @@
 package fr.goblivion.cartes;
 
+import java.util.List;
+
+import fr.goblivion.effets.EffetCarte;
+
 /**
  * Une carte Bleu — les 25 types qui composent le deck de départ.
  *
@@ -20,5 +24,16 @@ public record CarteBleue(
         ForceVariable forceVariable,
         int niveau,
         String action,
-        int exemplaires) implements Paysan {
+        int exemplaires,
+        List<EffetCarte> effets) implements Paysan {
+
+    public CarteBleue {
+        effets = effets == null ? List.of() : List.copyOf(effets);
+    }
+
+    /** Sans effets — les cartes inventées des tests, qui n'en ont pas besoin. */
+    public CarteBleue(String id, String nom, TypeCarte type, String scan, Integer force,
+            ForceVariable forceVariable, int niveau, String action, int exemplaires) {
+        this(id, nom, type, scan, force, forceVariable, niveau, action, exemplaires, List.of());
+    }
 }

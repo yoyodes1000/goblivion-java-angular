@@ -1,5 +1,9 @@
 package fr.goblivion.cartes;
 
+import java.util.List;
+
+import fr.goblivion.effets.EffetCarte;
+
 /**
  * Ce que le moteur a besoin de savoir d'une carte qui peut se retrouver dans
  * l'armée du joueur.
@@ -27,4 +31,14 @@ public sealed interface Paysan permits CarteBleue, CarteDoree, CarteEnnemiObjet.
 
     /** Texte libre tant que le ticket 11 n'a pas transcrit les symboles en effets. */
     String action();
+
+    /**
+     * La transcription exécutable de {@link #action()}, vide si la carte n'agit
+     * pas — ou si sa règle vit ailleurs, comme la force variable du Soldat.
+     *
+     * <p>Les deux coexistent et ne se remplacent pas : {@code action()} est ce
+     * que le joueur lit, mot pour mot ; {@code effets()} est ce que le moteur
+     * exécute. Aucun des deux ne se déduit de l'autre.
+     */
+    List<EffetCarte> effets();
 }

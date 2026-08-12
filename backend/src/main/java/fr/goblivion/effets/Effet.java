@@ -45,6 +45,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(value = Effet.EnvoyerALHopital.class, name = "envoyer-hopital"),
         @JsonSubTypes.Type(value = Effet.RamenerDeLHopital.class, name = "ramener-hopital"),
         @JsonSubTypes.Type(value = Effet.MelangerHopitalAuChateau.class, name = "melanger-hopital"),
+        @JsonSubTypes.Type(value = Effet.MelangerChateau.class, name = "melanger-chateau"),
         @JsonSubTypes.Type(value = Effet.Reactiver.class, name = "reactiver"),
         @JsonSubTypes.Type(value = Effet.PoserDepuisChateau.class, name = "poser-depuis-chateau"),
         @JsonSubTypes.Type(value = Effet.ObtenirDuMarche.class, name = "obtenir-du-marche"),
@@ -129,12 +130,28 @@ public sealed interface Effet {
     record MelangerHopitalAuChateau() implements Effet {
     }
 
+    /**
+     * {@code Mélange le Château} — le Roi Yolo, après y avoir pris une carte.
+     *
+     * <p>À ne pas confondre avec {@link MelangerHopitalAuChateau} : ici rien
+     * n'entre, on ne fait que perdre l'ordre connu. C'est ce qui rend le
+     * {@code Visionner} qui suit utile plutôt que redondant.
+     */
+    record MelangerChateau() implements Effet {
+    }
+
     /** {@code Choisis 1 carte du Château, pose-la en jeu} — le Roi Yolo. */
     record PoserDepuisChateau() implements Effet {
     }
 
-    /** {@code Obtiens un Objet du Marché, pose-le en jeu} — le Roi Brad. */
-    record ObtenirDuMarche(fr.goblivion.cartes.TypeCarte type) implements Effet {
+    /**
+     * {@code Obtiens un Objet du Marché, pose-le en jeu} — le Roi Brad.
+     *
+     * <p>Le composant s'appelle {@code typeCarte} et non {@code type} : ce
+     * dernier est déjà pris par le discriminant qui dit quelle brique on lit.
+     * Deux {@code type} dans le même objet JSON, et l'un des deux est perdu.
+     */
+    record ObtenirDuMarche(fr.goblivion.cartes.TypeCarte typeCarte) implements Effet {
     }
 
     /** {@code tu obtiens une carte de niveau 1} — le Chevalier, à l'entraînement. */

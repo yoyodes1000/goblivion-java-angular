@@ -1,5 +1,9 @@
 package fr.goblivion.cartes;
 
+import java.util.List;
+
+import fr.goblivion.effets.EffetCarte;
+
 /**
  * Une carte Doré — les 12 types du marché d'entraînement.
  *
@@ -17,7 +21,20 @@ public record CarteDoree(
         int niveau,
         String action,
         ProcessusEntrainement entrainement,
-        int exemplaires) implements Paysan {
+        int exemplaires,
+        List<EffetCarte> effets) implements Paysan {
+
+    public CarteDoree {
+        effets = effets == null ? List.of() : List.copyOf(effets);
+    }
+
+    /** Sans effets — les cartes inventées des tests, qui n'en ont pas besoin. */
+    public CarteDoree(String id, String nom, TypeCarte type, String scan, Integer force,
+            ForceVariable forceVariable, int niveau, String action,
+            ProcessusEntrainement entrainement, int exemplaires) {
+        this(id, nom, type, scan, force, forceVariable, niveau, action, entrainement, exemplaires,
+                List.of());
+    }
 
     /**
      * Ce qu'il en coûte d'acquérir la carte, lu de gauche à droite sur le
