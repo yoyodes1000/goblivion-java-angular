@@ -79,7 +79,7 @@ public final class MoteurPartie {
             case PAYER_DIFFERENCE -> payerDifference();
             case CONCLURE_ENTRAINEMENT -> conclureEntrainement(action.exigeCarteEnJeu());
             case ABANDONNER_ENTRAINEMENT -> abandonnerEntrainement();
-            case ECHANGER_GARDE_DU_CORPS -> echangerGardeDuCorps(action.exigeCarteEnJeu());
+            case ECHANGER_GARDE_DU_CORPS -> echangerGardeDuCorps(action.exigeCarteEnJeu(), action);
             case POUVOIR_ROI_REINE -> utiliserPouvoirRoiReine(action);
             case PIVOTER -> pivoter(action.exigeCarteEnJeu(), action);
             case RESOUDRE_COMBAT -> resoudreCombat(action.cibles());
@@ -199,7 +199,7 @@ public final class MoteurPartie {
      * est une troisième famille, à côté de Pivoter et de Testament ; ce qu'il
      * fait est le ticket 11.
      */
-    private void echangerGardeDuCorps(long carteEnJeu) {
+    private void echangerGardeDuCorps(long carteEnJeu, Action action) {
         if (partie.gardeDuCorpsEchange()) {
             throw new ActionInterdite("Le Garde du corps a deja ete echange pendant cette phase.");
         }
@@ -212,12 +212,20 @@ public final class MoteurPartie {
                     "On ne peut pas echanger le Garde du corps contre une carte deja activee.");
         }
 
+        // Comme pour Pivoter : ce que la carte entrante déclenchera est vérifié
+        // avant que l'échange ait lieu, sinon un refus consommerait l'échange
+        // de la phase sans rien donner.
+        List<EffetCarte> effets = effetsDeclenches(Declencheur.GARDE_DU_CORPS, entrante);
+        effets.forEach(effet -> interprete.verifier(effet, entrante, choixDe(action)));
+
         partie.retirerDuChampDeBataille(carteEnJeu);
         partie.poserAuGardeDuCorps(entrante);
         partie.poserAuChampDeBataille(sortante);
         partie.marquerGardeDuCorpsEchange();
         partie.noter("Echange : %s prend l'emplacement Garde du corps, %s entre en jeu."
                 .formatted(partie.nomDe(entrante), partie.nomDe(sortante)));
+
+        effets.forEach(effet -> interprete.executer(effet, entrante, choixDe(action)));
     }
 
     /**

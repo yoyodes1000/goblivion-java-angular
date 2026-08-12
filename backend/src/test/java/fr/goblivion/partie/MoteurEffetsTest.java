@@ -83,6 +83,35 @@ class MoteurEffetsTest {
         assertThat(partie.ressources()).isEqualTo(avant - 4);
     }
 
+    /** « Quand cette carte devient Garde du Corps: … » — l'Oracle, le Patron, le BRO. */
+    @Test
+    void devenir_garde_du_corps_declenche_son_effet() {
+        MoteurPartie moteur = moteurAvec(
+                new EffetCarte(Declencheur.GARDE_DU_CORPS, new Effet.Ressource(3)));
+        Partie partie = moteur.partie();
+        CarteEnJeu entrante = unHumainEnJeu(partie);
+        int avant = partie.ressources();
+
+        moteur.appliquer(Action.surCarte(TypeAction.ECHANGER_GARDE_DU_CORPS, entrante.id()));
+
+        assertThat(partie.gardeDuCorps()).contains(entrante);
+        assertThat(partie.ressources()).isEqualTo(avant + 3);
+    }
+
+    /** L'effet ne part qu'à l'entrée sur l'emplacement, pas à chaque Pivoter. */
+    @Test
+    void l_effet_de_garde_du_corps_ne_part_pas_sur_un_pivoter() {
+        MoteurPartie moteur = moteurAvec(
+                new EffetCarte(Declencheur.GARDE_DU_CORPS, new Effet.Ressource(3)));
+        Partie partie = moteur.partie();
+        CarteEnJeu carte = unHumainEnJeu(partie);
+        int avant = partie.ressources();
+
+        moteur.appliquer(Action.surCarte(TypeAction.PIVOTER, carte.id()));
+
+        assertThat(partie.ressources()).isEqualTo(avant);
+    }
+
     /**
      * Le point qui compte : un effet qui refuse laisse la partie intacte, carte
      * comprise. Sans quoi une désignation oubliée « consommerait » le Pivoter
