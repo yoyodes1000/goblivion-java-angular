@@ -1,7 +1,14 @@
 import { httpResource } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, computed } from '@angular/core';
 
-import type { CarteAffichable, CarteBleue, CarteDoree, Famille, OffreMarche, RoiReine } from './modele';
+import type {
+  CarteAffichable,
+  CarteBleue,
+  CarteDoree,
+  CarteEnnemiObjet,
+  Famille,
+  RoiReine,
+} from './modele';
 
 /** Où les fichiers atterrissent, une fois `node scripts/copier-medias.mjs` joué. */
 const DONNEES = '/cartes/donnees';
@@ -35,84 +42,103 @@ export function urlDos(famille: Famille): string {
   return urlScan(famille, DOS[famille]);
 }
 
-/**
- * Le Garde du corps initial que désigne une carte Roi/Reine (§3 des règles).
- *
- * Le lien se fait par `id`, et l'`id` visé est celui d'une carte Doré. Rien ne
- * garantit côté données que la cible existe — d'où le `undefined` possible,
- * plutôt qu'une exception qui ferait tomber l'affichage entier.
- */
-export function trouverGardeDuCorps(
-  dorees: readonly CarteDoree[],
-  roiReine: RoiReine | undefined,
-): CarteDoree | undefined {
-  if (!roiReine) return undefined;
-  return dorees.find((carte) => carte.id === roiReine.gardeDuCorps);
-}
-
-/** Réduit une carte Bleue à ce qu'il faut pour la montrer. */
-export function afficherBleue(carte: CarteBleue): CarteAffichable {
-  return { id: carte.id, nom: carte.nom, scan: carte.scan, famille: 'bleues' };
+/** Les quatre familles que le frontend a besoin de résoudre par identifiant. */
+export interface CatalogueCartes {
+  readonly bleues: readonly CarteBleue[];
+  readonly dorees: readonly CarteDoree[];
+  readonly roiReines: readonly RoiReine[];
+  readonly ennemisObjets: readonly CarteEnnemiObjet[];
 }
 
 /**
- * Le marché d'entraînement tel qu'il se présente au début d'une partie.
+ * Ce qu'il faut pour montrer une carte, à partir du seul identifiant que le
+ * backend envoie.
  *
- * La carte qui sert de Garde du corps initial **sort du marché** : elle est
- * posée sur son emplacement, elle n'est plus disponible à l'entraînement. Les
- * sept rôles désignent tous un type à 4 exemplaires, qui démarre donc à 3.
+ * C'est le point de rencontre des deux moitiés du système : le moteur dit *où
+ * sont* les cartes, ce catalogue dit *ce qu'elles sont*. Aucun nom ni aucune
+ * valeur ne traverse l'API — les données de cartes restent servies en fichiers,
+ * lues une fois au démarrage.
  *
- * Le compte ne descend pas plus bas ici : consommer une carte en s'entraînant
- * est l'affaire du moteur, et l'entraînement peut d'ailleurs être abandonné en
- * cours de route (§6).
+ * Pour une carte Ennemi/Objet, c'est le nom de sa moitié **objet** : côté joueur,
+ * une carte Ennemi n'existe que par sa récompense, une fois pivotée à 180° (§4).
+ * L'ennemi lui-même ne passe jamais par ici — il a son propre affichage.
+ *
+ * Rend `undefined` plutôt que de lever : une donnée manquante doit laisser
+ * l'affichage debout.
  */
-export function composerMarche(
-  dorees: readonly CarteDoree[],
-  roiReine: RoiReine | undefined,
-): OffreMarche[] {
-  return dorees.map((carte) => ({
-    carte,
-    restant: carte.exemplaires - (roiReine?.gardeDuCorps === carte.id ? 1 : 0),
-  }));
+export function afficher(
+  catalogue: CatalogueCartes,
+  famille: Famille,
+  id: string,
+): CarteAffichable | undefined {
+  switch (famille) {
+    case 'bleues':
+      return depuis(catalogue.bleues, famille, id);
+    case 'dorees':
+      return depuis(catalogue.dorees, famille, id);
+    case 'roi-reines':
+      return depuis(catalogue.roiReines, famille, id);
+    case 'ennemis-objets': {
+      const carte = catalogue.ennemisObjets.find((c) => c.id === id);
+      return carte ? { id, nom: carte.objet.nom, scan: carte.scan, famille } : undefined;
+    }
+    case 'boss':
+      // Les Boss ne rejoignent jamais les zones du joueur : ils sont affrontés,
+      // pas collectés (§10). Rien à résoudre ici.
+      return undefined;
+  }
 }
 
-/**
- * La pile Ennemi d'une partie : **15 cartes**, et non les 23 qui existent.
- *
- * La mise en place en tire 7 parmi les 2 épées, puis 8 parmi les 1 épée posées
- * par-dessus (§3). Huit cartes ne servent pas — c'est ce qui fait qu'une partie
- * n'est jamais la même. Lesquelles, c'est un tirage : affaire du moteur.
- */
-export const TAILLE_PILE_ENNEMIE = 15;
-
-/**
- * Le Château au départ : **20 cartes Bleu** tirées au hasard parmi les 40 (§3).
- * Là encore, lesquelles est un tirage que le moteur fera.
- */
-export const TAILLE_CHATEAU_DEPART = 20;
+function depuis(
+  cartes: readonly { id: string; nom: string; scan: string }[],
+  famille: Famille,
+  id: string,
+): CarteAffichable | undefined {
+  const carte = cartes.find((c) => c.id === id);
+  return carte ? { id: carte.id, nom: carte.nom, scan: carte.scan, famille } : undefined;
+}
 
 /**
  * Les données de cartes, lues au démarrage.
  *
- * En attendant le backend, elles sont servies en fichiers statiques depuis
- * `frontend/public/cartes/donnees/`. Le jour où Spring les servira, seules les
- * adresses ci-dessus changeront — les composants ne verront rien.
+ * Elles sont servies en fichiers statiques depuis `frontend/public/cartes/donnees/`,
+ * et non par l'API : le backend en a besoin de son côté pour mettre une partie
+ * en place, mais les renvoyer sur chaque requête ferait de chaque état une copie
+ * du catalogue. L'API ne transporte que des identifiants.
  *
  * `httpResource` est marqué expérimental par Angular : l'API peut bouger d'une
  * version à l'autre. C'est assumé, il n'y a qu'un fichier à corriger. Toute la
  * logique vit dans les fonctions pures ci-dessus, que le service se contente
  * d'appliquer aux données chargées.
  *
- * Seules les trois familles réellement affichées sont chargées. Les Ennemis et
- * les Boss viendront quand il y aura quelque chose à en montrer — ticket 10.
+ * Les Boss ne sont pas chargés : ils n'ont pas de scan à montrer tant que la
+ * phase de Boss n'a pas d'affichage propre.
  */
 @Injectable({ providedIn: 'root' })
 export class Cartes {
   readonly bleues = httpResource<CarteBleue[]>(() => `${DONNEES}/bleues.json`, { defaultValue: [] });
   readonly dorees = httpResource<CarteDoree[]>(() => `${DONNEES}/dorees.json`, { defaultValue: [] });
   readonly roiReines = httpResource<RoiReine[]>(() => `${DONNEES}/roi-reines.json`, { defaultValue: [] });
+  readonly ennemisObjets = httpResource<CarteEnnemiObjet[]>(() => `${DONNEES}/ennemis-objets.json`, {
+    defaultValue: [],
+  });
 
-  gardeDuCorpsDe(roiReine: RoiReine | undefined): CarteDoree | undefined {
-    return trouverGardeDuCorps(this.dorees.value(), roiReine);
+  readonly catalogue = computed<CatalogueCartes>(() => ({
+    bleues: this.bleues.value(),
+    dorees: this.dorees.value(),
+    roiReines: this.roiReines.value(),
+    ennemisObjets: this.ennemisObjets.value(),
+  }));
+
+  afficher(famille: Famille, id: string): CarteAffichable | undefined {
+    return afficher(this.catalogue(), famille, id);
+  }
+
+  doree(id: string): CarteDoree | undefined {
+    return this.dorees.value().find((carte) => carte.id === id);
+  }
+
+  roiReine(id: string): RoiReine | undefined {
+    return this.roiReines.value().find((carte) => carte.id === id);
   }
 }

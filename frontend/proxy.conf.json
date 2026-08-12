@@ -1,0 +1,13 @@
+{
+  "$comment": [
+    "Le serveur de developpement Angular (4200) renvoie /api vers Spring (8080).",
+    "Sans lui il faudrait ouvrir CORS cote backend : deux origines a declarer, a",
+    "maintenir, et a refermer le jour ou tout sera servi ensemble. Le mandataire",
+    "fait qu'il n'y a qu'une seule origine vue du navigateur, donc aucun CORS.",
+    "En production, le backend servira le frontend et ce fichier ne servira plus."
+  ],
+  "/api": {
+    "target": "http://localhost:8080",
+    "secure": false
+  }
+}

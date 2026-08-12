@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import type { CarteDoree, RoiReine } from '../../cartes/modele';
+import type { CarteAffichable, RoiReine } from '../../cartes/modele';
 import { CartesRoyales } from './cartes-royales';
 
 describe('CartesRoyales', () => {
@@ -10,17 +10,11 @@ describe('CartesRoyales', () => {
     }).compileComponents();
   });
 
-  const gardeDuCorps: CarteDoree = {
+  const gardeDuCorps: CarteAffichable = {
     id: 'catapulte',
     nom: 'Catapulte',
-    type: 'OBJET',
     scan: 'catapulte.webp',
-    force: 3,
-    forceVariable: null,
-    niveau: 1,
-    action: null,
-    entrainement: { pioche: 4, valeur: 5, sacrifice: 'OBJET' },
-    exemplaires: 2,
+    famille: 'dorees',
   };
 
   const roiReine: RoiReine = {
@@ -32,7 +26,7 @@ describe('CartesRoyales', () => {
     action: 'Pivoter: Réactive 2 cartes',
   };
 
-  async function monter(inputs: { roiReine?: RoiReine; gardeDuCorps?: CarteDoree }) {
+  async function monter(inputs: { roiReine?: RoiReine; gardeDuCorps?: CarteAffichable }) {
     const fixture = TestBed.createComponent(CartesRoyales);
     fixture.componentRef.setInput('roiReine', inputs.roiReine);
     fixture.componentRef.setInput('gardeDuCorps', inputs.gardeDuCorps);
@@ -61,6 +55,20 @@ describe('CartesRoyales', () => {
 
     expect(sources[0]).toContain('/cartes/scans/dorees/catapulte.webp');
     expect(sources[1]).toContain('/cartes/scans/roi-reines/bella.webp');
+  });
+
+  it('accepte un Garde du corps d’une autre famille', async () => {
+    // L'emplacement s'échange contre n'importe quelle carte en jeu (§9) : ce
+    // peut être une Bleue, ou la récompense d'un ennemi vaincu.
+    const fixture = await monter({
+      roiReine,
+      gardeDuCorps: { id: 'fermier', nom: 'Fermier', scan: 'fermier.webp', famille: 'bleues' },
+    });
+    const sources = [...(fixture.nativeElement as HTMLElement).querySelectorAll('img')].map((i) =>
+      i.getAttribute('src'),
+    );
+
+    expect(sources[0]).toContain('/cartes/scans/bleues/fermier.webp');
   });
 
   it('garde les deux emplacements visibles quand les cartes manquent', async () => {

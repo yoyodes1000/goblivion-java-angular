@@ -1,0 +1,95 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 75%);
+}
+
+.depart {
+  width: min(46rem, 100%);
+  padding: 1.4rem 1.6rem 1.6rem;
+  background: #1a2027;
+  border: 1px solid #323f4b;
+  border-radius: 0.6rem;
+}
+
+.depart__titre {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.depart__intro {
+  margin: 0.4rem 0 1.2rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #9aa5b1;
+}
+
+.depart__niveaux {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.niveau {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  height: 100%;
+  padding: 0.8rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: #232c35;
+  border: 1px solid #3e4c59;
+  border-radius: 0.4rem;
+}
+
+.niveau:hover {
+  background: #2b3641;
+  border-color: #52606d;
+}
+
+.niveau:focus-visible {
+  outline: 2px solid #f5f7fa;
+  outline-offset: 2px;
+}
+
+.niveau__nom {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.niveau__boss {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  /* #9aa5b1 sur #232c35 : 6.0:1, au-dessus du minimum AA de 4.5:1. */
+  color: #9aa5b1;
+}
+
+.niveau__effet {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #cbd2d9;
+}
+
+.depart__refus {
+  margin: 1.1rem 0 0;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  /* #fecaca sur #7f1d1d : 6.4:1. Le rouge seul ne suffirait pas — le texte
+     dit le motif, il n'est pas là pour décorer un état. */
+  color: #fecaca;
+  background: #7f1d1d;
+  border-radius: 0.3rem;
+}

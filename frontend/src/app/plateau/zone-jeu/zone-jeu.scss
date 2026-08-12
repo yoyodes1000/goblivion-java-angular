@@ -6,12 +6,24 @@
 }
 
 .zone__titre {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
   margin: 0;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #9aa5b1;
+}
+
+.zone__force {
+  padding: 0.05rem 0.4rem;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: #f5f7fa;
+  background: #323f4b;
+  border-radius: 0.6rem;
 }
 
 /*
@@ -26,6 +38,8 @@
   align-items: center;
   justify-content: center;
   min-height: 10rem;
+  padding: 0.5rem;
+  overflow-y: auto;
   border: 2px dashed var(--fond-phase, #52606d);
   border-radius: 0.5rem;
 }
@@ -34,4 +48,96 @@
   margin: 0;
   font-size: 0.8rem;
   color: #7b8794;
+}
+
+.zone__cartes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-self: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.jeu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 7rem;
+}
+
+/* Une carte activée est pivotée à 90° sur la table : la rotation le dit à
+   l'œil, la classe le dit au reste du code, et le bouton Pivoter disparaît —
+   trois signaux plutôt qu'une nuance de gris. */
+.jeu--pivotee .jeu__scan {
+  transform: rotate(90deg) scale(0.72);
+}
+
+.jeu__scan {
+  position: relative;
+  aspect-ratio: 63 / 88;
+  overflow: hidden;
+  background: #11151a;
+  border-radius: 0.25rem;
+  transition: transform 120ms ease;
+}
+
+.jeu__nom {
+  display: flex;
+  gap: 0.3rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.jeu__force {
+  flex: none;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.jeu__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.jeu__actions button {
+  padding: 0.2rem 0.3rem;
+  font: inherit;
+  font-size: 0.65rem;
+  color: inherit;
+  cursor: pointer;
+  background: #323f4b;
+  border: 1px solid transparent;
+  border-radius: 0.2rem;
+}
+
+.jeu__actions button:hover {
+  background: #3e4c59;
+}
+
+.jeu__actions button:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+/*
+  Le nom de la carte visée est dans le bouton, mais masqué à l'œil : « Pivoter »
+  répété six fois ne dit pas à un lecteur d'écran laquelle des six. `clip-path`
+  plutôt que `display: none`, qui retirerait le texte de l'arbre d'accessibilité
+  au lieu de le rendre seulement invisible.
+*/
+.jeu__cible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
 }

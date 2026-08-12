@@ -1,5 +1,7 @@
 package fr.goblivion.partie;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Les quatre états d'une partie (§5 et §10 des règles).
  *
@@ -8,10 +10,30 @@ package fr.goblivion.partie;
  * marché d'entraînement.
  */
 public enum Phase {
-    ENTRAINEMENT,
-    AVANCEE,
-    COMBAT,
-    BOSS;
+    ENTRAINEMENT("entrainement"),
+    AVANCEE("avancee"),
+    COMBAT("combat"),
+    BOSS("boss");
+
+    private final String libelle;
+
+    Phase(String libelle) {
+        this.libelle = libelle;
+    }
+
+    /**
+     * La forme envoyée sur l'API.
+     *
+     * <p>C'est déjà le vocabulaire du frontend : son type {@code Phase}, ses
+     * libellés de bandeau et les sélecteurs {@code [data-phase='…']} de
+     * {@code styles.scss} sont écrits ainsi. Faire porter la conversion par
+     * l'API évite une table de correspondance côté navigateur — et surtout, évite
+     * qu'un jour les deux listes divergent.
+     */
+    @JsonValue
+    public String libelle() {
+        return libelle;
+    }
 
     /**
      * La phase qui suit dans le cycle ordinaire.

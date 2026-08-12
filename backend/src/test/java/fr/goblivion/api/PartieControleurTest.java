@@ -72,7 +72,9 @@ class PartieControleurTest {
                 "{\"difficulte\":\"NORMAL\",\"role\":\"" + CataloguesFictifs.ROLE + "\"}");
 
         assertThat(reponse).hasStatusOk();
-        assertThat(reponse).bodyJson().extractingPath("$.phase").isEqualTo("ENTRAINEMENT");
+        // La phase voyage dans le vocabulaire du frontend, comme la famille :
+        // c'est ce que ses libellés et ses selecteurs data-phase attendent.
+        assertThat(reponse).bodyJson().extractingPath("$.phase").isEqualTo("entrainement");
         assertThat(reponse).bodyJson().extractingPath("$.role").isEqualTo(CataloguesFictifs.ROLE);
     }
 

@@ -1,20 +1,11 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  linkedSignal,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal } from '@angular/core';
 
-import {
-  Cartes,
-  TAILLE_CHATEAU_DEPART,
-  TAILLE_PILE_ENNEMIE,
-  afficherBleue,
-  composerMarche,
-} from '../cartes/cartes';
-import type { CarteDoree } from '../cartes/modele';
+import { Cartes } from '../cartes/cartes';
+import type { CarteAffichable, CarteDoree, OffreMarche } from '../cartes/modele';
+import { Commandes } from '../partie/commandes/commandes';
+import type { Difficulte, TypeAction } from '../partie/modele';
+import { NouvellePartie } from '../partie/nouvelle-partie/nouvelle-partie';
+import { Partie } from '../partie/partie';
 import { BandeauPhase } from './bandeau-phase/bandeau-phase';
 import { CartesDorees } from './cartes-dorees/cartes-dorees';
 import { CartesRoyales } from './cartes-royales/cartes-royales';
@@ -23,20 +14,24 @@ import { CompteurRessources } from './compteur-ressources/compteur-ressources';
 import { EntrainementEnCours } from './entrainement-en-cours/entrainement-en-cours';
 import { PileMonstres } from './pile-monstres/pile-monstres';
 import { PlateauAvancee } from './plateau-avancee/plateau-avancee';
-import { type Phase } from './phase';
 import { PortesChateau } from './portes-chateau/portes-chateau';
-import { ZoneJeu } from './zone-jeu/zone-jeu';
+import { ZoneJeu, type CarteEnJeuVue } from './zone-jeu/zone-jeu';
 
 /**
- * La table de jeu — ticket 9.
+ * La table de jeu.
  *
- * Ce composant place les blocs et tient l'état que plusieurs d'entre eux
- * partagent : la phase en cours, les ressources, et l'entraînement choisi.
+ * Depuis le ticket 12, ce composant ne tient plus **aucun** état de partie : la
+ * phase, les ressources, le marché, les piles et les cartes en jeu viennent du
+ * moteur, par le service `Partie`. Son travail se réduit à deux choses, et c'est
+ * voulu :
  *
- * Il choisit aussi la carte Roi/Reine. Ce choix est en réalité une étape de la
- * mise en place (§3), et il entraîne deux choses : les ressources de départ, et
- * l'identité du Garde du corps initial. En attendant le ticket 12, on prend la
- * première carte du jeu de données.
+ * 1. **Traduire** les identifiants que l'API envoie en cartes affichables, à
+ *    l'aide du catalogue chargé séparément. L'API dit où sont les cartes, le
+ *    catalogue dit ce qu'elles sont.
+ * 2. **Router** les clics vers l'action correspondante.
+ *
+ * Ce qui reste ici en propre, c'est l'ouverture du marché : une préférence
+ * d'affichage, pas une règle. Le moteur ignore qu'une fenêtre existe.
  */
 @Component({
   selector: 'app-plateau',
@@ -46,8 +41,10 @@ import { ZoneJeu } from './zone-jeu/zone-jeu';
     CartesDorees,
     CartesRoyales,
     ChateauHopital,
+    Commandes,
     CompteurRessources,
     EntrainementEnCours,
+    NouvellePartie,
     PileMonstres,
     PlateauAvancee,
     PortesChateau,
@@ -58,76 +55,126 @@ import { ZoneJeu } from './zone-jeu/zone-jeu';
 })
 export class Plateau {
   private readonly cartes = inject(Cartes);
+  private readonly partie = inject(Partie);
 
-  protected readonly phase = signal<Phase>('entrainement');
+  protected readonly etat = this.partie.etat;
+  protected readonly refus = this.partie.refus;
 
-  /** Provisoire : la mise en place fera choisir ce rôle au joueur. */
-  protected readonly roiReine = computed(() => this.cartes.roiReines.value()[0]);
-
-  protected readonly gardeDuCorps = computed(() => this.cartes.gardeDuCorpsDe(this.roiReine()));
-
-  /**
-   * Le marché dépend du Roi/Reine : la carte qui part au Garde du corps n'est
-   * plus disponible à l'entraînement.
-   */
-  protected readonly offres = computed(() =>
-    composerMarche(this.cartes.dorees.value(), this.roiReine()),
-  );
-
-  /**
-   * Les ressources partent de ce que porte la carte Roi/Reine, puis vivent leur
-   * vie. `linkedSignal` est fait pour ça : il se recalcule si la carte change —
-   * au chargement des données, par exemple — mais reste inscriptible entre-temps,
-   * là où un `computed` refuserait toute écriture.
-   */
-  protected readonly ressources = linkedSignal(() => this.roiReine()?.ressourcesDepart ?? 0);
-
-  /**
-   * Le marché s'ouvre au début de la phase d'entraînement et se referme en la
-   * quittant — mais reste inscriptible entre les deux, parce que l'entraînement
-   * n'est jamais obligatoire (§6) : on doit pouvoir le congédier, et le rouvrir.
-   * Encore `linkedSignal`, cette fois piloté par la phase.
-   */
-  protected readonly marcheOuvert = linkedSignal({
-    source: this.phase,
-    computation: (phase) => phase === 'entrainement',
+  protected readonly roiReine = computed(() => {
+    const etat = this.etat();
+    return etat ? this.cartes.roiReine(etat.role) : undefined;
   });
 
-  /** La carte du marché sur laquelle on s'entraîne ce tour-ci. */
-  protected readonly entrainementChoisi = signal<CarteDoree | undefined>(undefined);
-
-  /** Provisoire : c'est le moteur qui saura si un combat a été gagné (§6). */
-  protected readonly combatGagne = signal(false);
-
   /**
-   * Tailles de départ, fixées par les règles (§3). Elles deviendront l'état réel
-   * des deux piles quand le moteur tiendra la partie.
+   * Le Garde du corps peut être une carte de n'importe quelle famille : on
+   * échange l'emplacement contre une carte en jeu, qui est aussi bien une Bleue
+   * qu'une récompense d'ennemi (§9). D'où une `CarteAffichable`, et non une
+   * carte Doré comme au ticket 9 — où elle ne pouvait être que la carte initiale.
    */
-  protected readonly taillePile = TAILLE_PILE_ENNEMIE;
-  protected readonly nombreChateau = TAILLE_CHATEAU_DEPART;
+  protected readonly gardeDuCorps = computed<CarteAffichable | undefined>(() => {
+    const garde = this.etat()?.gardeDuCorps;
+    return garde ? this.cartes.afficher(garde.famille, garde.carte) : undefined;
+  });
 
-  /**
-   * Provisoire. L'hôpital est **vide** au début d'une partie : les cartes n'y
-   * arrivent qu'en fin de phase. On y pose quelques Bleues pour que la fenêtre
-   * de consultation soit vérifiable avant que le moteur n'existe. À retirer au
-   * ticket 12, où l'hôpital se remplira tout seul.
-   */
-  protected readonly cartesHopital = computed(() =>
-    this.cartes.bleues.value().slice(0, 7).map(afficherBleue),
+  /** Le marché : le stock vient du moteur, le détail des cartes du catalogue. */
+  protected readonly offres = computed<OffreMarche[]>(() => {
+    const marche = this.etat()?.marche;
+    if (!marche) return [];
+    return this.cartes.dorees
+      .value()
+      .filter((carte) => carte.id in marche)
+      .map((carte) => ({ carte, restant: marche[carte.id] }));
+  });
+
+  protected readonly entrainementChoisi = computed<CarteDoree | undefined>(() => {
+    const id = this.etat()?.entrainementChoisi;
+    return id ? this.cartes.doree(id) : undefined;
+  });
+
+  protected readonly cartesEnJeu = computed<CarteEnJeuVue[]>(() =>
+    (this.etat()?.champDeBataille ?? []).flatMap((vue) => {
+      const carte = this.cartes.afficher(vue.famille, vue.carte);
+      // Une carte que le catalogue ne connaît pas est ignorée plutôt que
+      // rendue à moitié : mieux vaut un trou visible qu'un scan manquant.
+      return carte
+        ? [{ ...carte, id: vue.id, force: vue.force, pivotee: vue.pivotee }]
+        : [];
+    }),
   );
 
-  protected changerPhase(phase: Phase): void {
-    this.phase.set(phase);
+  protected readonly cartesHopital = computed<CarteAffichable[]>(() =>
+    (this.etat()?.hopital ?? []).flatMap((vue) => {
+      const carte = this.cartes.afficher(vue.famille, vue.carte);
+      return carte ? [carte] : [];
+    }),
+  );
+
+  /**
+   * Le marché s'ouvre au début de la phase d'entraînement et se referme dès que
+   * le jeton est posé — un seul entraînement par tour (§2).
+   *
+   * `linkedSignal` parce qu'il faut les deux à la fois : se recalculer quand la
+   * partie change de phase, et rester inscriptible entre-temps. L'entraînement
+   * n'est jamais obligatoire (§6), donc on doit pouvoir congédier la fenêtre, et
+   * la rouvrir pour consulter.
+   */
+  protected readonly marcheOuvert = linkedSignal({
+    source: () => {
+      const etat = this.etat();
+      return { phase: etat?.phase, tente: etat?.entrainementTente ?? false };
+    },
+    computation: (source) => source.phase === 'entrainement' && !source.tente,
+  });
+
+  /** Le jeton n'est posable qu'une fois par tour : au-delà, le marché se consulte. */
+  protected readonly choixPossible = computed(() => !(this.etat()?.entrainementTente ?? true));
+
+  protected readonly pivotPossible = computed(() => this.permise('PIVOTER'));
+
+  /**
+   * Sacrifier suppose un entraînement engagé **et** sa cible atteinte : le
+   * moteur refuse tant qu'il reste un déficit (§6). Le bouton n'apparaît donc
+   * qu'une fois la condition remplie.
+   */
+  protected readonly sacrificePossible = computed(() => {
+    const etat = this.etat();
+    return (
+      this.permise('CONCLURE_ENTRAINEMENT') &&
+      !!etat?.entrainementChoisi &&
+      etat.deficitEntrainement === 0
+    );
+  });
+
+  protected readonly echangePossible = computed(() => {
+    const etat = this.etat();
+    return this.permise('ECHANGER_GARDE_DU_CORPS') && !!etat && !etat.gardeDuCorpsEchange;
+  });
+
+  protected demarrer(difficulte: Difficulte): void {
+    this.partie.demarrer(difficulte);
   }
 
-  protected ajusterRessources(delta: number): void {
-    // Pas de plancher ici : la défaite se déclenche à zéro (seuil inclusif),
-    // et c'est au moteur de jeu de la prononcer, pas à l'affichage.
-    this.ressources.update((actuelles) => actuelles + delta);
+  protected commande(type: TypeAction): void {
+    this.partie.jouerSimple(type);
   }
 
   protected choisirEntrainement(carte: CarteDoree): void {
-    this.entrainementChoisi.set(carte);
-    this.marcheOuvert.set(false);
+    this.partie.jouer({ type: 'CHOISIR_ENTRAINEMENT', carteDuMarche: carte.id });
+  }
+
+  protected pivoter(carteEnJeu: number): void {
+    this.partie.jouer({ type: 'PIVOTER', carteEnJeu });
+  }
+
+  protected sacrifier(carteEnJeu: number): void {
+    this.partie.jouer({ type: 'CONCLURE_ENTRAINEMENT', carteEnJeu });
+  }
+
+  protected echanger(carteEnJeu: number): void {
+    this.partie.jouer({ type: 'ECHANGER_GARDE_DU_CORPS', carteEnJeu });
+  }
+
+  private permise(type: TypeAction): boolean {
+    return this.etat()?.actionsPossibles.includes(type) ?? false;
   }
 }
