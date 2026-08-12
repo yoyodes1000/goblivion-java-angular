@@ -49,6 +49,16 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!--
+						L'application lit ses donnees de cartes en ../data/cartes,
+						chemin relatif. Sans ce reglage, il se resout la ou Maven a
+						ete lance : depuis la racine du depot, on chercherait les
+						cartes hors du projet. On fige donc le repertoire de travail
+						sur backend/, quelle que soit la commande.
+					-->
+					<workingDirectory>${project.basedir}</workingDirectory>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

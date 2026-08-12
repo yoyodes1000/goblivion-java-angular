@@ -1,0 +1,73 @@
+:host {
+  display: block;
+  padding: 0.5rem 0.6rem;
+  background: #1a2027;
+  border: 1px solid #323f4b;
+  border-radius: 0.4rem;
+}
+
+.commandes__titre {
+  margin: 0 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+
+.commandes__liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.commandes__bouton {
+  width: 100%;
+  padding: 0.32rem 0.4rem;
+  font: inherit;
+  font-size: 0.75rem;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: #323f4b;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+}
+
+.commandes__bouton:hover {
+  background: #3e4c59;
+}
+
+.commandes__bouton:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+/* L'action qui fait avancer la phase se distingue par le cadre et la graisse,
+   pas par la seule couleur. */
+.commandes__bouton--principale {
+  font-weight: 700;
+  border-color: #7b8794;
+}
+
+.commandes__forces {
+  margin: 0.5rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: #cbd2d9;
+}
+
+.commandes__refus {
+  margin: 0.5rem 0 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  /* #fecaca sur #7f1d1d : 6.4:1. Le motif est écrit — un cadre rouge seul ne
+     dirait pas *pourquoi* l'action a été refusée. */
+  color: #fecaca;
+  background: #7f1d1d;
+  border-radius: 0.25rem;
+}

@@ -2,7 +2,7 @@ import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { urlScan } from '../../cartes/cartes';
-import type { CarteDoree, RoiReine } from '../../cartes/modele';
+import type { CarteAffichable, RoiReine } from '../../cartes/modele';
 
 /**
  * Garde du corps et Roi/Reine — étape 5 du ticket 9.
@@ -29,7 +29,7 @@ import type { CarteDoree, RoiReine } from '../../cartes/modele';
         <h2 class="royales__titre">Garde du corps</h2>
         <div class="royales__emplacement" data-orientation="droite">
           @if (gardeDuCorps(); as carte) {
-            <img [ngSrc]="urlDoree(carte)" fill sizes="8vw" [alt]="carte.nom" />
+            <img [ngSrc]="urlGarde(carte)" fill sizes="8vw" [alt]="carte.nom" />
           } @else {
             <span class="royales__attente">1× par phase</span>
           }
@@ -52,10 +52,16 @@ import type { CarteDoree, RoiReine } from '../../cartes/modele';
 })
 export class CartesRoyales {
   readonly roiReine = input<RoiReine | undefined>(undefined);
-  readonly gardeDuCorps = input<CarteDoree | undefined>(undefined);
+  /*
+    Une CarteAffichable, et non une carte Dore : depuis le ticket 12,
+    l'emplacement s'echange contre n'importe quelle carte en jeu (§9). Ce peut
+    donc etre une Bleue, ou la recompense d'un ennemi vaincu — seule la carte
+    *initiale* est forcement une Doree.
+  */
+  readonly gardeDuCorps = input<CarteAffichable | undefined>(undefined);
 
-  protected urlDoree(carte: CarteDoree): string {
-    return urlScan('dorees', carte.scan);
+  protected urlGarde(carte: CarteAffichable): string {
+    return urlScan(carte.famille, carte.scan);
   }
 
   protected urlRoiReine(carte: RoiReine): string {

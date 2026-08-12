@@ -30,19 +30,11 @@ describe('CompteurRessources', () => {
     expect(rendu.querySelector('.compteur__nombre')?.textContent?.trim()).toBe('0');
   });
 
-  it('demande un ajustement sans se l’appliquer', async () => {
+  it('n’offre aucun réglage manuel', async () => {
+    // Les boutons ± provisoires sont partis au ticket 12. Une ressource se
+    // gagne et se perd en jouant ; la régler à la main masquerait la seule
+    // valeur dont dépend la défaite.
     const fixture = await monter(5);
-    const deltas: number[] = [];
-    fixture.componentInstance.ajustementDemande.subscribe((delta) => deltas.push(delta));
-
-    const boutons = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
-      '.compteur__reglage button',
-    );
-    boutons[0].click();
-    boutons[1].click();
-    await fixture.whenStable();
-
-    expect(deltas).toEqual([-1, 1]);
-    expect(fixture.componentInstance.ressources()).toBe(5);
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('button')).toHaveLength(0);
   });
 });

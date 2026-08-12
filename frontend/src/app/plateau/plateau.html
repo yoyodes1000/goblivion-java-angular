@@ -1,26 +1,70 @@
-<app-bandeau-phase [phase]="phase()" (changementDemande)="changerPhase($event)" />
+@if (etat(); as partie) {
+  <app-bandeau-phase [phase]="partie.phase" [tour]="partie.tour" />
 
-<main class="plateau__corps" [attr.data-phase]="phase()">
-  <div class="plateau__gauche">
-    <app-compteur-ressources [ressources]="ressources()" (ajustementDemande)="ajusterRessources($event)" />
-    <app-entrainement-en-cours [carte]="entrainementChoisi()" (marcheDemande)="marcheOuvert.set(true)" />
-  </div>
+  <main class="plateau__corps" [attr.data-phase]="partie.phase">
+    <div class="plateau__gauche">
+      <app-compteur-ressources [ressources]="partie.ressources" />
+      <app-entrainement-en-cours
+        [carte]="entrainementChoisi()"
+        (marcheDemande)="marcheOuvert.set(true)"
+      />
+      <app-commandes [etat]="partie" [refus]="refus()" (demande)="commande($event)" />
+    </div>
 
-  <app-pile-monstres class="plateau__pile" [nombre]="taillePile" />
-  <app-plateau-avancee class="plateau__avancee" />
-  <app-portes-chateau class="plateau__portes" />
+    <app-pile-monstres class="plateau__pile" [nombre]="partie.taillePileEnnemie" />
+    <app-plateau-avancee class="plateau__avancee" />
+    <app-portes-chateau class="plateau__portes" />
 
-  <app-zone-jeu class="plateau__zone" [phase]="phase()" />
-  <app-cartes-royales class="plateau__royales" [roiReine]="roiReine()" [gardeDuCorps]="gardeDuCorps()" />
-  <app-chateau-hopital class="plateau__chateau" [nombreChateau]="nombreChateau" [cartes]="cartesHopital()" />
-</main>
+    <app-zone-jeu
+      class="plateau__zone"
+      [phase]="partie.phase"
+      [cartes]="cartesEnJeu()"
+      [pivotPossible]="pivotPossible()"
+      [sacrificePossible]="sacrificePossible()"
+      [echangePossible]="echangePossible()"
+      (pivoterDemande)="pivoter($event)"
+      (sacrificeDemande)="sacrifier($event)"
+      (echangeDemande)="echanger($event)"
+    />
+    <app-cartes-royales
+      class="plateau__royales"
+      [roiReine]="roiReine()"
+      [gardeDuCorps]="gardeDuCorps()"
+    />
+    <app-chateau-hopital
+      class="plateau__chateau"
+      [nombreChateau]="partie.tailleChateau"
+      [cartes]="cartesHopital()"
+    />
+  </main>
 
-@if (marcheOuvert()) {
-  <app-cartes-dorees
-    [offres]="offres()"
-    [combatGagne]="combatGagne()"
-    (entrainementDemande)="choisirEntrainement($event)"
-    (combatGagneBascule)="combatGagne.set($event)"
-    (fermeture)="marcheOuvert.set(false)"
-  />
+  @if (marcheOuvert()) {
+    <app-cartes-dorees
+      [offres]="offres()"
+      [combatGagne]="partie.premierCombatGagne"
+      [choixPossible]="choixPossible()"
+      (entrainementDemande)="choisirEntrainement($event)"
+      (fermeture)="marcheOuvert.set(false)"
+    />
+  }
+
+  @if (partie.resultat !== 'EN_COURS') {
+    <div class="fin" role="alertdialog" aria-labelledby="titre-fin">
+      <div class="fin__panneau">
+        <h2 class="fin__titre" id="titre-fin">
+          {{ partie.resultat === 'VICTOIRE' ? 'Victoire' : 'Défaite' }}
+        </h2>
+        <p class="fin__detail">
+          {{
+            partie.resultat === 'VICTOIRE'
+              ? 'Tous les Boss sont vaincus.'
+              : 'Les ressources sont tombées à zéro.'
+          }}
+          Tour {{ partie.tour }}.
+        </p>
+      </div>
+    </div>
+  }
+} @else {
+  <app-nouvelle-partie [refus]="refus()" (choix)="demarrer($event)" />
 }

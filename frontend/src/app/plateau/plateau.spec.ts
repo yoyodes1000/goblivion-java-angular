@@ -1,9 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { TestBed, type ComponentFixture } from '@angular/core/testing';
 
-import type { CarteBleue, CarteDoree, RoiReine } from '../cartes/modele';
-import { LIBELLES, PHASES } from './phase';
+import type { CarteBleue, CarteDoree, CarteEnnemiObjet, RoiReine } from '../cartes/modele';
+import type { EtatPartie } from '../partie/modele';
+import { LIBELLES } from './phase';
 import { Plateau } from './plateau';
 
 describe('Plateau', () => {
@@ -18,8 +19,6 @@ describe('Plateau', () => {
       niveau: 1,
       action: null,
       entrainement: { pioche: 4, valeur: 5, sacrifice: 'OBJET' },
-      // Quatre exemplaires, comme dans les vraies données : les sept rôles
-      // désignent tous un type à 4, jamais un type à 2.
       exemplaires: 4,
     },
   ];
@@ -49,6 +48,54 @@ describe('Plateau', () => {
     },
   ];
 
+  const ENNEMIS: CarteEnnemiObjet[] = [];
+
+  /**
+   * L'état que le moteur enverrait au début d'une partie Normale.
+   *
+   * Les valeurs viennent des règles : 20 cartes au Château et 15 ennemis en
+   * pile (§3), la Catapulte à 3 exemplaires parce que le quatrième est parti au
+   * Garde du corps.
+   */
+  const ETAT: EtatPartie = {
+    phase: 'entrainement',
+    tour: 1,
+    ressources: 16,
+    resultat: 'EN_COURS',
+    difficulte: 'NORMAL',
+    role: 'bella',
+    gardeDuCorps: { id: 1, carte: 'catapulte', famille: 'dorees', force: 3, pivotee: false },
+    marche: { catapulte: 3 },
+    tailleChateau: 20,
+    taillePileEnnemie: 15,
+    champDeBataille: [],
+    hopital: [],
+    piste: [null, null, null],
+    portes: [],
+    bossRestants: ['b1', 'b2', 'b3', 'b4'],
+    actionsPossibles: [
+      'CHOISIR_ENTRAINEMENT',
+      'PAYER_DIFFERENCE',
+      'CONCLURE_ENTRAINEMENT',
+      'ABANDONNER_ENTRAINEMENT',
+      'ECHANGER_GARDE_DU_CORPS',
+      'POUVOIR_ROI_REINE',
+      'PIVOTER',
+      'PHASE_SUIVANTE',
+    ],
+    forceAlliee: 0,
+    forceEnnemie: 0,
+    entrainementChoisi: null,
+    deficitEntrainement: 0,
+    entrainementTente: false,
+    combatResolu: false,
+    premierCombatGagne: false,
+    gardeDuCorpsEchange: false,
+    pouvoirRoiReineUtilise: false,
+    jetonsBonusAllie: 0,
+    journal: [],
+  };
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Plateau],
@@ -56,8 +103,12 @@ describe('Plateau', () => {
     }).compileComponents();
   });
 
+  function http() {
+    return TestBed.inject(HttpTestingController);
+  }
+
   /**
-   * Monte la table et répond aux trois requêtes de données.
+   * Monte la table et répond aux quatre requêtes de catalogue.
    *
    * Sans y répondre, l'application ne se stabilise jamais : `httpResource`
    * laisse les requêtes en attente et `whenStable()` ne rend jamais la main.
@@ -66,22 +117,62 @@ describe('Plateau', () => {
     const fixture = TestBed.createComponent(Plateau);
     fixture.detectChanges();
 
-    const http = TestBed.inject(HttpTestingController);
-    http.expectOne('/cartes/donnees/bleues.json').flush(BLEUES);
-    http.expectOne('/cartes/donnees/dorees.json').flush(DOREES);
-    http.expectOne('/cartes/donnees/roi-reines.json').flush(ROI_REINES);
+    http().expectOne('/cartes/donnees/bleues.json').flush(BLEUES);
+    http().expectOne('/cartes/donnees/dorees.json').flush(DOREES);
+    http().expectOne('/cartes/donnees/roi-reines.json').flush(ROI_REINES);
+    http().expectOne('/cartes/donnees/ennemis-objets.json').flush(ENNEMIS);
 
     await fixture.whenStable();
     return fixture;
   }
 
-  it('pose les neuf blocs de la table', async () => {
+  /** Choisit « Normal » et fait répondre le moteur avec l'état donné. */
+  async function demarrer(fixture: ComponentFixture<Plateau>, etat: EtatPartie = ETAT) {
+    const rendu = fixture.nativeElement as HTMLElement;
+    rendu.querySelectorAll<HTMLButtonElement>('.niveau')[1].click();
+    await fixture.whenStable();
+
+    http().expectOne('/api/partie').flush(etat);
+    await fixture.whenStable();
+    return rendu;
+  }
+
+  async function table(etat: EtatPartie = ETAT) {
+    const fixture = await monter();
+    const rendu = await demarrer(fixture, etat);
+    return { fixture, rendu };
+  }
+
+  it('commence par demander la difficulté, sans rien afficher de la table', async () => {
     const fixture = await monter();
     const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(rendu.querySelector('app-nouvelle-partie')).toBeTruthy();
+    expect(rendu.querySelector('app-bandeau-phase')).toBeNull();
+    // Les trois niveaux, avec ce que chacun change (§3).
+    expect(rendu.querySelectorAll('.niveau')).toHaveLength(3);
+  });
+
+  it('demande la mise en place au moteur, sans imposer de rôle', async () => {
+    const fixture = await monter();
+    (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.niveau')[2].click();
+    await fixture.whenStable();
+
+    const requete = http().expectOne('/api/partie');
+
+    expect(requete.request.method).toBe('POST');
+    // Le rôle est tiré au sort par le moteur : le frontend ne le choisit pas.
+    expect(requete.request.body).toEqual({ difficulte: 'DIFFICILE', role: null });
+    requete.flush(ETAT);
+  });
+
+  it('pose les dix blocs de la table', async () => {
+    const { rendu } = await table();
 
     expect(rendu.querySelector('app-bandeau-phase')).toBeTruthy();
     expect(rendu.querySelector('app-compteur-ressources')).toBeTruthy();
     expect(rendu.querySelector('app-entrainement-en-cours')).toBeTruthy();
+    expect(rendu.querySelector('app-commandes')).toBeTruthy();
     expect(rendu.querySelector('app-pile-monstres')).toBeTruthy();
     expect(rendu.querySelector('app-plateau-avancee')).toBeTruthy();
     expect(rendu.querySelector('app-portes-chateau')).toBeTruthy();
@@ -90,143 +181,146 @@ describe('Plateau', () => {
     expect(rendu.querySelector('app-chateau-hopital')).toBeTruthy();
   });
 
-  it('ouvre le marché au début de la phase d’entraînement, et le referme en la quittant', async () => {
-    const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
-    const choix = rendu.querySelectorAll<HTMLButtonElement>('.bandeau__choix');
+  it('prend ses chiffres sur l’état du moteur, plus sur des constantes', async () => {
+    const { rendu } = await table();
 
-    // La partie démarre en Entraînement : le marché est ouvert d'emblée.
-    expect(rendu.querySelector('app-cartes-dorees')).toBeTruthy();
-
-    choix[PHASES.indexOf('combat')].click();
-    await fixture.whenStable();
-    expect(rendu.querySelector('app-cartes-dorees')).toBeNull();
-
-    choix[PHASES.indexOf('entrainement')].click();
-    await fixture.whenStable();
-    expect(rendu.querySelector('app-cartes-dorees')).toBeTruthy();
-  });
-
-  it('se laisse congédier sans changer de phase', async () => {
-    // L'entraînement n'est jamais obligatoire (§6) : fermer le marché ne doit
-    // pas obliger à quitter la phase.
-    const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
-
-    rendu.querySelector<HTMLButtonElement>('.marche__fermer')?.click();
-    await fixture.whenStable();
-
-    expect(rendu.querySelector('app-cartes-dorees')).toBeNull();
-    expect(rendu.querySelector('app-bandeau-phase')?.getAttribute('data-phase')).toBe('entrainement');
+    expect(rendu.querySelector('.compteur__nombre')?.textContent?.trim()).toBe('16');
+    expect(rendu.querySelector('.ch__case')?.getAttribute('aria-label')).toContain('20 cartes restantes');
+    expect(rendu.querySelector('.pile__nombre')?.textContent?.trim()).toBe('15');
+    expect(rendu.querySelector('.bandeau__phase')?.textContent?.trim()).toBe(LIBELLES.entrainement.bandeau);
+    expect(rendu.querySelector('.bandeau__tour')?.textContent?.trim()).toBe('Tour 1');
   });
 
   it('retire du marché la carte partie au Garde du corps', async () => {
-    // Bella prend la Catapulte, qui existe en 4 exemplaires : il en reste 3 à
-    // l'entraînement.
-    const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
+    // Bella prend la Catapulte, qui existe en 4 exemplaires : le moteur en
+    // annonce 3 au marché.
+    const { rendu } = await table();
 
     expect(rendu.querySelector('.carte__stock')?.textContent?.trim()).toBe('Reste 3');
     expect(rendu.querySelector('app-cartes-royales img')?.getAttribute('src')).toContain('catapulte.webp');
   });
 
-  it('garde la carte choisie dans la colonne et referme le marché', async () => {
-    const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
+  /**
+   * Le cœur du ticket : la phase d'Avancée ne comporte aucune décision du
+   * joueur (§7). Une seule commande, et pas une de plus.
+   */
+  it('n’offre que les actions que la phase autorise', async () => {
+    const { rendu } = await table({
+      ...ETAT,
+      phase: 'avancee',
+      actionsPossibles: ['PHASE_SUIVANTE'],
+    });
+
+    const commandes = [...rendu.querySelectorAll('.commandes__bouton')].map((b) => b.textContent?.trim());
+    expect(commandes).toEqual(['Terminer la phase']);
+    // Et le marché est fermé : on n'y touche qu'en phase d'entraînement.
+    expect(rendu.querySelector('app-cartes-dorees')).toBeNull();
+  });
+
+  it('envoie l’action au moteur plutôt que de changer d’état lui-même', async () => {
+    const { fixture, rendu } = await table({
+      ...ETAT,
+      phase: 'avancee',
+      actionsPossibles: ['PHASE_SUIVANTE'],
+    });
+
+    rendu.querySelector<HTMLButtonElement>('.commandes__bouton')?.click();
+    await fixture.whenStable();
+
+    const requete = http().expectOne('/api/partie/action');
+    expect(requete.request.body).toEqual({ type: 'PHASE_SUIVANTE' });
+
+    requete.flush({ ...ETAT, phase: 'combat', tour: 1, actionsPossibles: ['PHASE_SUIVANTE'] });
+    await fixture.whenStable();
+    expect(rendu.querySelector('app-bandeau-phase')?.getAttribute('data-phase')).toBe('combat');
+  });
+
+  it('montre le motif d’un refus au lieu de l’avaler', async () => {
+    const { fixture, rendu } = await table({
+      ...ETAT,
+      phase: 'avancee',
+      actionsPossibles: ['PHASE_SUIVANTE'],
+    });
+
+    rendu.querySelector<HTMLButtonElement>('.commandes__bouton')?.click();
+    await fixture.whenStable();
+    http()
+      .expectOne('/api/partie/action')
+      .flush({ motif: 'Il faut resoudre le combat.' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+
+    expect(rendu.querySelector('.commandes__refus')?.textContent?.trim()).toBe(
+      'Il faut resoudre le combat.',
+    );
+  });
+
+  it('demande l’entraînement sur la carte choisie', async () => {
+    const { fixture, rendu } = await table();
 
     rendu.querySelector<HTMLButtonElement>('.carte__choisir')?.click();
     await fixture.whenStable();
 
+    const requete = http().expectOne('/api/partie/action');
+    expect(requete.request.body).toEqual({ type: 'CHOISIR_ENTRAINEMENT', carteDuMarche: 'catapulte' });
+    requete.flush(ETAT);
+  });
+
+  it('referme le marché une fois le jeton posé', async () => {
+    // Un seul jeton d'entraînement dans la boîte, donc un par tour (§2).
+    const { rendu } = await table({ ...ETAT, entrainementTente: true, entrainementChoisi: 'catapulte' });
+
     expect(rendu.querySelector('app-cartes-dorees')).toBeNull();
     expect(rendu.querySelector('.entrainement__nom')?.textContent?.trim()).toBe('Catapulte');
-    const valeurs = [...rendu.querySelectorAll('.entrainement__processus dd')].map((d) => d.textContent?.trim());
-    expect(valeurs).toEqual(['4', '5', 'OBJET']);
   });
 
-  it('n’affiche plus aucun scan de plateau', async () => {
-    // Les deux images de plateau ont été abandonnées : la table se dessine
-    // toute seule, en cases.
-    const fixture = await monter();
-    const sources = [...(fixture.nativeElement as HTMLElement).querySelectorAll('img')].map((i) =>
-      i.getAttribute('src'),
+  it('affiche les cartes en jeu avec la force que le moteur leur donne', async () => {
+    const { rendu } = await table({
+      ...ETAT,
+      champDeBataille: [
+        { id: 11, carte: 'fermier', famille: 'bleues', force: 1, pivotee: false },
+        { id: 12, carte: 'fermier', famille: 'bleues', force: 1, pivotee: true },
+      ],
+    });
+
+    // Deux exemplaires du même type : c'est l'identité qui les distingue.
+    expect(rendu.querySelectorAll('.jeu')).toHaveLength(2);
+    expect(rendu.querySelector('.zone__force')?.textContent?.trim()).toBe('force 2');
+    expect(rendu.querySelectorAll('.jeu--pivotee')).toHaveLength(1);
+  });
+
+  it('ne propose pas de pivoter une carte déjà activée', async () => {
+    const { rendu } = await table({
+      ...ETAT,
+      champDeBataille: [{ id: 12, carte: 'fermier', famille: 'bleues', force: 1, pivotee: true }],
+    });
+
+    const actions = [...rendu.querySelectorAll('.jeu__actions button')].map((b) =>
+      b.textContent?.replace(/\s+/g, ' ').trim(),
     );
-
-    expect(sources.some((s) => s?.includes('/plateaux/'))).toBe(false);
+    expect(actions.some((libelle) => libelle?.startsWith('Pivoter'))).toBe(false);
+    // Ni de l'échanger contre le Garde du corps : une carte activée est exclue (§9).
+    expect(actions.some((libelle) => libelle?.startsWith('Garde du corps'))).toBe(false);
   });
 
-  it('aligne la piste, les Portes et la pile sur les règles', async () => {
-    const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
+  it('ne propose le sacrifice qu’une fois la cible atteinte', async () => {
+    const enJeu = [{ id: 11, carte: 'fermier', famille: 'bleues' as const, force: 1, pivotee: false }];
+    const { rendu } = await table({
+      ...ETAT,
+      champDeBataille: enJeu,
+      entrainementTente: true,
+      entrainementChoisi: 'catapulte',
+      deficitEntrainement: 2,
+    });
 
-    expect(rendu.querySelectorAll('.avancee__case')).toHaveLength(3);
-    expect(rendu.querySelectorAll('.portes__case')).toHaveLength(3);
-    // 15 ennemis en jeu sur les 23 qui existent (§3).
-    expect(rendu.querySelector('.pile__nombre')?.textContent?.trim()).toBe('15');
+    const libelles = () =>
+      [...rendu.querySelectorAll('.jeu__actions button')].map((b) => b.textContent?.trim());
+    expect(libelles().some((l) => l?.startsWith('Sacrifier'))).toBe(false);
   });
 
-  it('démarre sur la phase d’entraînement', async () => {
-    const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
+  it('annonce la fin de la partie', async () => {
+    const { rendu } = await table({ ...ETAT, resultat: 'DEFAITE', ressources: 0, tour: 7 });
 
-    expect(rendu.querySelector('.bandeau__phase')?.textContent?.trim()).toBe(LIBELLES.entrainement.bandeau);
-    expect(rendu.querySelector('.zone__titre')?.textContent?.trim()).toBe(LIBELLES.entrainement.zoneDeJeu);
-  });
-
-  it('propage la phase choisie au bandeau et à la zone de jeu', async () => {
-    const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
-    const choix = rendu.querySelectorAll<HTMLButtonElement>('.bandeau__choix');
-
-    choix[PHASES.indexOf('boss')].click();
-    await fixture.whenStable();
-
-    expect(rendu.querySelector('.bandeau__phase')?.textContent?.trim()).toBe(LIBELLES.boss.bandeau);
-    expect(rendu.querySelector('app-bandeau-phase')?.getAttribute('data-phase')).toBe('boss');
-    // La zone de jeu suit : c'est la même phase qui la nomme et la colore.
-    expect(rendu.querySelector('app-zone-jeu')?.getAttribute('data-phase')).toBe('boss');
-    expect(rendu.querySelector('.zone__titre')?.textContent?.trim()).toBe(LIBELLES.boss.zoneDeJeu);
-  });
-
-  it('prend les ressources de départ sur la carte Roi/Reine', async () => {
-    // C'est le rôle choisi à la mise en place qui les fixe (§3), pas une
-    // constante de l'affichage.
-    const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
-
-    expect(rendu.querySelector('.compteur__nombre')?.textContent?.trim()).toBe('16');
-  });
-
-  it('affiche le Garde du corps que désigne la carte Roi/Reine', async () => {
-    const fixture = await monter();
-    const sources = [...(fixture.nativeElement as HTMLElement).querySelectorAll('app-cartes-royales img')].map(
-      (i) => i.getAttribute('src'),
-    );
-
-    expect(sources[0]).toContain('/cartes/scans/dorees/catapulte.webp');
-    expect(sources[1]).toContain('/cartes/scans/roi-reines/bella.webp');
-  });
-
-  it('donne au Château sa hauteur de départ', async () => {
-    const fixture = await monter();
-    const bouton = (fixture.nativeElement as HTMLElement).querySelector('.ch__case');
-
-    // 20 cartes Bleu tirées parmi les 40 (§3).
-    expect(bouton?.getAttribute('aria-label')).toContain('20 cartes restantes');
-  });
-
-  it('ajuste les ressources quand le compteur le demande', async () => {
-    const fixture = await monter();
-    const rendu = fixture.nativeElement as HTMLElement;
-    const nombre = () => rendu.querySelector('.compteur__nombre')?.textContent?.trim();
-    const [moins, plus] = rendu.querySelectorAll<HTMLButtonElement>('.compteur__reglage button');
-
-    plus.click();
-    await fixture.whenStable();
-    expect(nombre()).toBe('17');
-
-    moins.click();
-    moins.click();
-    await fixture.whenStable();
-    expect(nombre()).toBe('15');
+    expect(rendu.querySelector('.fin__titre')?.textContent?.trim()).toBe('Défaite');
+    expect(rendu.querySelector('.fin__detail')?.textContent).toContain('Tour 7');
   });
 });

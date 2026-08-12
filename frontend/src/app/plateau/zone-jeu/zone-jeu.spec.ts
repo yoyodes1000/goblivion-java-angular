@@ -1,7 +1,7 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, type ComponentFixture } from '@angular/core/testing';
 
-import { LIBELLES } from '../phase';
-import { ZoneJeu } from './zone-jeu';
+import { LIBELLES, type Phase } from '../phase';
+import { ZoneJeu, type CarteEnJeuVue } from './zone-jeu';
 
 describe('ZoneJeu', () => {
   beforeEach(async () => {
@@ -10,18 +10,99 @@ describe('ZoneJeu', () => {
     }).compileComponents();
   });
 
+  function carte(id: number, force: number, pivotee = false): CarteEnJeuVue {
+    return { id, nom: `Carte ${id}`, scan: `c${id}.webp`, famille: 'bleues', force, pivotee };
+  }
+
+  async function monter(
+    phase: Phase,
+    cartes: CarteEnJeuVue[] = [],
+    permissions: { pivot?: boolean; sacrifice?: boolean; echange?: boolean } = {},
+  ) {
+    const fixture = TestBed.createComponent(ZoneJeu);
+    fixture.componentRef.setInput('phase', phase);
+    fixture.componentRef.setInput('cartes', cartes);
+    fixture.componentRef.setInput('pivotPossible', permissions.pivot ?? false);
+    fixture.componentRef.setInput('sacrificePossible', permissions.sacrifice ?? false);
+    fixture.componentRef.setInput('echangePossible', permissions.echange ?? false);
+    await fixture.whenStable();
+    return fixture;
+  }
+
+  function libelles(fixture: ComponentFixture<ZoneJeu>): string[] {
+    return [...(fixture.nativeElement as HTMLElement).querySelectorAll('.jeu__actions button')].map(
+      (bouton) => bouton.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+    );
+  }
+
   it("s'appelle terrain d'entraînement pendant l'entraînement, champ de bataille ensuite", async () => {
     // C'est le même espace : seul son nom change (§9 des règles).
-    const fixture = TestBed.createComponent(ZoneJeu);
-    const titre = () => (fixture.nativeElement as HTMLElement).querySelector('.zone__titre')?.textContent?.trim();
+    const fixture = await monter('entrainement');
+    const titre = () =>
+      (fixture.nativeElement as HTMLElement).querySelector('.zone__titre')?.textContent?.trim();
 
-    fixture.componentRef.setInput('phase', 'entrainement');
-    await fixture.whenStable();
     expect(titre()).toBe(LIBELLES.entrainement.zoneDeJeu);
 
     fixture.componentRef.setInput('phase', 'combat');
     await fixture.whenStable();
-    expect(titre()).toBe(LIBELLES.combat.zoneDeJeu);
-    expect(titre()).toBe('Champ de bataille');
+    expect(titre()).toContain(LIBELLES.combat.zoneDeJeu);
+    expect(titre()).toContain('Champ de bataille');
+  });
+
+  it('le dit quand la zone est vide', async () => {
+    const fixture = await monter('entrainement');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.zone__vide')).toBeTruthy();
+  });
+
+  /** La somme affichée est celle qui compte : le Garde du corps n'y est pas (§9). */
+  it('totalise la force des cartes en jeu', async () => {
+    const fixture = await monter('combat', [carte(1, 2), carte(2, 3)]);
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(rendu.querySelectorAll('.jeu')).toHaveLength(2);
+    expect(rendu.querySelector('.zone__force')?.textContent?.trim()).toBe('force 5');
+  });
+
+  it('n’affiche aucune action tant que la phase n’en autorise pas', async () => {
+    const fixture = await monter('avancee', [carte(1, 2)]);
+    expect(libelles(fixture)).toEqual([]);
+  });
+
+  it('propose les actions que la phase autorise, sur chaque carte', async () => {
+    const fixture = await monter('entrainement', [carte(1, 2)], {
+      pivot: true,
+      sacrifice: true,
+      echange: true,
+    });
+
+    expect(libelles(fixture)).toEqual(['Pivoter Carte 1', 'Sacrifier Carte 1', 'Garde du corps : Carte 1']);
+  });
+
+  /**
+   * Une carte activée est hors jeu pour ces deux-là : on ne la pivote pas deux
+   * fois, et on ne l'échange pas contre le Garde du corps (§9). Le bouton
+   * n'existe pas, plutôt que d'exister et de se faire refuser.
+   */
+  it('retire pivot et échange sur une carte déjà activée', async () => {
+    const fixture = await monter('combat', [carte(1, 2, true)], { pivot: true, echange: true });
+
+    expect(libelles(fixture)).toEqual([]);
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('.jeu--pivotee')).toHaveLength(1);
+  });
+
+  it('désigne l’exemplaire visé, pas son type', async () => {
+    // Deux Fermiers portent le même nom : c'est l'identité qui les distingue,
+    // et c'est elle qui doit partir au moteur.
+    const fixture = await monter('entrainement', [carte(11, 1), carte(12, 1)], { pivot: true });
+    const vises: number[] = [];
+    fixture.componentInstance.pivoterDemande.subscribe((id) => vises.push(id));
+
+    const boutons = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
+      '.jeu__actions button',
+    );
+    boutons[1].click();
+    await fixture.whenStable();
+
+    expect(vises).toEqual([12]);
   });
 });

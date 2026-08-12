@@ -1,0 +1,128 @@
+package fr.goblivion.api;
+
+import java.util.List;
+import java.util.Map;
+
+import fr.goblivion.cartes.CarteBoss;
+import fr.goblivion.cartes.Famille;
+import fr.goblivion.partie.CarteEnJeu;
+import fr.goblivion.partie.Difficulte;
+import fr.goblivion.partie.Partie;
+import fr.goblivion.partie.Phase;
+import fr.goblivion.partie.Resultat;
+import fr.goblivion.partie.TypeAction;
+
+/**
+ * Ce que le frontend reçoit d'une partie.
+ *
+ * <p>Les cartes n'y voyagent que par leur <strong>identifiant</strong> : ni nom,
+ * ni force imprimée, ni action. Le frontend charge déjà le catalogue pour
+ * composer les adresses de scans, et le renvoyer sur chaque requête ferait de
+ * chaque état une copie du contenu Goblivion Games. L'API dit <em>où sont les
+ * cartes</em> ; le catalogue dit <em>ce qu'elles sont</em>.
+ *
+ * <p>Deux champs font exception et sont calculés ici parce que le frontend ne
+ * pourrait pas les recalculer sans réimplémenter les règles : les forces en
+ * présence, et {@code actionsPossibles}.
+ */
+public record EtatPartie(
+        Phase phase,
+        int tour,
+        int ressources,
+        Resultat resultat,
+        Difficulte difficulte,
+        String role,
+        CarteVue gardeDuCorps,
+        Map<String, Integer> marche,
+        int tailleChateau,
+        int taillePileEnnemie,
+        List<CarteVue> champDeBataille,
+        List<CarteVue> hopital,
+        List<EnnemiVue> piste,
+        List<EnnemiVue> portes,
+        List<String> bossRestants,
+        List<TypeAction> actionsPossibles,
+        int forceAlliee,
+        int forceEnnemie,
+        String entrainementChoisi,
+        int deficitEntrainement,
+        boolean entrainementTente,
+        boolean combatResolu,
+        boolean premierCombatGagne,
+        boolean gardeDuCorpsEchange,
+        boolean pouvoirRoiReineUtilise,
+        int jetonsBonusAllie,
+        List<String> journal) {
+
+    public static EtatPartie de(Partie partie) {
+        return new EtatPartie(
+                partie.phase(),
+                partie.tour(),
+                partie.ressources(),
+                partie.resultat(),
+                partie.difficulte(),
+                partie.role().id(),
+                partie.gardeDuCorps().map(carte -> CarteVue.de(partie, carte)).orElse(null),
+                partie.marche(),
+                partie.chateau().size(),
+                partie.taillePileEnnemie(),
+                partie.champDeBataille().stream().map(carte -> CarteVue.de(partie, carte)).toList(),
+                partie.hopital().stream().map(carte -> CarteVue.de(partie, carte)).toList(),
+                // La piste porte des trous : une case vide est un `null`, et c'est
+                // exactement ce que l'affichage doit montrer.
+                partie.piste().stream().map(carte -> EnnemiVue.de(partie, carte)).toList(),
+                partie.portes().stream().map(carte -> EnnemiVue.de(partie, carte)).toList(),
+                partie.bossRestants().stream().map(CarteBoss::id).toList(),
+                TypeAction.permisesEn(partie.phase()),
+                partie.forceAlliee(),
+                partie.forceEnnemie(),
+                partie.entrainementChoisi().map(carte -> carte.id()).orElse(null),
+                partie.deficitEntrainement(),
+                partie.entrainementTente(),
+                partie.combatResolu(),
+                partie.premierCombatGagne(),
+                partie.gardeDuCorpsEchange(),
+                partie.pouvoirRoiReineUtilise(),
+                partie.jetonsBonusAllie(),
+                partie.journal());
+    }
+
+    /**
+     * Un exemplaire côté joueur.
+     *
+     * @param id    l'identité de l'exemplaire, celle que les actions désignent
+     * @param carte l'identifiant de <em>type</em>, qui renvoie au catalogue du frontend
+     * @param force l'apport réel, jetons et forces variables compris — le
+     *              frontend ne peut pas le déduire de la valeur imprimée
+     */
+    public record CarteVue(long id, String carte, Famille famille, int force, boolean pivotee) {
+
+        static CarteVue de(Partie partie, CarteEnJeu carte) {
+            return new CarteVue(carte.id(), carte.carteId(), carte.famille(),
+                    partie.forceEffective(carte), carte.pivotee());
+        }
+    }
+
+    /**
+     * Un ennemi, sur la piste ou aux Portes.
+     *
+     * <p>{@code carte} vaut {@code null} tant que l'ennemi est face cachée : le
+     * frontend ne doit pas pouvoir afficher ce que le joueur n'a pas le droit de
+     * voir. C'est une règle du jeu, pas une précaution de sécurité — mais elle se
+     * tient au même endroit, à la frontière.
+     */
+    public record EnnemiVue(long id, String carte, boolean revelee, int force, int jetonEnnemi) {
+
+        static EnnemiVue de(Partie partie, CarteEnJeu carte) {
+            if (carte == null) {
+                return null;
+            }
+            return new EnnemiVue(
+                    carte.id(),
+                    carte.revelee() ? carte.carteId() : null,
+                    carte.revelee(),
+                    carte.revelee() ? partie.forceEnnemi(carte) : 0,
+                    carte.jetonEnnemi());
+        }
+    }
+}

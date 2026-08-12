@@ -47,6 +47,14 @@ Frontend (port 4200) :
 cd frontend && npm start
 ```
 
+**Les deux sont nécessaires** depuis le ticket 12 : la partie est tenue par le
+backend, et le serveur de développement renvoie `/api` vers le port 8080
+(`frontend/proxy.conf.json`). Sans backend, l'écran de choix de difficulté
+affiche « Le moteur ne répond pas ».
+
+Le backend lit `data/cartes/` au démarrage. Sans ces fichiers il démarre quand
+même, mais refuse de mettre une partie en place — et le dit.
+
 ## Contenu sous droits — non inclus
 
 Goblivion est une œuvre de **Goblivion Games** (© 2023). Les scans de cartes,

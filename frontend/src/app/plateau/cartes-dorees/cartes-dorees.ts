@@ -75,41 +75,38 @@ import type { CarteDoree, OffreMarche } from '../../cartes/modele';
           </li>
         }
       </ol>
-
-      <!--
-        Provisoire, comme le sélecteur de phase : sans lui, les six cartes
-        2 épées resteraient grisées pour toujours. À retirer au ticket 12,
-        quand la partie saura si un combat a été gagné.
-      -->
-      <footer class="marche__pied">
-        <label class="marche__simulation">
-          <input
-            type="checkbox"
-            [checked]="combatGagne()"
-            (change)="combatGagneBascule.emit(!combatGagne())"
-          />
-          Simuler un combat gagné (provisoire)
-        </label>
-      </footer>
     </div>
   `,
   styleUrl: './cartes-dorees.scss',
 })
 export class CartesDorees {
   readonly offres = input.required<readonly OffreMarche[]>();
+
+  /**
+   * Vient de la partie depuis le ticket 12 : c'est le moteur qui sait qu'un
+   * combat a été gagné. La case « simuler » qui tenait cette place a disparu
+   * avec lui.
+   */
   readonly combatGagne = input.required<boolean>();
+
+  /**
+   * Faux une fois le jeton d'entraînement posé : il n'y en a qu'un dans la
+   * boîte, donc un seul entraînement par tour (§2). La fenêtre reste ouvrable
+   * — consulter le marché fait partie du plan — mais on n'y choisit plus.
+   */
+  readonly choixPossible = input(true);
 
   readonly entrainementDemande = output<CarteDoree>();
   readonly fermeture = output<void>();
-  readonly combatGagneBascule = output<boolean>();
 
   /** Les 2 épées ne s'ouvrent qu'après un premier combat gagné (§6). */
   protected disponible(offre: OffreMarche): boolean {
-    return offre.restant > 0 && (offre.carte.niveau === 1 || this.combatGagne());
+    return this.choixPossible() && offre.restant > 0 && (offre.carte.niveau === 1 || this.combatGagne());
   }
 
   /** La raison est écrite : un grisé seul ne dit rien à qui ne le distingue pas. */
   protected raisonIndisponible(offre: OffreMarche): string {
+    if (!this.choixPossible()) return 'Jeton d’entraînement déjà posé';
     if (offre.restant === 0) return 'Plus aucun exemplaire';
     return 'Après un premier combat gagné';
   }

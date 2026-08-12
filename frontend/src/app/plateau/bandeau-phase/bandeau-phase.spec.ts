@@ -11,9 +11,10 @@ describe('BandeauPhase', () => {
   });
 
   /** Monte le bandeau sur une phase donnée et attend le rendu. */
-  async function monter(phase: Phase) {
+  async function monter(phase: Phase, tour = 1) {
     const fixture = TestBed.createComponent(BandeauPhase);
     fixture.componentRef.setInput('phase', phase);
+    fixture.componentRef.setInput('tour', tour);
     await fixture.whenStable();
     return fixture;
   }
@@ -33,27 +34,18 @@ describe('BandeauPhase', () => {
     expect((fixture.nativeElement as HTMLElement).getAttribute('data-phase')).toBe('boss');
   });
 
-  it('marque la phase en cours autrement que par la couleur', async () => {
-    const fixture = await monter('combat');
-    const rendu = fixture.nativeElement as HTMLElement;
-    const choix = [...rendu.querySelectorAll<HTMLButtonElement>('.bandeau__choix')];
-    const presses = choix.filter((bouton) => bouton.getAttribute('aria-pressed') === 'true');
-
-    expect(presses).toHaveLength(1);
-    expect(presses[0].textContent?.trim()).toBe(LIBELLES.combat.bandeau);
+  it('affiche le tour en cours', async () => {
+    const fixture = await monter('avancee', 4);
+    expect((fixture.nativeElement as HTMLElement).querySelector('.bandeau__tour')?.textContent?.trim()).toBe(
+      'Tour 4',
+    );
   });
 
-  it('demande le changement de phase au clic sans se le donner à lui-même', async () => {
+  it('n’offre plus aucun moyen de changer de phase', async () => {
+    // Le sélecteur provisoire est parti au ticket 12 : on change de phase en
+    // jouant, et c'est le moteur qui décide — y compris de sauter le combat
+    // quand les Portes sont vides. Un bouton ici court-circuiterait la règle.
     const fixture = await monter('entrainement');
-    const demandes: Phase[] = [];
-    fixture.componentInstance.changementDemande.subscribe((phase) => demandes.push(phase));
-
-    const choix = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.bandeau__choix');
-    choix[PHASES.indexOf('avancee')].click();
-    await fixture.whenStable();
-
-    expect(demandes).toEqual(['avancee']);
-    // Le bandeau reste sur sa phase : c'est le plateau qui décide.
-    expect(fixture.componentInstance.phase()).toBe('entrainement');
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('button')).toHaveLength(0);
   });
 });

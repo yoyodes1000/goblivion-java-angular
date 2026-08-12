@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { LIBELLES, PHASES, type Phase } from '../phase';
+import { LIBELLES, type Phase } from '../phase';
 
 /**
  * Bandeau de phase — étape 1 du ticket 9.
@@ -9,6 +9,11 @@ import { LIBELLES, PHASES, type Phase } from '../phase';
  * de couleur et de texte. La couleur passe par un attribut `data-phase` plutôt
  * que par une classe calculée, pour que les quatre paires fond/texte tiennent
  * au même endroit dans `styles.scss` — c'est là qu'on vérifie le contraste.
+ *
+ * Le sélecteur de phase provisoire a disparu au ticket 12 : la phase vient de
+ * la partie tenue par le moteur, et on en change en jouant, pas en la
+ * choisissant. Ce composant n'a donc plus aucune sortie — il annonce, il ne
+ * commande pas.
  */
 @Component({
   selector: 'app-bandeau-phase',
@@ -19,32 +24,13 @@ import { LIBELLES, PHASES, type Phase } from '../phase';
   },
   template: `
     <p class="bandeau__phase" aria-live="polite">{{ libelle() }}</p>
-
-    <!--
-      Sélecteur provisoire. Tant que le backend ne pilote pas le tour
-      (ticket 12), c'est le seul moyen de voir les quatre bandeaux. À retirer
-      quand la phase viendra de la partie en cours.
-    -->
-    <div class="bandeau__selecteur" role="group" aria-label="Changer de phase (provisoire)">
-      @for (p of phases; track p) {
-        <button
-          type="button"
-          class="bandeau__choix"
-          [attr.aria-pressed]="p === phase()"
-          (click)="changementDemande.emit(p)"
-        >
-          {{ libelles[p].bandeau }}
-        </button>
-      }
-    </div>
+    <p class="bandeau__tour">Tour {{ tour() }}</p>
   `,
   styleUrl: './bandeau-phase.scss',
 })
 export class BandeauPhase {
   readonly phase = input.required<Phase>();
-  readonly changementDemande = output<Phase>();
+  readonly tour = input.required<number>();
 
-  protected readonly phases = PHASES;
-  protected readonly libelles = LIBELLES;
   protected readonly libelle = computed(() => LIBELLES[this.phase()].bandeau);
 }

@@ -32,31 +32,3 @@
   font-size: 0.65rem;
   color: #7b8794;
 }
-
-.compteur__reglage {
-  display: flex;
-  gap: 0.25rem;
-  margin-top: 0.4rem;
-}
-
-.compteur__reglage button {
-  flex: 1;
-  padding: 0.15rem 0;
-  font: inherit;
-  font-size: 0.85rem;
-  line-height: 1.2;
-  color: inherit;
-  cursor: pointer;
-  background: #323f4b;
-  border: 1px solid transparent;
-  border-radius: 0.2rem;
-}
-
-.compteur__reglage button:hover {
-  background: #3e4c59;
-}
-
-.compteur__reglage button:focus-visible {
-  outline: 2px solid currentcolor;
-  outline-offset: 2px;
-}
