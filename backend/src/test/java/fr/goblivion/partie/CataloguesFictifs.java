@@ -50,6 +50,26 @@ public final class CataloguesFictifs {
         return new Catalogue(bleues(), dorees(), roles(), boss(), ennemis());
     }
 
+    /**
+     * Le même catalogue, mais {@link #BLEUE_HUMAIN} y porte un effet transcrit.
+     *
+     * <p>Les comptes sont inchangés — mise en place et tirages se comportent
+     * exactement pareil. Seule la carte agit, ce qui permet de vérifier que le
+     * moteur déclenche vraiment ce que la transcription annonce.
+     */
+    public static Catalogue avecEffetSurHumain(fr.goblivion.effets.EffetCarte effet) {
+        Catalogue base = catalogue();
+        List<CarteBleue> bleues = base.bleues().stream()
+                .map(carte -> carte.id().equals(BLEUE_HUMAIN)
+                        ? new CarteBleue(carte.id(), carte.nom(), carte.type(), carte.scan(),
+                                carte.force(), carte.forceVariable(), carte.niveau(),
+                                carte.action(), carte.exemplaires(), List.of(effet))
+                        : carte)
+                .toList();
+        return new Catalogue(bleues, base.dorees(), base.roiReines(), base.boss(),
+                base.ennemisObjets());
+    }
+
     /** 3 types, 40 exemplaires — le compte du vrai matériel (§2). */
     private static List<CarteBleue> bleues() {
         return List.of(

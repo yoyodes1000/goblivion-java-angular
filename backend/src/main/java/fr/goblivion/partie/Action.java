@@ -18,10 +18,17 @@ import java.util.List;
  *                      joueur répartit sa force sur les ennemis qu'il veut
  *                      abattre malgré un combat perdu (§8)
  */
-public record Action(TypeAction type, String carteDuMarche, Long carteEnJeu, List<Long> cibles) {
+public record Action(TypeAction type, String carteDuMarche, Long carteEnJeu, List<Long> cibles,
+        List<Integer> options) {
 
     public Action {
         cibles = cibles == null ? List.of() : List.copyOf(cibles);
+        options = options == null ? List.of() : List.copyOf(options);
+    }
+
+    /** Sans branche retenue — la plupart des actions n'offrent aucun {@code ou}. */
+    public Action(TypeAction type, String carteDuMarche, Long carteEnJeu, List<Long> cibles) {
+        this(type, carteDuMarche, carteEnJeu, cibles, List.of());
     }
 
     public static Action de(TypeAction type) {
@@ -38,6 +45,15 @@ public record Action(TypeAction type, String carteDuMarche, Long carteEnJeu, Lis
 
     public static Action surCibles(TypeAction type, List<Long> cibles) {
         return new Action(type, null, null, cibles);
+    }
+
+    /**
+     * Une carte à activer, les cibles que son effet réclame, et les branches
+     * retenues face à un {@code ou} — tout ce qu'une action peut demander.
+     */
+    public static Action surCarteAvecChoix(TypeAction type, long carteEnJeu, List<Long> cibles,
+            List<Integer> options) {
+        return new Action(type, null, carteEnJeu, cibles, options);
     }
 
     String exigeCarteDuMarche() {

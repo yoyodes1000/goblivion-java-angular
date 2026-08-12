@@ -20,6 +20,7 @@ import fr.goblivion.cartes.ForceVariable;
 import fr.goblivion.cartes.Paysan;
 import fr.goblivion.cartes.RoiReine;
 import fr.goblivion.cartes.TypeCarte;
+import fr.goblivion.effets.EffetCarte;
 
 /**
  * L'état d'une partie et ses opérations élémentaires.
@@ -657,6 +658,25 @@ public final class Partie {
 
     void noter(String evenement) {
         journal.add("[T%d %s] %s".formatted(tour, phase, evenement));
+    }
+
+    /**
+     * Les effets transcrits d'un exemplaire.
+     *
+     * <p>Une carte Ennemi/Objet en porte deux jeux, et lequel s'applique dépend
+     * d'où elle est : aux Portes elle est l'ennemi, ailleurs elle est devenue
+     * l'objet qu'on a gagné en l'abattant (§4). Le même partage que
+     * {@link #nomDe(CarteEnJeu)}, pour la même raison.
+     */
+    public List<EffetCarte> effetsDe(CarteEnJeu carte) {
+        if (carte.famille() == Famille.ENNEMIS_OBJETS && portes.contains(carte)) {
+            return catalogue.ennemiObjet(carte.carteId())
+                    .map(c -> c.ennemi().effets())
+                    .orElse(List.of());
+        }
+        return catalogue.paysan(carte.famille(), carte.carteId())
+                .map(Paysan::effets)
+                .orElse(List.of());
     }
 
     /** La nature d'un exemplaire, pour vérifier un sacrifice d'entraînement (§6). */

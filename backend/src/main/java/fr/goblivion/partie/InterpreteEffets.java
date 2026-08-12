@@ -52,6 +52,11 @@ class InterpreteEffets {
             return new Choix(List.of(), List.of());
         }
 
+        /** Une copie intacte, pour parcourir l'effet sans consommer les vraies réponses. */
+        Choix copie() {
+            return new Choix(List.copyOf(cartes), List.copyOf(options));
+        }
+
         long carteSuivante(String pourquoi) {
             Long carte = cartes.pollFirst();
             if (carte == null) {
@@ -74,35 +79,81 @@ class InterpreteEffets {
         }
     }
 
+    /**
+     * Vérifie d'abord, applique ensuite.
+     *
+     * <p>Un effet touche facilement plusieurs zones, et une désignation
+     * manquante n'apparaît qu'au milieu du parcours — « Détruis une carte en jeu
+     * puis Piocher 1 » aurait déjà détruit quand il refuse. La première passe
+     * emprunte exactement le même chemin sur une copie des réponses, sans rien
+     * modifier : si elle refuse, rien n'a bougé.
+     *
+     * <p>C'est le principe que le ticket 12 applique déjà à la répartition du
+     * combat — valider avant de prélever. Le refus après coup laisserait la
+     * partie à moitié modifiée par une action qui a échoué.
+     */
     void executer(EffetCarte porte, CarteEnJeu source, Choix choix) {
-        executer(porte.effet(), source, choix);
+        verifier(porte, source, choix);
+        parcourir(porte.effet(), source, new Passe(true, choix));
     }
 
-    private void executer(Effet effet, CarteEnJeu source, Choix choix) {
+    /**
+     * La seule passe de vérification, sans rien appliquer.
+     *
+     * <p>Utile au moteur avant de marquer une carte activée : sans elle, un
+     * effet refusé consommerait le Pivoter de la carte sans rien rendre en
+     * échange.
+     */
+    void verifier(EffetCarte porte, CarteEnJeu source, Choix choix) {
+        parcourir(porte.effet(), source, new Passe(false, choix.copie()));
+    }
+
+    /**
+     * Une traversée de l'effet — la même pour vérifier et pour appliquer.
+     *
+     * <p>Un seul parcours pour les deux usages, sans quoi les deux finiraient
+     * par diverger et la vérification approuverait ce que l'exécution refuse.
+     *
+     * @param appliquer  {@code false} pour la passe de vérification
+     * @param consommees les exemplaires déjà pris pendant la vérification : sans
+     *                   ce suivi, défausser deux fois la même carte passerait le
+     *                   contrôle puis échouerait à l'application
+     */
+    private record Passe(boolean appliquer, Choix choix, java.util.Set<Long> consommees) {
+
+        Passe(boolean appliquer, Choix choix) {
+            this(appliquer, choix, new java.util.HashSet<>());
+        }
+    }
+
+    private void parcourir(Effet effet, CarteEnJeu source, Passe passe) {
         switch (effet) {
-            case Effet.Ressource e -> ressource(e.montant());
-            case Effet.Piocher e -> partie.piocher(e.nombre());
-            case Effet.Defausser e -> defausser(e.nombre(), choix);
+            case Effet.Ressource e -> siApplique(passe, () -> ressource(e.montant()));
+            case Effet.Piocher e -> siApplique(passe, () -> partie.piocher(e.nombre()));
+            case Effet.Defausser e -> defausser(e.nombre(), passe);
 
-            case Effet.JetonBanniere e -> ciblesDe(e.cible(), source, choix)
-                    .forEach(carte -> carte.ajouterJetonBanniere(e.valeur()));
-            case Effet.JetonEnnemi e -> source.attribuerJetonEnnemi(source.jetonEnnemi() + e.valeur());
-            case Effet.AvanceeEnnemie e -> partie.avancerEnnemi();
+            case Effet.JetonBanniere e -> ciblesDe(e.cible(), source, passe)
+                    .forEach(carte -> siApplique(passe, () -> carte.ajouterJetonBanniere(e.valeur())));
+            case Effet.JetonEnnemi e -> siApplique(passe,
+                    () -> exigerSource(source).attribuerJetonEnnemi(
+                            exigerSource(source).jetonEnnemi() + e.valeur()));
+            case Effet.AvanceeEnnemie e -> siApplique(passe, partie::avancerEnnemi);
 
-            case Effet.Detruire e -> detruire(e.cible(), source, choix);
-            case Effet.EnvoyerALHopital e -> ciblesDe(e.cible(), source, choix)
-                    .forEach(this::versLHopital);
-            case Effet.RamenerDeLHopital e -> ramener(e.cible(), e.jetonBanniere(), choix);
+            case Effet.Detruire e -> detruire(e.cible(), source, passe);
+            case Effet.EnvoyerALHopital e -> ciblesDe(e.cible(), source, passe)
+                    .forEach(carte -> siApplique(passe, () -> versLHopital(carte)));
+            case Effet.RamenerDeLHopital e -> ramener(e.cible(), e.jetonBanniere(), passe);
 
-            case Effet.MelangerHopitalAuChateau e -> partie.melangerHopitalAuChateau();
-            case Effet.MelangerChateau e -> partie.melangerChateau();
-            case Effet.AjouterCarteBoss e -> ajouterUnBoss();
-            case Effet.Reactiver e -> reactiver(e.nombre(), e.cible(), choix);
+            case Effet.MelangerHopitalAuChateau e -> siApplique(passe,
+                    partie::melangerHopitalAuChateau);
+            case Effet.MelangerChateau e -> siApplique(passe, partie::melangerChateau);
+            case Effet.AjouterCarteBoss e -> siApplique(passe, this::ajouterUnBoss);
+            case Effet.Reactiver e -> reactiver(e.nombre(), e.cible(), passe);
 
-            case Effet.Sequence e -> e.effets().forEach(sous -> executer(sous, source, choix));
-            case Effet.Choix e -> executer(e.options().get(choix.optionSuivante(e.options().size())),
-                    source, choix);
-            case Effet.PourChaque e -> repeter(e, source, choix);
+            case Effet.Sequence e -> e.effets().forEach(sous -> parcourir(sous, source, passe));
+            case Effet.Choix e -> parcourir(
+                    e.options().get(passe.choix().optionSuivante(e.options().size())), source, passe);
+            case Effet.PourChaque e -> repeter(e, source, passe);
 
             // Ces briques attendent leur tour : la vision et la pose demandent
             // une interface, les copies et les durees demandent au moteur de
@@ -125,6 +176,20 @@ class InterpreteEffets {
 
     // ------------------------------------------------------------------ briques
 
+    /** N'agit qu'à la passe d'application ; la vérification ne fait que passer. */
+    private void siApplique(Passe passe, Runnable action) {
+        if (passe.appliquer()) {
+            action.run();
+        }
+    }
+
+    private CarteEnJeu exigerSource(CarteEnJeu source) {
+        if (source == null) {
+            throw new ActionInterdite("Cet effet porte sur une carte, et il n'y en a pas.");
+        }
+        return source;
+    }
+
     private void ressource(int montant) {
         if (montant >= 0) {
             partie.gagnerRessources(montant);
@@ -137,27 +202,33 @@ class InterpreteEffets {
      * Défausser envoie à l'Hôpital — la carte pourra revenir. C'est ce qui la
      * sépare de {@link Partie#detruire(CarteEnJeu)}.
      */
-    private void defausser(int nombre, Choix choix) {
+    private void defausser(int nombre, Passe passe) {
         for (int i = 0; i < nombre; i++) {
-            CarteEnJeu carte = enJeu(choix.carteSuivante("une carte a defausser"));
-            partie.retirerDuChampDeBataille(carte.id());
-            carte.redresser();
-            partie.poserAlHopital(carte);
-            partie.noter("%s est defaussee.".formatted(partie.nomDe(carte)));
+            CarteEnJeu carte = enJeu(passe.choix().carteSuivante("une carte a defausser"), passe);
+            siApplique(passe, () -> {
+                partie.retirerDuChampDeBataille(carte.id());
+                carte.redresser();
+                partie.poserAlHopital(carte);
+                partie.noter("%s est defaussee.".formatted(partie.nomDe(carte)));
+            });
         }
     }
 
-    private void detruire(Cible cible, CarteEnJeu source, Choix choix) {
+    private void detruire(Cible cible, CarteEnJeu source, Passe passe) {
         if (cible == Cible.PROCHAINE_DU_CHATEAU) {
-            CarteEnJeu dessus = partie.retirerDuDessusDuChateau();
-            if (dessus == null) {
-                partie.noter("Rien a detruire : le Chateau est vide.");
-            } else {
-                partie.noter("%s est detruite depuis le Chateau.".formatted(partie.nomDe(dessus)));
-            }
+            siApplique(passe, () -> {
+                CarteEnJeu dessus = partie.retirerDuDessusDuChateau();
+                if (dessus == null) {
+                    partie.noter("Rien a detruire : le Chateau est vide.");
+                } else {
+                    partie.noter("%s est detruite depuis le Chateau."
+                            .formatted(partie.nomDe(dessus)));
+                }
+            });
             return;
         }
-        ciblesDe(cible, source, choix).forEach(partie::detruire);
+        ciblesDe(cible, source, passe)
+                .forEach(carte -> siApplique(passe, () -> partie.detruire(carte)));
     }
 
     private void versLHopital(CarteEnJeu carte) {
@@ -167,32 +238,37 @@ class InterpreteEffets {
         partie.noter("%s part a l'Hopital.".formatted(partie.nomDe(carte)));
     }
 
-    private void ramener(Cible cible, int jetonBanniere, Choix choix) {
-        CarteEnJeu carte = partie.retirerDeLHopital(
-                choix.carteSuivante("une carte de l'Hopital a ramener"));
+    private void ramener(Cible cible, int jetonBanniere, Passe passe) {
+        CarteEnJeu carte = aLHopital(
+                passe.choix().carteSuivante("une carte de l'Hopital a ramener"), passe);
         exigerType(carte, cible);
-        carte.redresser();
-        if (jetonBanniere != 0) {
-            carte.ajouterJetonBanniere(jetonBanniere);
-        }
-        partie.poserAuChampDeBataille(carte);
-        partie.noter("%s revient de l'Hopital.".formatted(partie.nomDe(carte)));
+        siApplique(passe, () -> {
+            partie.retirerDeLHopital(carte.id());
+            carte.redresser();
+            if (jetonBanniere != 0) {
+                carte.ajouterJetonBanniere(jetonBanniere);
+            }
+            partie.poserAuChampDeBataille(carte);
+            partie.noter("%s revient de l'Hopital.".formatted(partie.nomDe(carte)));
+        });
     }
 
-    private void reactiver(int nombre, Cible cible, Choix choix) {
+    private void reactiver(int nombre, Cible cible, Passe passe) {
         if (cible != Cible.UNE_CARTE_EN_JEU) {
             pasEncore("Reactiver autre chose qu'une carte en jeu");
             return;
         }
         for (int i = 0; i < nombre; i++) {
-            CarteEnJeu carte = enJeu(choix.carteSuivante("une carte a reactiver"));
+            CarteEnJeu carte = enJeu(passe.choix().carteSuivante("une carte a reactiver"), passe);
             if (!carte.pivotee()) {
                 throw new ActionInterdite(
                         "%s n'est pas activee : la reactiver n'a pas de sens."
                                 .formatted(partie.nomDe(carte)));
             }
-            carte.redresser();
-            partie.noter("%s est reactivee.".formatted(partie.nomDe(carte)));
+            siApplique(passe, () -> {
+                carte.redresser();
+                partie.noter("%s est reactivee.".formatted(partie.nomDe(carte)));
+            });
         }
     }
 
@@ -208,7 +284,7 @@ class InterpreteEffets {
                         () -> partie.noter("Aucun Boss disponible a ajouter."));
     }
 
-    private void repeter(Effet.PourChaque effet, CarteEnJeu source, Choix choix) {
+    private void repeter(Effet.PourChaque effet, CarteEnJeu source, Passe passe) {
         int fois = switch (effet.quantite()) {
             case OBJET_A_L_HOPITAL -> (int) partie.hopital().stream()
                     .filter(carte -> partie.typeDe(carte).orElse(null) == TypeCarte.OBJET)
@@ -220,15 +296,23 @@ class InterpreteEffets {
                     .count();
         };
         for (int i = 0; i < fois; i++) {
-            executer(effet.effet(), source, choix);
+            parcourir(effet.effet(), source, passe);
         }
     }
 
     // ------------------------------------------------------------------ cibles
 
-    private List<CarteEnJeu> ciblesDe(Cible cible, CarteEnJeu source, Choix choix) {
+    private List<CarteEnJeu> ciblesDe(Cible cible, CarteEnJeu source, Passe passe) {
         return switch (cible) {
-            case SOI_MEME -> List.of(source);
+            // Un pouvoir royal ou une action de Boss n'a pas de carte porteuse :
+            // s'y référer serait une transcription fautive, pas un coup du joueur.
+            case SOI_MEME -> {
+                if (source == null) {
+                    throw new ActionInterdite(
+                            "Cet effet se vise lui-meme mais ne porte sur aucune carte.");
+                }
+                yield List.of(source);
+            }
 
             case CHAQUE_OBJET -> partie.champDeBataille().stream()
                     .filter(carte -> partie.typeDe(carte).orElse(null) == TypeCarte.OBJET)
@@ -243,11 +327,12 @@ class InterpreteEffets {
                     .map(List::of)
                     .orElse(List.of());
 
-            case UNE_CARTE_EN_JEU -> List.of(enJeu(choix.carteSuivante("une carte en jeu")));
+            case UNE_CARTE_EN_JEU -> List.of(
+                    enJeu(passe.choix().carteSuivante("une carte en jeu"), passe));
             case UNE_CARTE_HOPITAL -> List.of(aLHopital(
-                    choix.carteSuivante("une carte de l'Hopital")));
+                    passe.choix().carteSuivante("une carte de l'Hopital"), passe));
             case UN_OBJET, UN_PAYSAN_HUMAIN, UNE_CARTE_DE_FORCE_1_ET_PLUS -> {
-                CarteEnJeu carte = enJeu(choix.carteSuivante(descriptionDe(cible)));
+                CarteEnJeu carte = enJeu(passe.choix().carteSuivante(descriptionDe(cible)), passe);
                 exigerType(carte, cible);
                 yield List.of(carte);
             }
@@ -296,14 +381,29 @@ class InterpreteEffets {
         };
     }
 
-    private CarteEnJeu enJeu(long id) {
+    private CarteEnJeu enJeu(long id, Passe passe) {
+        marquerConsommee(id, passe);
         return partie.chercherAuChampDeBataille(id)
                 .orElseThrow(() -> new ActionInterdite("Cette carte n'est pas en jeu."));
     }
 
-    private CarteEnJeu aLHopital(long id) {
+    private CarteEnJeu aLHopital(long id, Passe passe) {
+        marquerConsommee(id, passe);
         return partie.chercherALHopital(id)
                 .orElseThrow(() -> new ActionInterdite("Cette carte n'est pas a l'Hopital."));
+    }
+
+    /**
+     * Un même exemplaire ne peut pas servir deux fois dans un même effet.
+     *
+     * <p>Sans ce suivi, « Défausser 2 » en désignant deux fois la même carte
+     * passerait la vérification — qui ne retire rien — puis échouerait à
+     * l'application, exactement le cas que la double passe existe pour éviter.
+     */
+    private void marquerConsommee(long id, Passe passe) {
+        if (!passe.consommees().add(id)) {
+            throw new ActionInterdite("La meme carte est designee deux fois.");
+        }
     }
 
     private void pasEncore(String quoi) {
