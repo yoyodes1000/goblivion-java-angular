@@ -29,7 +29,7 @@ public sealed interface Paysan permits CarteBleue, CarteDoree, CarteEnnemiObjet.
     /** La règle de calcul quand {@link #force()} est absente, {@code null} sinon. */
     ForceVariable forceVariable();
 
-    /** Texte libre tant que le ticket 11 n'a pas transcrit les symboles en effets. */
+    /** Le texte imprimé sur la carte, mot pour mot — ce que le joueur lit. */
     String action();
 
     /**

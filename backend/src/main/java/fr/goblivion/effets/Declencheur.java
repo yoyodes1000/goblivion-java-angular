@@ -38,6 +38,19 @@ public enum Declencheur {
     REVELATION,
 
     /**
+     * Chaque assaut contre un Boss, et non sa seule apparition.
+     *
+     * <p>Ce n'est pas une lecture nouvelle : le moteur du ticket 12 l'avait déjà
+     * tranché — « l'action du Boss repart à chaque tentative ». Un Boss qu'on
+     * n'abat pas du premier coup refrappe donc à chaque essai, ce qui rend une
+     * tentative ratée coûteuse plutôt que neutre.
+     *
+     * <p>À distinguer de {@link #REVELATION}, qui ne part qu'une fois, et de
+     * {@link #PERMANENT}, qui ne part jamais.
+     */
+    ASSAUT_BOSS,
+
+    /**
      * Le pouvoir du Roi ou de la Reine — une fois par partie (§6.3).
      *
      * <p>Cinq cartes royales sur sept impriment {@code Pivoter:}, mais le geste

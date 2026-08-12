@@ -28,10 +28,59 @@ garantit qu'une carte et son image ne peuvent pas se désynchroniser.
 **Les énumérations sont en majuscules** — `HUMAIN`, `OBJET`, `SOLDAT`, `JOKER` —
 pour se transposer directement en `enum` Java.
 
-**`action` reste du texte libre** pour l'instant. Sa transcription en effets
-exécutables est un ticket à part. Le vocabulaire est déjà régulier : les actions
-commencent par `Pivoter:`, `Testament:` ou `Quand cette carte devient Garde du
-Corps:`. Une action absente vaut `null`, jamais `""`.
+**`action` est le texte imprimé, `effets` sa transcription.** Les deux coexistent
+et ne se déduisent pas l'un de l'autre : `action` est ce que le joueur lit, mot
+pour mot, et le moteur ne s'en sert jamais ; `effets` est ce que le moteur
+exécute. Une action absente vaut `null`, jamais `""` ; sa transcription est alors
+absente elle aussi.
+
+> Invariant, vérifié par `EffetsDesVraiesDonneesTest` : une carte a `action` et
+> `effets`, ou ni l'un ni l'autre. Deux exceptions nommées — le Soldat et son
+> jumeau Objet portent un texte dont la règle vit dans `forceVariable`, donc une
+> transcription vide.
+
+## Le champ `effets`
+
+Une liste, parce qu'une carte peut agir à plusieurs moments. Chaque entrée porte
+un **déclencheur** et un **effet** :
+
+```json
+"action": "Pivoter: Défausser 1 et Piocher 1",
+"effets": [
+  {
+    "declencheur": "PIVOTER",
+    "effet": {
+      "type": "sequence",
+      "effets": [
+        { "type": "defausser", "nombre": 1 },
+        { "type": "piocher", "nombre": 1 }
+      ]
+    }
+  }
+]
+```
+
+Le `type` de chaque brique est son discriminant : **aucun autre champ ne peut
+s'appeler `type`**, sinon l'un des deux est perdu en silence. C'est pourquoi
+`obtenir-du-marche` nomme le sien `typeCarte`.
+
+Les huit déclencheurs, les treize cibles, les quatre quantités et les quatre
+durées sont énumérés dans `backend/src/main/java/fr/goblivion/effets/`. Le
+vocabulaire y est **fermé** : une carte qui ne s'exprime pas avec les briques
+existantes n'est pas un cas à contourner, c'est une brique qui manque. L'interface
+`Effet` est scellée, donc le compilateur signale tout endroit qui oublierait la
+nouvelle.
+
+Trois pièges valent d'être notés, parce qu'ils se ressemblent :
+
+| À ne pas confondre | |
+|---|---|
+| `melanger-hopital` / `melanger-chateau` | l'un fait entrer l'Hôpital dans le Château, l'autre ne fait que perdre l'ordre connu |
+| durée `COMBAT` / `PERMANENTE` | le Gobelin Pestilent ignore les jetons le temps d'un combat, le Goblinosaurus tant qu'il est là |
+| cible `UN_…` / `CHAQUE_…` | la première demande une désignation au joueur et suspend l'effet, la seconde se résout seule |
+
+Les cartes royales se déclenchent toutes sur `POUVOIR_ROYAL`, y compris les cinq
+qui impriment `Pivoter:` — le geste est de **retourner** la carte royale.
 
 ## `bleues.json` — 25 cartes
 
@@ -45,6 +94,7 @@ Corps:`. Une action absente vaut `null`, jamais `""`.
 | `forceVariable` | `"SOLDAT" \| "JOKER" \| null` | |
 | `niveau` | `number` | toujours 0 pour les Bleues |
 | `action` | `string \| null` | |
+| `effets` | `EffetCarte[]` | absent si `action` est `null` ; voir plus haut |
 | `exemplaires` | `number` | 12 Fermiers, 3 Bûcherons, 3 Épées, 1 sinon |
 
 ## `dorees.json` — 12 cartes
