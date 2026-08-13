@@ -42,6 +42,22 @@ export type TypeAction =
  * indispensables : douze Fermiers partagent le même `carte`, jamais le même
  * `id`, et « détruire le Fermier » ne voudrait rien dire.
  */
+/**
+ * Ce qu'une action de carte réclamera, annoncé avant d'être jouée.
+ *
+ * Le frontend ne déduit pas ce qu'il faut demander : il le lit. Rejouer le
+ * vocabulaire des effets côté navigateur reviendrait à en tenir une seconde
+ * implémentation, qui finirait par ne plus être d'accord avec la première.
+ *
+ * `designations` est **ordonné** : le moteur les consomme dans cet ordre, donc
+ * les renvoyer autrement ferait détruire la mauvaise carte.
+ */
+export interface PlanDeCiblage {
+  readonly designations: readonly string[];
+  /** Les branches d'un « ou » — vide s'il n'y en a pas. */
+  readonly options: readonly string[];
+}
+
 export interface CarteVue {
   readonly id: number;
   readonly carte: string;
@@ -49,6 +65,24 @@ export interface CarteVue {
   /** L'apport **réel**, jetons et forces variables compris — pas la valeur imprimée. */
   readonly force: number;
   readonly pivotee: boolean;
+  /**
+   * Le type que la carte joue pour cette phase, `null` si elle est elle-même.
+   *
+   * Le Joker, et lui seul : il prend toutes les caractéristiques d'un Humain
+   * jusqu'à la fin de la phase. L'affichage doit suivre, sinon la table
+   * montrerait un Joker là où le moteur voit un Fermier.
+   */
+  readonly copie: string | null;
+  readonly plan: PlanDeCiblage;
+  /**
+   * Vrai si la carte a quelque chose à déclencher quand on la pivote.
+   *
+   * Un plan vide ne suffit pas à le dire : le Boulanger agit sans rien
+   * demander, un Fermier n'agit pas du tout, et les deux ont un plan vide.
+   * Proposer « Pivoter » sur une carte sans action serait offrir un bouton qui
+   * ne fait rien.
+   */
+  readonly agitAuPivot: boolean;
 }
 
 /**
@@ -108,7 +142,10 @@ export interface DemandeAction {
   readonly type: TypeAction;
   readonly carteDuMarche?: string;
   readonly carteEnJeu?: number;
+  /** Les exemplaires désignés, dans l'ordre où `PlanDeCiblage` les annonce. */
   readonly cibles?: readonly number[];
+  /** Les branches retenues face à un « ou », dans le même ordre. */
+  readonly options?: readonly number[];
 }
 
 /** Le corps d'un refus : le motif est rédigé pour être montré au joueur. */

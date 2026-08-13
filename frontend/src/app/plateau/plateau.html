@@ -26,6 +26,15 @@
       (sacrificeDemande)="sacrifier($event)"
       (echangeDemande)="echanger($event)"
     />
+
+    <!-- Ce que l'action va réclamer, demandé avant de l'envoyer. Le plan vient
+         du moteur : l'écran pose les questions, il ne les devine pas. -->
+    <app-ciblage
+      [demande]="ciblageEnCours()"
+      [candidats]="candidats()"
+      (confirme)="pivoterAvec($event)"
+      (annule)="annulerCiblage()"
+    />
     <app-cartes-royales
       class="plateau__royales"
       [roiReine]="roiReine()"

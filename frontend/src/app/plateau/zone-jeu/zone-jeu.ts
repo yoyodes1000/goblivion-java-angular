@@ -19,6 +19,14 @@ export interface CarteEnJeuVue {
   /** L'apport réel, jetons et forces variables compris — calculé par le moteur. */
   readonly force: number;
   readonly pivotee: boolean;
+  /**
+   * Vrai si pivoter la carte déclenche quelque chose.
+   *
+   * Beaucoup de Paysans n'ont aucune action : le Fermier, l'Épée, le Vieux. Leur
+   * proposer « Pivoter » offrirait un bouton sans effet — et le moteur
+   * l'accepterait sans rien faire, ce qui est pire qu'un refus.
+   */
+  readonly agitAuPivot: boolean;
 }
 
 /**
@@ -68,7 +76,9 @@ export interface CarteEnJeuVue {
               </p>
 
               <div class="jeu__actions">
-                @if (pivotPossible() && !carte.pivotee) {
+                <!-- Une carte sans action n'a rien à activer : pas de bouton
+                     plutôt qu'un bouton qui ne ferait rien. -->
+                @if (pivotPossible() && !carte.pivotee && carte.agitAuPivot) {
                   <button type="button" (click)="pivoterDemande.emit(carte.id)">
                     Pivoter<span class="jeu__cible"> {{ carte.nom }}</span>
                   </button>

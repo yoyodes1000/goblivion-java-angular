@@ -5,6 +5,8 @@ import java.util.Map;
 
 import fr.goblivion.cartes.CarteBoss;
 import fr.goblivion.cartes.Famille;
+import fr.goblivion.effets.Declencheur;
+import fr.goblivion.effets.PlanDeCiblage;
 import fr.goblivion.partie.CarteEnJeu;
 import fr.goblivion.partie.Difficulte;
 import fr.goblivion.partie.Partie;
@@ -94,12 +96,45 @@ public record EtatPartie(
      * @param carte l'identifiant de <em>type</em>, qui renvoie au catalogue du frontend
      * @param force l'apport réel, jetons et forces variables compris — le
      *              frontend ne peut pas le déduire de la valeur imprimée
+     * @param copie le type que la carte joue pour cette phase, {@code null} si
+     *              elle est elle-même — le Joker, et lui seul aujourd'hui
+     * @param plan        ce que son action réclamera si on la pivote, calculé
+     *                    par le moteur : l'interface réclame ce que le plan
+     *                    annonce plutôt que de redéduire le vocabulaire
+     * @param agitAuPivot vrai si la carte a quelque chose à déclencher. Un plan
+     *                    vide ne suffit pas à le dire : le Boulanger agit sans
+     *                    rien demander, un Fermier n'agit pas du tout, et les
+     *                    deux ont un plan vide. Sans ce drapeau, l'interface
+     *                    proposerait de pivoter une carte qui ne ferait rien.
      */
-    public record CarteVue(long id, String carte, Famille famille, int force, boolean pivotee) {
+    public record CarteVue(long id, String carte, Famille famille, int force, boolean pivotee,
+            String copie, PlanDeCiblage plan, boolean agitAuPivot) {
 
         static CarteVue de(Partie partie, CarteEnJeu carte) {
             return new CarteVue(carte.id(), carte.carteId(), carte.famille(),
-                    partie.forceEffective(carte), carte.pivotee());
+                    partie.forceEffective(carte), carte.pivotee(), carte.copie(),
+                    planDe(partie, carte), agitAuPivot(partie, carte));
+        }
+
+        private static boolean agitAuPivot(Partie partie, CarteEnJeu carte) {
+            return partie.effetsDe(carte).stream()
+                    .anyMatch(effet -> effet.declencheur() == Declencheur.PIVOTER);
+        }
+
+        /**
+         * Le plan de l'action que le joueur peut déclencher lui-même.
+         *
+         * <p>Seul {@code PIVOTER} est concerné : c'est la seule action de carte
+         * dont l'effet réclame des désignations au moment du clic. Ce qu'un
+         * Testament ou une révélation demanderaient ne regarde pas l'interface,
+         * puisque le joueur n'a pas la main à ce moment-là.
+         */
+        private static PlanDeCiblage planDe(Partie partie, CarteEnJeu carte) {
+            return partie.effetsDe(carte).stream()
+                    .filter(effet -> effet.declencheur() == Declencheur.PIVOTER)
+                    .findFirst()
+                    .map(effet -> PlanDeCiblage.de(effet.effet()))
+                    .orElseGet(PlanDeCiblage::vide);
         }
     }
 

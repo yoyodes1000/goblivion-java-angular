@@ -77,4 +77,32 @@ public enum Cible {
     public boolean demandeUnChoix() {
         return name().startsWith("UN_") || name().startsWith("UNE_");
     }
+
+    /**
+     * Ce qu'il faut demander au joueur, rédigé.
+     *
+     * <p>Le libellé vit ici et non dans l'interface : c'est la même phrase qui
+     * sert à réclamer la désignation à l'écran et à motiver le refus si elle
+     * manque. Deux formulations finiraient par ne plus se ressembler.
+     */
+    public String libelle() {
+        // Accentué : ces phrases sont montrées au joueur, pas écrites dans un
+        // message de commit.
+        return switch (this) {
+            case UNE_CARTE_EN_JEU -> "une carte en jeu";
+            case UNE_CARTE_HOPITAL -> "une carte de l'Hôpital";
+            case UN_OBJET -> "un Objet";
+            case UN_PAYSAN_HUMAIN -> "un paysan Humain";
+            case UNE_CARTE_DE_FORCE_1_ET_PLUS -> "une carte de force 1 ou plus";
+            case UN_JETON_ENNEMI -> "un jeton Bonus Ennemi";
+            case UNE_CARTE_ROYALE -> "une carte Roi/Reine";
+            case UNE_ACTION_PIVOTER -> "une action Pivoter à copier";
+            case SOI_MEME -> "cette carte";
+            case HUMAIN_LE_PLUS_FORT -> "le paysan Humain le plus fort";
+            case PROCHAINE_DU_CHATEAU -> "la prochaine carte du Château";
+            case CHAQUE_OBJET -> "chaque Objet";
+            case CHAQUE_PAYSAN_HUMAIN -> "chaque paysan Humain";
+            case CHAQUE_CARTE_BLEUE -> "chaque carte Bleue";
+        };
+    }
 }
