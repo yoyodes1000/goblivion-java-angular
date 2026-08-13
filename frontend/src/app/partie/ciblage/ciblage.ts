@@ -2,11 +2,24 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 
 import type { PlanDeCiblage } from '../modele';
 
-/** Une carte que le joueur peut désigner, avec l'endroit où elle se trouve. */
+/** Un exemplaire posé sur la table, avec l'endroit où il se trouve. */
 export interface Candidat {
   readonly id: number;
   readonly nom: string;
   readonly zone: string;
+}
+
+/**
+ * Un type de carte offert au Marché.
+ *
+ * L'identifiant est une chaîne et non un nombre, et ce n'est pas un détail :
+ * une carte du Marché n'est pas encore en jeu, elle n'a pas d'exemplaire à
+ * désigner. C'est ce que `Designation.parType` annonce.
+ */
+export interface CandidatType {
+  readonly id: string;
+  readonly nom: string;
+  readonly restant: number;
 }
 
 /** L'action en attente de ses réponses. */
@@ -20,6 +33,7 @@ export interface Ciblee {
 export interface Reponses {
   readonly cibles: readonly number[];
   readonly options: readonly number[];
+  readonly types: readonly string[];
 }
 
 /**
@@ -61,6 +75,19 @@ export interface Reponses {
                 </li>
               }
             </ul>
+          } @else if (attendUnType()) {
+            <ul class="ciblage__liste">
+              @for (offre of offresDuMarche(); track offre.id) {
+                <li>
+                  <button type="button" class="ciblage__choix" (click)="choisirType(offre.id)">
+                    {{ offre.nom }}
+                    <span class="ciblage__zone">{{ offre.restant }} au Marché</span>
+                  </button>
+                </li>
+              } @empty {
+                <li class="ciblage__vide">Le Marché n’a plus rien à offrir.</li>
+              }
+            </ul>
           } @else {
             <ul class="ciblage__liste">
               @for (candidat of candidats(); track candidat.id) {
@@ -92,12 +119,23 @@ export interface Reponses {
 export class Ciblage {
   readonly demande = input.required<Ciblee | null>();
   readonly candidats = input.required<readonly Candidat[]>();
+  readonly offresDuMarche = input<readonly CandidatType[]>([]);
 
   readonly confirme = output<Reponses>();
   readonly annule = output<void>();
 
   private readonly cibles = signal<readonly number[]>([]);
   private readonly options = signal<readonly number[]>([]);
+  private readonly types = signal<readonly string[]>([]);
+
+  /** La question du moment porte-t-elle sur un type de carte plutôt qu'un exemplaire ? */
+  protected readonly attendUnType = computed(() => this.designationCourante()?.parType ?? false);
+
+  private readonly designationCourante = computed(() => {
+    const plan = this.demande()?.plan;
+    if (!plan || this.attendUneBranche()) return undefined;
+    return plan.designations[this.cibles().length + this.types().length];
+  });
 
   /**
    * Une seule branche par carte.
@@ -111,7 +149,9 @@ export class Ciblage {
     () => (this.demande()?.plan.options.length ?? 0) > 0 && this.options().length === 0,
   );
 
-  protected readonly posees = computed(() => this.cibles().length + this.options().length);
+  protected readonly posees = computed(
+    () => this.cibles().length + this.types().length + this.options().length,
+  );
 
   protected readonly total = computed(() => {
     const plan = this.demande()?.plan;
@@ -123,13 +163,18 @@ export class Ciblage {
 
   /** La question du moment, ou `undefined` quand il n'en reste plus. */
   protected readonly etape = computed<string | undefined>(() => {
-    const plan = this.demande()?.plan;
-    if (!plan) return undefined;
+    if (!this.demande()?.plan) return undefined;
     if (this.attendUneBranche()) return 'Quelle branche jouer ?';
 
-    const restantes = plan.designations.slice(this.cibles().length);
-    return restantes.length > 0 ? `Désigner ${restantes[0]}.` : undefined;
+    const courante = this.designationCourante();
+    if (!courante) return undefined;
+    return courante.parType ? `Choisir ${courante.libelle}.` : `Désigner ${courante.libelle}.`;
   });
+
+  protected choisirType(id: string): void {
+    this.types.update((types) => [...types, id]);
+    this.conclureSiComplet();
+  }
 
   protected retenirBranche(index: number): void {
     this.options.update((options) => [...options, index]);
@@ -150,7 +195,11 @@ export class Ciblage {
   private conclureSiComplet(): void {
     if (this.etape() !== undefined) return;
 
-    const reponses: Reponses = { cibles: this.cibles(), options: this.options() };
+    const reponses: Reponses = {
+      cibles: this.cibles(),
+      options: this.options(),
+      types: this.types(),
+    };
     this.reinitialiser();
     this.confirme.emit(reponses);
   }
@@ -158,5 +207,6 @@ export class Ciblage {
   private reinitialiser(): void {
     this.cibles.set([]);
     this.options.set([]);
+    this.types.set([]);
   }
 }

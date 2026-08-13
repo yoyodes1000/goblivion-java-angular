@@ -75,10 +75,11 @@ public class PartieControleur {
             String carteDuMarche,
             Long carteEnJeu,
             List<Long> cibles,
-            List<Integer> options) {
+            List<Integer> options,
+            List<String> types) {
 
         Action versAction() {
-            return new Action(type, carteDuMarche, carteEnJeu, cibles, options);
+            return new Action(type, carteDuMarche, carteEnJeu, cibles, options, types);
         }
     }
 

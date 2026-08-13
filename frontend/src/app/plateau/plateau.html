@@ -32,6 +32,7 @@
     <app-ciblage
       [demande]="ciblageEnCours()"
       [candidats]="candidats()"
+      [offresDuMarche]="offresDuMarche()"
       (confirme)="pivoterAvec($event)"
       (annule)="annulerCiblage()"
     />

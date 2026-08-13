@@ -40,6 +40,7 @@ class PlanDeCiblageTest {
                 new Effet.Detruire(Cible.UN_OBJET))));
 
         assertThat(plan.designations())
+                .extracting(PlanDeCiblage.Designation::libelle)
                 .containsExactly("une carte de l'Hôpital", "un Objet");
     }
 
@@ -62,6 +63,25 @@ class PlanDeCiblageTest {
 
         assertThat(plan.options()).containsExactly("Piocher 1", "Visionner");
         assertThat(plan.designations()).isEmpty();
+    }
+
+    /**
+     * Une carte du Marché n'est pas encore en jeu quand on la choisit : elle n'a
+     * pas d'identité, seulement un type. L'interface doit donc proposer le
+     * Marché et non les cartes posées sur la table.
+     */
+    @Test
+    @DisplayName("obtenir du Marche se designe par type, pas par exemplaire")
+    void designationParType() {
+        PlanDeCiblage plan = PlanDeCiblage.de(new Effet.Sequence(List.of(
+                new Effet.ObtenirDuMarche(fr.goblivion.cartes.TypeCarte.OBJET),
+                new Effet.Ressource(-3))));
+
+        assertThat(plan.designations()).singleElement()
+                .satisfies(designation -> {
+                    assertThat(designation.parType()).isTrue();
+                    assertThat(designation.libelle()).contains("Marché");
+                });
     }
 
     @Test

@@ -9,7 +9,13 @@ import {
 
 import { Cartes } from '../cartes/cartes';
 import type { CarteAffichable, CarteDoree, OffreMarche } from '../cartes/modele';
-import { Ciblage, type Candidat, type Ciblee, type Reponses } from '../partie/ciblage/ciblage';
+import {
+  Ciblage,
+  type Candidat,
+  type CandidatType,
+  type Ciblee,
+  type Reponses,
+} from '../partie/ciblage/ciblage';
 import { Commandes } from '../partie/commandes/commandes';
 import type { Difficulte, TypeAction } from '../partie/modele';
 import { NouvellePartie } from '../partie/nouvelle-partie/nouvelle-partie';
@@ -200,6 +206,21 @@ export class Plateau {
     this.etat()?.resultat === 'EN_COURS' ? this.ciblageDemande() : null,
   );
 
+  /**
+   * Les types offerts au Marché, pour les effets qui en prennent une carte.
+   *
+   * Le Roi Brad et le Chevalier court-circuitent l'entraînement : ils prennent
+   * directement, mais dans le même stock. Une offre épuisée n'a donc rien à
+   * proposer, et le moteur le redit s'il le faut.
+   */
+  protected readonly offresDuMarche = computed<CandidatType[]>(() =>
+    this.offres().map(({ carte, restant }) => ({
+      id: carte.id,
+      nom: carte.nom,
+      restant,
+    })),
+  );
+
   /** Les cartes désignables, avec l'endroit où elles sont — le moteur accepte les deux. */
   protected readonly candidats = computed<Candidat[]>(() => {
     const etat = this.etat();
@@ -251,6 +272,7 @@ export class Plateau {
       carteEnJeu: demande.carteEnJeu,
       cibles: reponses.cibles,
       options: reponses.options,
+      types: reponses.types,
     });
   }
 

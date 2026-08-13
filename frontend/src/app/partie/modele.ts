@@ -52,8 +52,21 @@ export type TypeAction =
  * `designations` est **ordonné** : le moteur les consomme dans cet ordre, donc
  * les renvoyer autrement ferait détruire la mauvaise carte.
  */
+/**
+ * Une question à poser au joueur.
+ *
+ * `parType` sépare deux choses que rien d'autre ne distingue : désigner un
+ * **exemplaire** posé sur la table, qui a une identité, et choisir un **type**
+ * de carte au Marché, qui n'est pas encore en jeu et n'en a donc pas. Les deux
+ * réponses voyagent par des canaux séparés jusqu'au moteur.
+ */
+export interface Designation {
+  readonly libelle: string;
+  readonly parType: boolean;
+}
+
 export interface PlanDeCiblage {
-  readonly designations: readonly string[];
+  readonly designations: readonly Designation[];
   /** Les branches d'un « ou » — vide s'il n'y en a pas. */
   readonly options: readonly string[];
 }
@@ -146,6 +159,8 @@ export interface DemandeAction {
   readonly cibles?: readonly number[];
   /** Les branches retenues face à un « ou », dans le même ordre. */
   readonly options?: readonly number[];
+  /** Les **types** de carte choisis — le Marché, qui n'a pas d'exemplaires en jeu. */
+  readonly types?: readonly string[];
 }
 
 /** Le corps d'un refus : le motif est rédigé pour être montré au joueur. */

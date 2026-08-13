@@ -43,19 +43,39 @@ class InterpreteEffets {
 
         private final Deque<Long> cartes;
         private final Deque<Integer> options;
+        private final Deque<String> types;
 
         Choix(List<Long> cartes, List<Integer> options) {
+            this(cartes, options, List.of());
+        }
+
+        Choix(List<Long> cartes, List<Integer> options, List<String> types) {
             this.cartes = new ArrayDeque<>(cartes == null ? List.of() : cartes);
             this.options = new ArrayDeque<>(options == null ? List.of() : options);
+            this.types = new ArrayDeque<>(types == null ? List.of() : types);
         }
 
         static Choix aucun() {
-            return new Choix(List.of(), List.of());
+            return new Choix(List.of(), List.of(), List.of());
         }
 
         /** Une copie intacte, pour parcourir l'effet sans consommer les vraies réponses. */
         Choix copie() {
-            return new Choix(List.copyOf(cartes), List.copyOf(options));
+            return new Choix(List.copyOf(cartes), List.copyOf(options), List.copyOf(types));
+        }
+
+        /**
+         * Un <em>type</em> de carte, et non un exemplaire.
+         *
+         * <p>Une carte du Marché n'est pas encore en jeu quand on la choisit :
+         * elle n'a donc pas d'identité, seulement un identifiant de type.
+         */
+        String typeSuivant(String pourquoi) {
+            String choisi = types.pollFirst();
+            if (choisi == null || choisi.isBlank()) {
+                throw new ActionInterdite("Cette action demande de choisir %s.".formatted(pourquoi));
+            }
+            return choisi;
         }
 
         long carteSuivante(String pourquoi) {
@@ -189,8 +209,12 @@ class InterpreteEffets {
                     .forEach(carte -> siApplique(passe,
                             () -> carte.ajouterJetonBanniere(carte.jetonBanniere())));
             case Effet.PoserDepuisChateau e -> pasEncore("Poser une carte du Chateau");
-            case Effet.ObtenirDuMarche e -> pasEncore("Obtenir une carte du Marche");
-            case Effet.ObtenirNiveau e -> pasEncore("Obtenir une carte d'un niveau donne");
+            case Effet.ObtenirDuMarche e -> obtenirDuMarche(
+                    doree -> doree.type() == e.typeCarte(),
+                    "un %s du Marche".formatted(e.typeCarte()), passe);
+            case Effet.ObtenirNiveau e -> obtenirDuMarche(
+                    doree -> doree.niveau() == e.niveau(),
+                    "une carte de niveau %d".formatted(e.niveau()), passe);
             case Effet.Copier e -> copier(e, source, passe);
             case Effet.CompterCommeSoldat e -> siApplique(passe, () -> {
                 exigerSource(source).compterCommeSoldat();
@@ -372,6 +396,39 @@ class InterpreteEffets {
                 partie.noter("%s est reactivee.".formatted(partie.nomDe(carte)));
             });
         }
+    }
+
+    /**
+     * Prendre une carte au Marché sans passer par l'entraînement.
+     *
+     * <p>Le Roi Brad et le Chevalier court-circuitent le §6 : pas de jeton, pas
+     * de pioche, pas de sacrifice. La carte entre directement en jeu, et le
+     * stock du Marché diminue comme pour un entraînement ordinaire — sans quoi
+     * on pourrait la reprendre indéfiniment.
+     *
+     * @param convient ce que la carte doit être — un Objet, un niveau donné
+     */
+    private void obtenirDuMarche(java.util.function.Predicate<fr.goblivion.cartes.CarteDoree> convient,
+            String description, Passe passe) {
+        String choisi = passe.choix().typeSuivant(description);
+
+        fr.goblivion.cartes.CarteDoree doree = partie.catalogue().doree(choisi)
+                .orElseThrow(() -> new ActionInterdite(
+                        "Cette carte du Marche n'existe pas : %s.".formatted(choisi)));
+        if (!convient.test(doree)) {
+            throw new ActionInterdite("%s ne convient pas : il faut %s."
+                    .formatted(doree.nom(), description));
+        }
+        if (partie.stockMarche(choisi) <= 0) {
+            throw new ActionInterdite("Le Marche n'a plus de %s.".formatted(doree.nom()));
+        }
+
+        siApplique(passe, () -> {
+            partie.consommerAuMarche(choisi);
+            partie.poserAuChampDeBataille(
+                    CarteEnJeu.paysan(fr.goblivion.cartes.Famille.DOREES, choisi));
+            partie.noter("%s est obtenue du Marche et entre en jeu.".formatted(doree.nom()));
+        });
     }
 
     private void ajouterUnBoss() {

@@ -19,16 +19,31 @@ import java.util.List;
  *                      abattre malgré un combat perdu (§8)
  */
 public record Action(TypeAction type, String carteDuMarche, Long carteEnJeu, List<Long> cibles,
-        List<Integer> options) {
+        List<Integer> options, List<String> types) {
 
     public Action {
         cibles = cibles == null ? List.of() : List.copyOf(cibles);
         options = options == null ? List.of() : List.copyOf(options);
+        types = types == null ? List.of() : List.copyOf(types);
+    }
+
+    /**
+     * Sans désignation par type.
+     *
+     * <p>{@code cibles} désigne des <em>exemplaires</em> posés sur la table ;
+     * {@code types} désigne des <em>types</em> de carte, parce qu'une carte du
+     * Marché n'existe pas encore en jeu au moment où on la choisit. Les deux
+     * canaux ne peuvent pas se confondre : un identifiant d'exemplaire est un
+     * nombre, un type est une chaîne.
+     */
+    public Action(TypeAction type, String carteDuMarche, Long carteEnJeu, List<Long> cibles,
+            List<Integer> options) {
+        this(type, carteDuMarche, carteEnJeu, cibles, options, List.of());
     }
 
     /** Sans branche retenue — la plupart des actions n'offrent aucun {@code ou}. */
     public Action(TypeAction type, String carteDuMarche, Long carteEnJeu, List<Long> cibles) {
-        this(type, carteDuMarche, carteEnJeu, cibles, List.of());
+        this(type, carteDuMarche, carteEnJeu, cibles, List.of(), List.of());
     }
 
     public static Action de(TypeAction type) {

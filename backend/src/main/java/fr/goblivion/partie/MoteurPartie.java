@@ -39,7 +39,7 @@ public final class MoteurPartie {
      * moitié jouée en attente d'une réponse.
      */
     private InterpreteEffets.Choix choixDe(Action action) {
-        return new InterpreteEffets.Choix(action.cibles(), action.options());
+        return new InterpreteEffets.Choix(action.cibles(), action.options(), action.types());
     }
 
     /**

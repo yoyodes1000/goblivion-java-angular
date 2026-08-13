@@ -119,6 +119,52 @@ class VisionEtJetonsTest {
         assertThat(partie.pouvoirRoiReineUtilise()).isFalse();
     }
 
+    // ----------------------------------------------------- Marché (Roi Brad)
+
+    /**
+     * Le Roi Brad court-circuite le §6 : pas de jeton, pas de pioche, pas de
+     * sacrifice. La carte entre directement en jeu — mais le stock diminue, sans
+     * quoi on la reprendrait indéfiniment.
+     */
+    @Test
+    void obtenir_du_marche_pose_la_carte_et_consomme_le_stock() {
+        int avant = partie.stockMarche(CataloguesFictifs.DORE_VERROUILLE);
+
+        interprete.executer(
+                new EffetCarte(Declencheur.POUVOIR_ROYAL,
+                        new Effet.ObtenirDuMarche(fr.goblivion.cartes.TypeCarte.OBJET)),
+                null,
+                new InterpreteEffets.Choix(List.of(), List.of(),
+                        List.of(CataloguesFictifs.DORE_VERROUILLE)));
+
+        assertThat(partie.stockMarche(CataloguesFictifs.DORE_VERROUILLE)).isEqualTo(avant - 1);
+        assertThat(partie.champDeBataille())
+                .anyMatch(carte -> CataloguesFictifs.DORE_VERROUILLE.equals(carte.carteId()));
+    }
+
+    /** Un type qui ne correspond pas est refusé : le Roi Brad n'obtient que des Objets. */
+    @Test
+    void obtenir_du_marche_refuse_le_mauvais_type() {
+        assertThatThrownBy(() -> interprete.executer(
+                new EffetCarte(Declencheur.POUVOIR_ROYAL,
+                        new Effet.ObtenirDuMarche(fr.goblivion.cartes.TypeCarte.OBJET)),
+                null,
+                new InterpreteEffets.Choix(List.of(), List.of(),
+                        List.of(CataloguesFictifs.DORE_ACCESSIBLE))))
+                .isInstanceOf(ActionInterdite.class)
+                .hasMessageContaining("ne convient pas");
+    }
+
+    @Test
+    void obtenir_du_marche_sans_choix_est_un_refus_lisible() {
+        assertThatThrownBy(() -> interprete.executer(
+                new EffetCarte(Declencheur.POUVOIR_ROYAL,
+                        new Effet.ObtenirDuMarche(fr.goblivion.cartes.TypeCarte.OBJET)),
+                null, InterpreteEffets.Choix.aucun()))
+                .isInstanceOf(ActionInterdite.class)
+                .hasMessageContaining("demande de choisir");
+    }
+
     // ------------------------------------------------------- Épée de Feu
 
     @Test

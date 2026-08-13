@@ -18,7 +18,28 @@ import java.util.List;
  *                     l'interprète les consommera
  * @param options      les branches d'un {@code ou}, vides s'il n'y en a pas
  */
-public record PlanDeCiblage(List<String> designations, List<String> options) {
+public record PlanDeCiblage(List<Designation> designations, List<String> options) {
+
+    /**
+     * Une question à poser au joueur.
+     *
+     * @param parType vrai si la réponse est un <strong>type</strong> de carte et
+     *                non un exemplaire posé sur la table. Une carte du Marché
+     *                n'existe pas encore en jeu quand on la choisit : elle n'a
+     *                pas d'identité, seulement un identifiant de type. Les deux
+     *                voyagent par des canaux séparés, et l'interface doit
+     *                proposer les bonnes cartes.
+     */
+    public record Designation(String libelle, boolean parType) {
+
+        static Designation exemplaire(String libelle) {
+            return new Designation(libelle, false);
+        }
+
+        static Designation type(String libelle) {
+            return new Designation(libelle, true);
+        }
+    }
 
     public PlanDeCiblage {
         designations = List.copyOf(designations);
@@ -46,13 +67,14 @@ public record PlanDeCiblage(List<String> designations, List<String> options) {
      * corrige.
      */
     public static PlanDeCiblage de(Effet effet) {
-        List<String> designations = new ArrayList<>();
+        List<Designation> designations = new ArrayList<>();
         List<String> options = new ArrayList<>();
         parcourir(effet, designations, options);
         return new PlanDeCiblage(designations, options);
     }
 
-    private static void parcourir(Effet effet, List<String> designations, List<String> options) {
+    private static void parcourir(Effet effet, List<Designation> designations,
+            List<String> options) {
         switch (effet) {
             case Effet.Sequence sequence ->
                 sequence.effets().forEach(sous -> parcourir(sous, designations, options));
@@ -71,9 +93,14 @@ public record PlanDeCiblage(List<String> designations, List<String> options) {
 
             case Effet.Defausser defausser -> {
                 for (int i = 0; i < defausser.nombre(); i++) {
-                    designations.add("une carte à défausser");
+                    designations.add(Designation.exemplaire("une carte à défausser"));
                 }
             }
+
+            case Effet.ObtenirDuMarche marche -> designations.add(
+                    Designation.type("un %s du Marché".formatted(marche.typeCarte())));
+            case Effet.ObtenirNiveau niveau -> designations.add(
+                    Designation.type("une carte de niveau %d".formatted(niveau.niveau())));
 
             case Effet.Reactiver reactiver -> {
                 for (int i = 0; i < reactiver.nombre(); i++) {
@@ -94,9 +121,9 @@ public record PlanDeCiblage(List<String> designations, List<String> options) {
         }
     }
 
-    private static void ajouter(Cible cible, List<String> designations) {
+    private static void ajouter(Cible cible, List<Designation> designations) {
         if (cible.demandeUnChoix()) {
-            designations.add(cible.libelle());
+            designations.add(Designation.exemplaire(cible.libelle()));
         }
     }
 

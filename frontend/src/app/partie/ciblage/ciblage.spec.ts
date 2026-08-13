@@ -20,13 +20,16 @@ describe('Ciblage', () => {
   let fixture: ComponentFixture<Ciblage>;
   let recu: Reponses | undefined;
 
+  /** Une désignation d'exemplaire — le cas courant ; le Marché a son propre test. */
+  const parExemplaire = (libelle: string) => ({ libelle, parType: false });
+
   async function montrer(designations: string[], options: string[] = []) {
     fixture = TestBed.createComponent(Ciblage);
     fixture.componentRef.setInput('candidats', CANDIDATS);
     fixture.componentRef.setInput('demande', {
       carteEnJeu: 7,
       nom: 'Bourreau',
-      plan: { designations, options },
+      plan: { designations: designations.map(parExemplaire), options },
     });
     fixture.componentInstance.confirme.subscribe((reponses) => (recu = reponses));
     await fixture.whenStable();
@@ -71,7 +74,7 @@ describe('Ciblage', () => {
     expect(recu).toBeUndefined();
 
     await cliquer(rendu, 'Épée');
-    expect(recu).toEqual({ cibles: [11, 21], options: [] });
+    expect(recu).toEqual({ cibles: [11, 21], options: [], types: [] });
   });
 
   it('conserve l’ordre des désignations', async () => {
@@ -90,7 +93,38 @@ describe('Ciblage', () => {
     expect(boutons(rendu).map((b) => b.textContent?.trim())).toEqual(['Piocher 1', 'Visionner']);
 
     await cliquer(rendu, 'Visionner');
-    expect(recu).toEqual({ cibles: [], options: [1] });
+    expect(recu).toEqual({ cibles: [], options: [1], types: [] });
+  });
+
+  /**
+   * Une carte du Marché n'a pas d'exemplaire à désigner : c'est le Marché qu'il
+   * faut proposer, pas la table. Offrir les cartes en jeu ici enverrait un
+   * identifiant que le moteur ne saurait pas lire.
+   */
+  it('propose le Marché quand la désignation porte sur un type', async () => {
+    fixture = TestBed.createComponent(Ciblage);
+    fixture.componentRef.setInput('candidats', CANDIDATS);
+    fixture.componentRef.setInput('offresDuMarche', [
+      { id: 'catapulte', nom: 'Catapulte', restant: 3 },
+      { id: 'bourreau', nom: 'Bourreau', restant: 1 },
+    ]);
+    fixture.componentRef.setInput('demande', {
+      carteEnJeu: 7,
+      nom: 'Roi Brad',
+      plan: { designations: [{ libelle: 'un OBJET du Marché', parType: true }], options: [] },
+    });
+    fixture.componentInstance.confirme.subscribe((reponses) => (recu = reponses));
+    await fixture.whenStable();
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(rendu.querySelector('.ciblage__question')?.textContent).toContain('Choisir');
+    expect(boutons(rendu).map((b) => b.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'Catapulte 3 au Marché',
+      'Bourreau 1 au Marché',
+    ]);
+
+    await cliquer(rendu, 'Bourreau');
+    expect(recu).toEqual({ cibles: [], options: [], types: ['bourreau'] });
   });
 
   it('renoncer n’envoie aucune action', async () => {
