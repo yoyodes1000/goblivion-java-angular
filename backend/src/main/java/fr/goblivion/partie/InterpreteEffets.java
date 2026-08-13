@@ -188,8 +188,12 @@ class InterpreteEffets {
             case Effet.PoserDepuisChateau e -> pasEncore("Poser une carte du Chateau");
             case Effet.ObtenirDuMarche e -> pasEncore("Obtenir une carte du Marche");
             case Effet.ObtenirNiveau e -> pasEncore("Obtenir une carte d'un niveau donne");
-            case Effet.Copier e -> pasEncore("Copier");
-            case Effet.CompterCommeSoldat e -> pasEncore("Compter comme un Soldat");
+            case Effet.Copier e -> copier(e, source, passe);
+            case Effet.CompterCommeSoldat e -> siApplique(passe, () -> {
+                exigerSource(source).compterCommeSoldat();
+                partie.noter("%s est considere comme un Soldat pour cette phase."
+                        .formatted(partie.nomDe(source)));
+            });
             case Effet.DoublerJetons e -> pasEncore("Doubler les jetons Banniere");
             case Effet.IgnorerJetonsBanniere e -> passif();
             case Effet.IgnorerForceDesObjets e -> passif();
@@ -295,6 +299,36 @@ class InterpreteEffets {
             }
             partie.poserAuChampDeBataille(carte);
             partie.noter("%s revient de l'Hopital.".formatted(partie.nomDe(carte)));
+        });
+    }
+
+    /**
+     * Le Joker prend toutes les caractéristiques de sa cible pour la phase.
+     *
+     * <p>Copier n'est pas prendre : la carte copiée n'est pas consommée, et le
+     * Joker redeviendra lui-même en fin de phase. Repioché plus tard, il pourra
+     * en copier une autre — la copie n'est jamais définitive.
+     *
+     * <p>Le Chapeau magique, lui, copie une <em>action</em> et non une carte :
+     * il attend encore, faute de savoir désigner une action.
+     */
+    private void copier(Effet.Copier effet, CarteEnJeu source, Passe passe) {
+        if (effet.cible() == Cible.UNE_ACTION_PIVOTER) {
+            pasEncore("Copier une action Pivoter");
+            return;
+        }
+        CarteEnJeu modele = enJeu(passe.choix().carteSuivante(descriptionDe(effet.cible())), passe);
+        exigerType(modele, effet.cible());
+        if (modele.id() == exigerSource(source).id()) {
+            throw new ActionInterdite("Une carte ne peut pas se copier elle-meme.");
+        }
+        siApplique(passe, () -> {
+            // Le nom est relevé avant la copie : après, la carte répond déjà
+            // celui de son modèle et le journal dirait « X copie X ».
+            String avant = partie.nomDe(source);
+            source.copier(modele.familleEffective(), modele.carteIdEffectif());
+            partie.noter("%s copie %s pour cette phase."
+                    .formatted(avant, partie.nomDe(modele)));
         });
     }
 

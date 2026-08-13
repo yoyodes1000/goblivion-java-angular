@@ -201,7 +201,7 @@ public final class Partie {
      * s'applique ici.
      */
     public int forceEffective(CarteEnJeu carte) {
-        return catalogue.paysan(carte.famille(), carte.carteId())
+        return catalogue.paysan(carte.familleEffective(), carte.carteIdEffectif())
                 .map(paysan -> forceSousModificateurs(paysan, carte, modificateursActifs()))
                 .orElse(0);
     }
@@ -248,7 +248,12 @@ public final class Partie {
      * Sans quoi poser un jeton sur une carte de force 3 la ferait disparaître.
      */
     private int forceSousModificateurs(Paysan paysan, CarteEnJeu carte, List<Effet> passifs) {
-        int imprimee = forceDeBase(paysan);
+        // Devenu Soldat pour la phase, le Héros du village en prend aussi la
+        // force variable : être compté parmi eux sans en avoir la valeur
+        // reviendrait à n'en être un qu'à moitié.
+        int imprimee = carte.compteCommeSoldat()
+                ? forceDUnSoldat()
+                : forceDeBase(paysan);
         int retenue = imprimee;
         int jetons = carte.jetonBanniere();
 
@@ -273,6 +278,16 @@ public final class Partie {
         return retenue + jetons;
     }
 
+    /**
+     * 1 Soldat → 2, 2 → 3, 3 → 4, 4 et plus → 5 (§12).
+     *
+     * <p>Chaque Soldat vaut cette valeur : ils ne se partagent pas un total, ils
+     * se renforcent mutuellement.
+     */
+    private int forceDUnSoldat() {
+        return Math.min(nombreDeSoldats() + 1, 5);
+    }
+
     private int forceDeBase(Paysan paysan) {
         if (paysan.force() != null) {
             return paysan.force();
@@ -281,9 +296,7 @@ public final class Partie {
             return 0;
         }
         return switch (paysan.forceVariable()) {
-            // 1 Soldat → 2, 2 → 3, 3 → 4, 4 et plus → 5 (§12). Chaque Soldat
-            // vaut cette valeur, ils ne se partagent pas un total.
-            case SOLDAT -> Math.min(nombreDeSoldats() + 1, 5);
+            case SOLDAT -> forceDUnSoldat();
             // Le Joker copie un Paysan Humain en jeu : la cible est un choix du
             // joueur, donc une action — ticket 11. En attendant il n'apporte rien,
             // et le dire vaut mieux que d'inventer une valeur par défaut.
@@ -294,12 +307,24 @@ public final class Partie {
     /**
      * Le décompte porte sur le <strong>Champ de bataille</strong> seulement (§12)
      * — ni le plateau Ennemi, ni le Garde du corps, qui n'est pas « En jeu » (§9).
+     *
+     * <p>Le Héros du village y entre pour la phase où il s'est activé : il
+     * <em>devient</em> un Soldat, donc il compte dans le total dont dépend la
+     * force de tous les autres, il ne se contente pas d'en prendre la valeur.
      */
     public int nombreDeSoldats() {
         return (int) champDeBataille.stream()
-                .map(carte -> catalogue.paysan(carte.famille(), carte.carteId()).orElse(null))
-                .filter(paysan -> paysan != null && paysan.forceVariable() == ForceVariable.SOLDAT)
+                .filter(this::compteParmiLesSoldats)
                 .count();
+    }
+
+    private boolean compteParmiLesSoldats(CarteEnJeu carte) {
+        if (carte.compteCommeSoldat()) {
+            return true;
+        }
+        return catalogue.paysan(carte.familleEffective(), carte.carteIdEffectif())
+                .map(paysan -> paysan.forceVariable() == ForceVariable.SOLDAT)
+                .orElse(false);
     }
 
     /**
@@ -774,14 +799,15 @@ public final class Partie {
                     .map(c -> c.ennemi().effets())
                     .orElse(List.of());
         }
-        return catalogue.paysan(carte.famille(), carte.carteId())
+        return catalogue.paysan(carte.familleEffective(), carte.carteIdEffectif())
                 .map(Paysan::effets)
                 .orElse(List.of());
     }
 
     /** La nature d'un exemplaire, pour vérifier un sacrifice d'entraînement (§6). */
     public Optional<TypeCarte> typeDe(CarteEnJeu carte) {
-        return catalogue.paysan(carte.famille(), carte.carteId()).map(Paysan::type);
+        return catalogue.paysan(carte.familleEffective(), carte.carteIdEffectif())
+                .map(Paysan::type);
     }
 
     /** Le nom lisible d'un exemplaire, pour le journal et l'affichage. */

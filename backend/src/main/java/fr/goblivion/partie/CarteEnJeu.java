@@ -30,6 +30,11 @@ public final class CarteEnJeu {
     private int jetonEnnemi;
     private int jetonBanniere;
 
+    /** Effets de durée « phase » — défaits par {@link #nettoyerFinDePhase()}. */
+    private Famille copieFamille;
+    private String copie;
+    private boolean compteCommeSoldat;
+
     private CarteEnJeu(Famille famille, String carteId, boolean revelee) {
         this.id = COMPTEUR.incrementAndGet();
         this.famille = famille;
@@ -128,8 +133,65 @@ public final class CarteEnJeu {
         this.jetonBanniere += valeur;
     }
 
+    /**
+     * Le type de carte que celle-ci copie pour la phase, {@code null} si elle
+     * est elle-même.
+     *
+     * <p>Le Joker prend <strong>toutes</strong> les caractéristiques d'un Paysan
+     * Humain en jeu — force et action comprises. La copie ne dure que la phase :
+     * repioché plus tard, il pourra en copier un autre.
+     */
+    public String copie() {
+        return copie;
+    }
+
+    /**
+     * Ce que cette carte est <em>pour le moment</em> — son propre type, ou celui
+     * qu'elle copie.
+     *
+     * <p>Tout ce qui interroge le catalogue doit passer par là plutôt que par
+     * {@link #carteId()}, sinon un Joker resterait un Joker aux yeux des règles
+     * tout en se présentant comme sa cible.
+     */
+    public String carteIdEffectif() {
+        return copie == null ? carteId : copie;
+    }
+
+    /**
+     * La famille à interroger pour {@link #carteIdEffectif()}.
+     *
+     * <p>Elle change avec la copie : un Joker est une carte Ennemi/Objet, la
+     * cible qu'il copie une Bleue. Chercher son identifiant dans sa propre
+     * famille ne rendrait rien.
+     */
+    public Famille familleEffective() {
+        return copie == null ? famille : copieFamille;
+    }
+
+    void copier(Famille familleCopiee, String carteIdCopie) {
+        this.copieFamille = familleCopiee;
+        this.copie = carteIdCopie;
+    }
+
+    /** Compte parmi les Soldats pour cette phase — le Héros du village (§12). */
+    public boolean compteCommeSoldat() {
+        return compteCommeSoldat;
+    }
+
+    void compterCommeSoldat() {
+        this.compteCommeSoldat = true;
+    }
+
+    /**
+     * La fin de phase défait ce qui n'était vrai que pour elle : les jetons
+     * retournent à la banque, les cartes se redressent, et les cartes qui
+     * jouaient un rôle redeviennent elles-mêmes.
+     */
     void nettoyerFinDePhase() {
         this.jetonBanniere = 0;
         this.pivotee = false;
+        this.copie = null;
+        this.copieFamille = null;
+        this.compteCommeSoldat = false;
     }
 }
