@@ -12,8 +12,12 @@
     </div>
 
     <app-pile-monstres class="plateau__pile" [nombre]="partie.taillePileEnnemie" />
-    <app-plateau-avancee class="plateau__avancee" />
-    <app-portes-chateau class="plateau__portes" />
+    <app-plateau-avancee class="plateau__avancee" [cases]="pisteVue()" />
+    <app-portes-chateau
+      class="plateau__portes"
+      [ennemis]="portesVue()"
+      [forceEnnemie]="etat()?.forceEnnemie ?? 0"
+    />
 
     <app-zone-jeu
       class="plateau__zone"

@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 
-import { Cartes } from '../cartes/cartes';
+import { Cartes, urlDos, urlScan } from '../cartes/cartes';
 import type { CarteAffichable, CarteDoree, OffreMarche } from '../cartes/modele';
 import {
   Ciblage,
@@ -17,7 +17,7 @@ import {
   type Reponses,
 } from '../partie/ciblage/ciblage';
 import { Commandes } from '../partie/commandes/commandes';
-import type { Difficulte, TypeAction } from '../partie/modele';
+import type { Difficulte, EnnemiVue, TypeAction } from '../partie/modele';
 import { NouvellePartie } from '../partie/nouvelle-partie/nouvelle-partie';
 import { Partie } from '../partie/partie';
 import { BandeauPhase } from './bandeau-phase/bandeau-phase';
@@ -29,6 +29,7 @@ import { EntrainementEnCours } from './entrainement-en-cours/entrainement-en-cou
 import { PileMonstres } from './pile-monstres/pile-monstres';
 import { PlateauAvancee } from './plateau-avancee/plateau-avancee';
 import { PortesChateau } from './portes-chateau/portes-chateau';
+import type { EnnemiSurPlateau } from './ennemi-sur-plateau';
 import { ZoneJeu, type CarteEnJeuVue } from './zone-jeu/zone-jeu';
 
 /**
@@ -123,6 +124,36 @@ export class Plateau {
           ]
         : [];
     }),
+  );
+
+  /**
+   * Un ennemi prêt à être montré, face cachée comprise.
+   *
+   * Le backend n'envoie pas l'identité d'une carte non révélée : il n'y a donc
+   * rien à résoudre dans le catalogue, et le dos de la famille suffit. C'est la
+   * règle du plateau Ennemi (§7) qui tient l'affichage, pas l'inverse.
+   */
+  private ennemiVisible(vue: EnnemiVue): EnnemiSurPlateau {
+    const carte = vue.carte ? this.cartes.ennemi(vue.carte) : undefined;
+    return {
+      id: vue.id,
+      nom: carte?.nom ?? 'Ennemi face cachée',
+      image: carte ? urlScan('ennemis-objets', carte.scan) : urlDos('ennemis-objets'),
+      revelee: vue.revelee,
+      force: vue.force,
+      jetonEnnemi: vue.jetonEnnemi,
+    };
+  }
+
+  /** Les trois cases de la piste, dans l'ordre d'approche — une case vide vaut `null`. */
+  protected readonly pisteVue = computed<readonly (EnnemiSurPlateau | null)[]>(() =>
+    (this.etat()?.piste ?? [null, null, null]).map((vue) =>
+      vue ? this.ennemiVisible(vue) : null,
+    ),
+  );
+
+  protected readonly portesVue = computed<readonly EnnemiSurPlateau[]>(() =>
+    (this.etat()?.portes ?? []).map((vue) => this.ennemiVisible(vue)),
   );
 
   protected readonly cartesHopital = computed<CarteAffichable[]>(() =>

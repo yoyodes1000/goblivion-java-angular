@@ -1,32 +1,49 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { NgOptimizedImage } from '@angular/common';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+
+import type { EnnemiSurPlateau } from '../ennemi-sur-plateau';
 
 /**
- * L'avancée des monstres — les cases 2 à 4 du plateau Ennemi.
+ * La piste d'approche — trois cases, du paquet vers les Portes.
  *
- * **Trois positions seulement** (§7). La case 1 des règles, c'est la pile
- * posée juste à gauche : elle a son propre composant. Un ennemi met donc quatre
- * avancées à rejoindre les Portes — une pour entrer sur la piste, puis une par
- * case. À une avancée par tour, le premier ennemi arrive au combat du 4e tour.
+ * Les ennemis y glissent à la queue leu leu en comblant toujours le vide
+ * derrière eux (§7). Une case vide reste donc vide au milieu seulement le temps
+ * d'une avancée : ce que l'on voit ici est un instantané, pas un rangement.
  *
- * Les cartes glissent à la queue leu leu en comblant toujours le vide derrière
- * elles : c'est ce déplacement que le ticket 10 mettra en œuvre. Ici, on pose
- * les trois cases.
+ * Une carte face cachée le reste, une carte révélée le reste aussi. C'est
+ * pourquoi l'affichage ne décide rien : il montre `image`, que le plateau a
+ * déjà résolue en scan ou en dos.
  */
 @Component({
   selector: 'app-plateau-avancee',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NgOptimizedImage],
   template: `
     <h2 class="avancee__titre">Avancée des monstres</h2>
 
     <ol class="avancee__cases">
-      @for (position of positions; track position) {
-        <li class="avancee__case"></li>
+      @for (ennemi of cases(); track $index) {
+        <li class="avancee__case" [class.avancee__case--occupee]="ennemi !== null">
+          @if (ennemi) {
+            <div class="avancee__carte" [class.avancee__carte--cachee]="!ennemi.revelee">
+              <img [ngSrc]="ennemi.image" fill sizes="7vw" [alt]="ennemi.nom" />
+              @if (ennemi.revelee) {
+                <span class="avancee__force">{{ ennemi.force }}</span>
+              }
+            </div>
+          }
+        </li>
       }
     </ol>
   `,
   styleUrl: './plateau-avancee.scss',
 })
 export class PlateauAvancee {
-  /** Les trois positions de la piste d'approche, de la pile vers les Portes. */
-  protected readonly positions = [1, 2, 3];
+  /**
+   * Les trois cases dans l'ordre d'approche ; une case vide vaut `null`.
+   *
+   * La position dans le tableau **est** la case : on ne peut pas filtrer les
+   * vides sans perdre l'information de distance aux Portes.
+   */
+  readonly cases = input<readonly (EnnemiSurPlateau | null)[]>([null, null, null]);
 }
