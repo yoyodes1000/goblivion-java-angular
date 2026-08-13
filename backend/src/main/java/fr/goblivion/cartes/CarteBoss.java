@@ -1,5 +1,9 @@
 package fr.goblivion.cartes;
 
+import java.util.List;
+
+import fr.goblivion.effets.EffetCarte;
+
 /**
  * Une carte Boss.
  *
@@ -19,7 +23,19 @@ public record CarteBoss(
         int ressourcesSolo,
         int cartesAPiocherSolo,
         int ressourcesDeuxJoueurs,
-        int cartesAPiocherDeuxJoueurs) {
+        int cartesAPiocherDeuxJoueurs,
+        List<EffetCarte> effets) {
+
+    public CarteBoss {
+        effets = effets == null ? List.of() : List.copyOf(effets);
+    }
+
+    /** Sans effets — les cartes inventées des tests, qui n'en ont pas besoin. */
+    public CarteBoss(String id, String nom, String scan, String action, int ressourcesSolo,
+            int cartesAPiocherSolo, int ressourcesDeuxJoueurs, int cartesAPiocherDeuxJoueurs) {
+        this(id, nom, scan, action, ressourcesSolo, cartesAPiocherSolo, ressourcesDeuxJoueurs,
+                cartesAPiocherDeuxJoueurs, List.of());
+    }
 
     /** La force à égaler ou dépasser pour vaincre ce Boss. */
     public int force() {

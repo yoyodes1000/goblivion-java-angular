@@ -50,7 +50,56 @@ public final class CataloguesFictifs {
         return new Catalogue(bleues(), dorees(), roles(), boss(), ennemis());
     }
 
+    /**
+     * Le même catalogue, mais {@link #BLEUE_HUMAIN} y porte un effet transcrit.
+     *
+     * <p>Les comptes sont inchangés — mise en place et tirages se comportent
+     * exactement pareil. Seule la carte agit, ce qui permet de vérifier que le
+     * moteur déclenche vraiment ce que la transcription annonce.
+     */
+    public static Catalogue avecEffetSurHumain(fr.goblivion.effets.EffetCarte... effets) {
+        Catalogue base = catalogue();
+        List<CarteBleue> bleues = base.bleues().stream()
+                .map(carte -> carte.id().equals(BLEUE_HUMAIN)
+                        ? new CarteBleue(carte.id(), carte.nom(), carte.type(), carte.scan(),
+                                carte.force(), carte.forceVariable(), carte.niveau(),
+                                carte.action(), carte.exemplaires(), List.of(effets))
+                        : carte)
+                .toList();
+        return new Catalogue(bleues, base.dorees(), base.roiReines(), base.boss(),
+                base.ennemisObjets());
+    }
+
     /** 3 types, 40 exemplaires — le compte du vrai matériel (§2). */
+    /** Le même catalogue, mais les Boss imposent un effet continu. */
+    public static Catalogue avecPassifDeBoss(fr.goblivion.effets.Effet passif) {
+        Catalogue base = catalogue();
+        List<CarteBoss> boss = base.boss().stream()
+                .map(carte -> new CarteBoss(carte.id(), carte.nom(), carte.scan(), carte.action(),
+                        carte.ressourcesSolo(), carte.cartesAPiocherSolo(),
+                        carte.ressourcesDeuxJoueurs(), carte.cartesAPiocherDeuxJoueurs(),
+                        List.of(new fr.goblivion.effets.EffetCarte(
+                                fr.goblivion.effets.Declencheur.PERMANENT, passif))))
+                .toList();
+        return new Catalogue(base.bleues(), base.dorees(), base.roiReines(), boss,
+                base.ennemisObjets());
+    }
+
+    /** Le même catalogue, mais les ennemis imposent un effet continu de combat. */
+    public static Catalogue avecPassifDEnnemi(fr.goblivion.effets.Effet passif) {
+        Catalogue base = catalogue();
+        List<CarteEnnemiObjet> ennemis = base.ennemisObjets().stream()
+                .map(carte -> new CarteEnnemiObjet(carte.id(), carte.scan(), carte.exemplaires(),
+                        new CarteEnnemiObjet.Ennemi(carte.ennemi().nom(), carte.ennemi().niveau(),
+                                carte.ennemi().pioche(), carte.ennemi().force(),
+                                carte.ennemi().action(),
+                                List.of(new fr.goblivion.effets.EffetCarte(
+                                        fr.goblivion.effets.Declencheur.PERMANENT, passif))),
+                        carte.objet()))
+                .toList();
+        return new Catalogue(base.bleues(), base.dorees(), base.roiReines(), base.boss(), ennemis);
+    }
+
     private static List<CarteBleue> bleues() {
         return List.of(
                 new CarteBleue(BLEUE_HUMAIN, "Humain fictif", TypeCarte.HUMAIN, "x.webp", 1, null, 0, null, 20),

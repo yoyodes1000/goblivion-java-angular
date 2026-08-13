@@ -10,8 +10,21 @@ describe('ZoneJeu', () => {
     }).compileComponents();
   });
 
-  function carte(id: number, force: number, pivotee = false): CarteEnJeuVue {
-    return { id, nom: `Carte ${id}`, scan: `c${id}.webp`, famille: 'bleues', force, pivotee };
+  function carte(id: number, force: number, pivotee = false, agitAuPivot = true): CarteEnJeuVue {
+    return {
+      id,
+      nom: `Carte ${id}`,
+      scan: `c${id}.webp`,
+      famille: 'bleues',
+      force,
+      pivotee,
+      agitAuPivot,
+    };
+  }
+
+  /** Une carte sans action : rien à déclencher, donc pas de bouton Pivoter. */
+  function carteSansAction(id: number, force: number): CarteEnJeuVue {
+    return carte(id, force, false, false);
   }
 
   async function monter(
@@ -76,6 +89,23 @@ describe('ZoneJeu', () => {
     });
 
     expect(libelles(fixture)).toEqual(['Pivoter Carte 1', 'Sacrifier Carte 1', 'Garde du corps : Carte 1']);
+  });
+
+  /**
+   * Beaucoup de Paysans n'ont aucune action — le Fermier, l'Épée, le Vieux.
+   * Leur proposer « Pivoter » offrirait un bouton sans effet, et le moteur
+   * l'accepterait sans rien faire : pire qu'un refus, puisque rien ne le dirait.
+   */
+  it('ne propose pas de pivoter une carte qui n’a aucune action', async () => {
+    const fixture = await monter('entrainement', [carteSansAction(1, 2)], {
+      pivot: true,
+      echange: true,
+    });
+
+    const libelle = libelles(fixture);
+    expect(libelle.some((texte) => texte.startsWith('Pivoter'))).toBe(false);
+    // L'échange, lui, reste offert : il ne dépend pas de l'action de la carte.
+    expect(libelle.some((texte) => texte.startsWith('Garde du corps'))).toBe(true);
   });
 
   /**

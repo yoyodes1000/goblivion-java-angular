@@ -1,5 +1,9 @@
 package fr.goblivion.cartes;
 
+import java.util.List;
+
+import fr.goblivion.effets.EffetCarte;
+
 /**
  * Une carte Ennemi/Objet — <strong>une</strong> carte physique, deux moitiés
  * tête-bêche (§4).
@@ -25,7 +29,17 @@ public record CarteEnnemiObjet(
      * @param niveau 1 ou 2 épées ; détermine le jeton Bonus Ennemi d'un survivant (§8)
      * @param pioche cartes à tirer du Château pour l'affronter (§8)
      */
-    public record Ennemi(String nom, int niveau, int pioche, Integer force, String action) {
+    public record Ennemi(String nom, int niveau, int pioche, Integer force, String action,
+            List<EffetCarte> effets) {
+
+        public Ennemi {
+            effets = effets == null ? List.of() : List.copyOf(effets);
+        }
+
+        /** Sans effets — les cartes inventées des tests, qui n'en ont pas besoin. */
+        public Ennemi(String nom, int niveau, int pioche, Integer force, String action) {
+            this(nom, niveau, pioche, force, action, List.of());
+        }
     }
 
     /** La moitié basse — la récompense, qui entre dans le deck du joueur. */
@@ -34,6 +48,17 @@ public record CarteEnnemiObjet(
             TypeCarte type,
             Integer force,
             ForceVariable forceVariable,
-            String action) implements Paysan {
+            String action,
+            List<EffetCarte> effets) implements Paysan {
+
+        public Objet {
+            effets = effets == null ? List.of() : List.copyOf(effets);
+        }
+
+        /** Sans effets — les cartes inventées des tests, qui n'en ont pas besoin. */
+        public Objet(String nom, TypeCarte type, Integer force, ForceVariable forceVariable,
+                String action) {
+            this(nom, type, force, forceVariable, action, List.of());
+        }
     }
 }

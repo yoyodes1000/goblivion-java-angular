@@ -63,15 +63,23 @@ public class PartieControleur {
     public record DemandeNouvellePartie(@NotNull Difficulte difficulte, String role) {
     }
 
-    /** Une action du joueur, dans la forme qu'attend le moteur. */
+    /**
+     * Une action du joueur, dans la forme qu'attend le moteur.
+     *
+     * @param cibles  les exemplaires désignés, <strong>dans l'ordre</strong> où
+     *                le plan de ciblage les annonce
+     * @param options les branches retenues face à un {@code ou}
+     */
     public record DemandeAction(
             @NotNull TypeAction type,
             String carteDuMarche,
             Long carteEnJeu,
-            List<Long> cibles) {
+            List<Long> cibles,
+            List<Integer> options,
+            List<String> types) {
 
         Action versAction() {
-            return new Action(type, carteDuMarche, carteEnJeu, cibles);
+            return new Action(type, carteDuMarche, carteEnJeu, cibles, options, types);
         }
     }
 

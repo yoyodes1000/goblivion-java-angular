@@ -57,6 +57,29 @@ describe('Plateau', () => {
    * pile (§3), la Catapulte à 3 exemplaires parce que le quatrième est parti au
    * Garde du corps.
    */
+  /**
+   * Une carte en jeu qui ne réclame rien.
+   *
+   * La plupart des cartes sont dans ce cas : leur action part d'un clic, sans
+   * désignation. Les tests qui vérifient le ciblage fournissent leur propre plan.
+   */
+  const carteEnJeu = (
+    id: number,
+    carte: string,
+    pivotee = false,
+    plan = { designations: [], options: [] },
+    agitAuPivot = true,
+  ) => ({
+    id,
+    carte,
+    famille: 'bleues' as const,
+    force: 1,
+    pivotee,
+    copie: null,
+    plan,
+    agitAuPivot,
+  });
+
   const ETAT: EtatPartie = {
     phase: 'entrainement',
     tour: 1,
@@ -64,7 +87,16 @@ describe('Plateau', () => {
     resultat: 'EN_COURS',
     difficulte: 'NORMAL',
     role: 'bella',
-    gardeDuCorps: { id: 1, carte: 'catapulte', famille: 'dorees', force: 3, pivotee: false },
+    gardeDuCorps: {
+      id: 1,
+      carte: 'catapulte',
+      famille: 'dorees',
+      force: 3,
+      pivotee: false,
+      copie: null,
+      plan: { designations: [], options: [] },
+      agitAuPivot: true,
+    },
     marche: { catapulte: 3 },
     tailleChateau: 20,
     taillePileEnnemie: 15,
@@ -276,10 +308,7 @@ describe('Plateau', () => {
   it('affiche les cartes en jeu avec la force que le moteur leur donne', async () => {
     const { rendu } = await table({
       ...ETAT,
-      champDeBataille: [
-        { id: 11, carte: 'fermier', famille: 'bleues', force: 1, pivotee: false },
-        { id: 12, carte: 'fermier', famille: 'bleues', force: 1, pivotee: true },
-      ],
+      champDeBataille: [carteEnJeu(11, 'fermier'), carteEnJeu(12, 'fermier', true)],
     });
 
     // Deux exemplaires du même type : c'est l'identité qui les distingue.
@@ -291,7 +320,7 @@ describe('Plateau', () => {
   it('ne propose pas de pivoter une carte déjà activée', async () => {
     const { rendu } = await table({
       ...ETAT,
-      champDeBataille: [{ id: 12, carte: 'fermier', famille: 'bleues', force: 1, pivotee: true }],
+      champDeBataille: [carteEnJeu(12, 'fermier', true)],
     });
 
     const actions = [...rendu.querySelectorAll('.jeu__actions button')].map((b) =>
@@ -303,7 +332,7 @@ describe('Plateau', () => {
   });
 
   it('ne propose le sacrifice qu’une fois la cible atteinte', async () => {
-    const enJeu = [{ id: 11, carte: 'fermier', famille: 'bleues' as const, force: 1, pivotee: false }];
+    const enJeu = [carteEnJeu(11, 'fermier')];
     const { rendu } = await table({
       ...ETAT,
       champDeBataille: enJeu,

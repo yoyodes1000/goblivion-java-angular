@@ -7,6 +7,8 @@ import fr.goblivion.cartes.CarteDoree;
 import fr.goblivion.cartes.CarteEnnemiObjet;
 import fr.goblivion.cartes.Famille;
 import fr.goblivion.cartes.TypeCarte;
+import fr.goblivion.effets.Declencheur;
+import fr.goblivion.effets.EffetCarte;
 
 /**
  * Ce que le joueur a le droit de faire, et ce qui s'ensuit.
@@ -22,9 +24,34 @@ import fr.goblivion.cartes.TypeCarte;
 public final class MoteurPartie {
 
     private final Partie partie;
+    private final InterpreteEffets interprete;
 
     public MoteurPartie(Partie partie) {
         this.partie = partie;
+        this.interprete = new InterpreteEffets(partie);
+    }
+
+    /**
+     * Les désignations que le joueur a jointes à sa demande.
+     *
+     * <p>Elles arrivent avec l'action et non après : un effet qui demande une
+     * cible la trouve déjà là, ou refuse. Le moteur n'a donc jamais d'action à
+     * moitié jouée en attente d'une réponse.
+     */
+    private InterpreteEffets.Choix choixDe(Action action) {
+        return new InterpreteEffets.Choix(action.cibles(), action.options(), action.types());
+    }
+
+    /**
+     * Joue les effets qu'une carte déclenche à ce moment-là.
+     *
+     * <p>Une carte peut n'en avoir aucun : beaucoup n'agissent pas, et celles
+     * dont la règle vit ailleurs — la force variable du Soldat — non plus.
+     */
+    private List<EffetCarte> effetsDeclenches(Declencheur declencheur, CarteEnJeu carte) {
+        return partie.effetsDe(carte).stream()
+                .filter(effet -> effet.declencheur() == declencheur)
+                .toList();
     }
 
     public Partie partie() {
@@ -52,11 +79,11 @@ public final class MoteurPartie {
             case PAYER_DIFFERENCE -> payerDifference();
             case CONCLURE_ENTRAINEMENT -> conclureEntrainement(action.exigeCarteEnJeu());
             case ABANDONNER_ENTRAINEMENT -> abandonnerEntrainement();
-            case ECHANGER_GARDE_DU_CORPS -> echangerGardeDuCorps(action.exigeCarteEnJeu());
-            case POUVOIR_ROI_REINE -> utiliserPouvoirRoiReine();
-            case PIVOTER -> pivoter(action.exigeCarteEnJeu());
+            case ECHANGER_GARDE_DU_CORPS -> echangerGardeDuCorps(action.exigeCarteEnJeu(), action);
+            case POUVOIR_ROI_REINE -> utiliserPouvoirRoiReine(action);
+            case PIVOTER -> pivoter(action.exigeCarteEnJeu(), action);
             case RESOUDRE_COMBAT -> resoudreCombat(action.cibles());
-            case COMBATTRE_BOSS -> combattreBoss();
+            case COMBATTRE_BOSS -> combattreBoss(action);
             case PHASE_SUIVANTE -> phaseSuivante();
         }
     }
@@ -169,10 +196,10 @@ public final class MoteurPartie {
      * totale se recalcule d'elle-même — la carte qui entre apporte la sienne,
      * celle qui sort emporte la sienne — et la carte qui <em>devient</em> Garde
      * du corps peut déclencher une action (l'Oracle, le Patron). Ce déclencheur
-     * est une troisième famille, à côté de Pivoter et de Testament ; ce qu'il
-     * fait est le ticket 11.
+     * est une troisième famille, à côté de Pivoter et de Testament — et il ne
+     * part qu'à l'entrée sur l'emplacement, jamais à l'activation.
      */
-    private void echangerGardeDuCorps(long carteEnJeu) {
+    private void echangerGardeDuCorps(long carteEnJeu, Action action) {
         if (partie.gardeDuCorpsEchange()) {
             throw new ActionInterdite("Le Garde du corps a deja ete echange pendant cette phase.");
         }
@@ -185,35 +212,64 @@ public final class MoteurPartie {
                     "On ne peut pas echanger le Garde du corps contre une carte deja activee.");
         }
 
+        // Comme pour Pivoter : ce que la carte entrante déclenchera est vérifié
+        // avant que l'échange ait lieu, sinon un refus consommerait l'échange
+        // de la phase sans rien donner.
+        List<EffetCarte> effets = effetsDeclenches(Declencheur.GARDE_DU_CORPS, entrante);
+        effets.forEach(effet -> interprete.verifier(effet, entrante, choixDe(action)));
+
         partie.retirerDuChampDeBataille(carteEnJeu);
         partie.poserAuGardeDuCorps(entrante);
         partie.poserAuChampDeBataille(sortante);
         partie.marquerGardeDuCorpsEchange();
         partie.noter("Echange : %s prend l'emplacement Garde du corps, %s entre en jeu."
                 .formatted(partie.nomDe(entrante), partie.nomDe(sortante)));
+
+        effets.forEach(effet -> interprete.executer(effet, entrante, choixDe(action)));
     }
 
-    private void utiliserPouvoirRoiReine() {
+    /**
+     * Le pouvoir royal — une fois par partie (§6.3).
+     *
+     * <p>Le geste imprimé est de <strong>retourner</strong> la carte royale, et
+     * non de la pivoter : les sept rôles se déclenchent donc pareil, que leur
+     * texte porte le préfixe {@code Pivoter:} ou non.
+     *
+     * <p>La dépense est actée <em>avant</em> l'effet, et c'est délibéré : si
+     * l'effet refuse — une désignation manquante, une cible du mauvais type —
+     * l'{@link ActionInterdite} remonte et rien n'est modifié, la marque
+     * comprise. Une transaction, pas deux temps.
+     */
+    private void utiliserPouvoirRoiReine(Action action) {
         if (partie.pouvoirRoiReineUtilise()) {
             throw new ActionInterdite("Le pouvoir de %s a deja servi : une seule fois par partie."
                     .formatted(partie.role().nom()));
         }
+        List<EffetCarte> effets = partie.role().effets().stream()
+                .filter(effet -> effet.declencheur() == Declencheur.POUVOIR_ROYAL)
+                .toList();
+        effets.forEach(effet -> interprete.verifier(effet, null, choixDe(action)));
+
         partie.marquerPouvoirRoiReineUtilise();
-        // L'effet lui-même est du texte tant que le ticket 11 n'a pas transcrit
-        // les symboles. Le moteur acte ici qu'il a été dépensé.
         partie.noter("Pouvoir de %s utilise.".formatted(partie.role().nom()));
+        effets.forEach(effet -> interprete.executer(effet, null, choixDe(action)));
     }
 
-    private void pivoter(long carteEnJeu) {
+    private void pivoter(long carteEnJeu, Action action) {
         CarteEnJeu carte = partie.chercherAuChampDeBataille(carteEnJeu)
                 .orElseThrow(() -> new ActionInterdite("Seule une carte en jeu peut etre pivotee."));
         if (carte.pivotee()) {
             throw new ActionInterdite("%s est deja activee.".formatted(partie.nomDe(carte)));
         }
+        // Vérifier avant de marquer : un effet qui refuse — une désignation
+        // absente, une cible du mauvais type — doit laisser à la carte son
+        // Pivoter. Sinon le joueur paierait une activation pour rien.
+        List<EffetCarte> effets = effetsDeclenches(Declencheur.PIVOTER, carte);
+        effets.forEach(effet -> interprete.verifier(effet, carte, choixDe(action)));
+
         carte.pivoter();
         partie.noter("%s est pivotee : son action se declenche.".formatted(partie.nomDe(carte)));
-        // Ce que fait l'action est le ticket 11. Le ticket 12 acte seulement
-        // qu'elle a le droit de partir, et une fois seulement.
+        effets.forEach(effet -> interprete.executer(effet, carte, choixDe(action)));
     }
 
     // ------------------------------------------------------------------
@@ -257,6 +313,9 @@ public final class MoteurPartie {
 
         if (revelationImmediate) {
             partie.noter("%s est revele et lance son action.".formatted(fiche.nom()));
+            effetsDeclenches(Declencheur.REVELATION, ennemi)
+                    .forEach(effet -> interprete.declencherAutomatiquement(effet, ennemi,
+                            fiche.nom()));
         } else {
             // Révélé avant ce tour — par une Vision, ou parce qu'il a survécu au
             // combat précédent : son action ne repart pas (§7).
@@ -368,7 +427,7 @@ public final class MoteurPartie {
      * tentative » : contrairement aux ennemis ordinaires, dont l'action ne part
      * qu'une fois dans la partie, celle du Boss repart à chaque assaut.
      */
-    private void combattreBoss() {
+    private void combattreBoss(Action action) {
         List<CarteBoss> restants = partie.bossRestants();
         if (restants.isEmpty()) {
             throw new ActionInterdite("Plus aucun Boss a affronter.");
@@ -378,8 +437,13 @@ public final class MoteurPartie {
         partie.noter("Assaut contre %s — force %d, %d carte(s) a piocher."
                 .formatted(cible.nom(), cible.force(), cible.pioche()));
         partie.piocher(cible.pioche());
-        // L'action du Boss repart à chaque tentative ; ce qu'elle fait est le ticket 11.
+        // L'action d'un Boss repart à chaque tentative : un assaut raté coûte,
+        // il n'est pas neutre. D'où le déclencheur ASSAUT_BOSS, distinct de la
+        // révélation d'un ennemi ordinaire, qui ne part qu'une fois.
         partie.noter("%s lance son action.".formatted(cible.nom()));
+        cible.effets().stream()
+                .filter(effet -> effet.declencheur() == Declencheur.ASSAUT_BOSS)
+                .forEach(effet -> interprete.executer(effet, null, choixDe(action)));
 
         int alliee = partie.forceAlliee();
         if (alliee >= cible.force()) {

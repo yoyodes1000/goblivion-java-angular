@@ -1,7 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 
 import { Cartes } from '../cartes/cartes';
 import type { CarteAffichable, CarteDoree, OffreMarche } from '../cartes/modele';
+import {
+  Ciblage,
+  type Candidat,
+  type CandidatType,
+  type Ciblee,
+  type Reponses,
+} from '../partie/ciblage/ciblage';
 import { Commandes } from '../partie/commandes/commandes';
 import type { Difficulte, TypeAction } from '../partie/modele';
 import { NouvellePartie } from '../partie/nouvelle-partie/nouvelle-partie';
@@ -41,6 +55,7 @@ import { ZoneJeu, type CarteEnJeuVue } from './zone-jeu/zone-jeu';
     CartesDorees,
     CartesRoyales,
     ChateauHopital,
+    Ciblage,
     Commandes,
     CompteurRessources,
     EntrainementEnCours,
@@ -97,7 +112,15 @@ export class Plateau {
       // Une carte que le catalogue ne connaît pas est ignorée plutôt que
       // rendue à moitié : mieux vaut un trou visible qu'un scan manquant.
       return carte
-        ? [{ ...carte, id: vue.id, force: vue.force, pivotee: vue.pivotee }]
+        ? [
+            {
+              ...carte,
+              id: vue.id,
+              force: vue.force,
+              pivotee: vue.pivotee,
+              agitAuPivot: vue.agitAuPivot,
+            },
+          ]
         : [];
     }),
   );
@@ -162,8 +185,99 @@ export class Plateau {
     this.partie.jouer({ type: 'CHOISIR_ENTRAINEMENT', carteDuMarche: carte.id });
   }
 
+  /**
+   * L'action en attente des réponses du joueur, `null` s'il n'y en a pas.
+   *
+   * Ce n'est pas un état de partie : le moteur n'en sait rien, et ne doit rien
+   * en savoir. C'est une conversation avec le joueur, qui se déroule avant que
+   * l'action existe.
+   */
+  private readonly ciblageDemande = signal<Ciblee | null>(null);
+
+  /**
+   * La question disparaît dès que la partie s'achève.
+   *
+   * Une victoire ou une défaite peut tomber pendant qu'on demande une
+   * désignation — un effet précédent qui vide les ressources, par exemple. Y
+   * répondre n'aurait plus de sens : le moteur refuse toute action sur une
+   * partie terminée, et l'écran de fin doit rester seul.
+   */
+  protected readonly ciblageEnCours = computed<Ciblee | null>(() =>
+    this.etat()?.resultat === 'EN_COURS' ? this.ciblageDemande() : null,
+  );
+
+  /**
+   * Les types offerts au Marché, pour les effets qui en prennent une carte.
+   *
+   * Le Roi Brad et le Chevalier court-circuitent l'entraînement : ils prennent
+   * directement, mais dans le même stock. Une offre épuisée n'a donc rien à
+   * proposer, et le moteur le redit s'il le faut.
+   */
+  protected readonly offresDuMarche = computed<CandidatType[]>(() =>
+    this.offres().map(({ carte, restant }) => ({
+      id: carte.id,
+      nom: carte.nom,
+      restant,
+    })),
+  );
+
+  /** Les cartes désignables, avec l'endroit où elles sont — le moteur accepte les deux. */
+  protected readonly candidats = computed<Candidat[]>(() => {
+    const etat = this.etat();
+    if (!etat) return [];
+
+    const nommer = (famille: CarteAffichable['famille'], carte: string, zone: string) =>
+      (vue: { id: number }) => {
+        const affichable = this.cartes.afficher(famille, carte);
+        return affichable ? [{ id: vue.id, nom: affichable.nom, zone }] : [];
+      };
+
+    return [
+      ...etat.champDeBataille.flatMap((vue) => nommer(vue.famille, vue.carte, 'en jeu')(vue)),
+      ...etat.hopital.flatMap((vue) => nommer(vue.famille, vue.carte, 'Hôpital')(vue)),
+    ];
+  });
+
+  /**
+   * Pivoter une carte ouvre d'abord la conversation, s'il y a lieu.
+   *
+   * Le plan vient du moteur : si la carte ne réclame rien, l'action part
+   * directement. Envoyer d'abord et afficher le refus reviendrait à faire
+   * deviner le joueur.
+   */
   protected pivoter(carteEnJeu: number): void {
-    this.partie.jouer({ type: 'PIVOTER', carteEnJeu });
+    const vue = this.etat()?.champDeBataille.find((carte) => carte.id === carteEnJeu);
+    const plan = vue?.plan;
+
+    if (!plan || (plan.designations.length === 0 && plan.options.length === 0)) {
+      this.partie.jouer({ type: 'PIVOTER', carteEnJeu });
+      return;
+    }
+
+    const affichable = vue ? this.cartes.afficher(vue.famille, vue.carte) : undefined;
+    this.ciblageDemande.set({
+      carteEnJeu,
+      nom: affichable?.nom ?? 'Cette carte',
+      plan,
+    });
+  }
+
+  protected pivoterAvec(reponses: Reponses): void {
+    const demande = this.ciblageEnCours();
+    if (!demande) return;
+
+    this.ciblageDemande.set(null);
+    this.partie.jouer({
+      type: 'PIVOTER',
+      carteEnJeu: demande.carteEnJeu,
+      cibles: reponses.cibles,
+      options: reponses.options,
+      types: reponses.types,
+    });
+  }
+
+  protected annulerCiblage(): void {
+    this.ciblageDemande.set(null);
   }
 
   protected sacrifier(carteEnJeu: number): void {

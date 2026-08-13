@@ -20,6 +20,9 @@ import fr.goblivion.cartes.ForceVariable;
 import fr.goblivion.cartes.Paysan;
 import fr.goblivion.cartes.RoiReine;
 import fr.goblivion.cartes.TypeCarte;
+import fr.goblivion.effets.Declencheur;
+import fr.goblivion.effets.Effet;
+import fr.goblivion.effets.EffetCarte;
 
 /**
  * L'état d'une partie et ses opérations élémentaires.
@@ -198,9 +201,91 @@ public final class Partie {
      * s'applique ici.
      */
     public int forceEffective(CarteEnJeu carte) {
-        return catalogue.paysan(carte.famille(), carte.carteId())
-                .map(paysan -> forceDeBase(paysan) + carte.jetonBanniere())
+        return catalogue.paysan(carte.familleEffective(), carte.carteIdEffectif())
+                .map(paysan -> forceSousModificateurs(paysan, carte, modificateursActifs()))
                 .orElse(0);
+    }
+
+    /**
+     * Les effets continus en vigueur — ceux qui se consultent au lieu de partir.
+     *
+     * <p>Deux sources, et elles ne portent pas sur la même durée : le Boss que
+     * l'on affronte impose les siens tant qu'il est là, un ennemi révélé aux
+     * Portes seulement le temps du combat. C'est ce que
+     * {@code Duree.PERMANENTE} et {@code Duree.COMBAT} distinguent.
+     *
+     * <p>Un ennemi encore face cachée n'impose rien : on ne subit pas ce qu'on
+     * n'a pas retourné.
+     */
+    private List<Effet> modificateursActifs() {
+        List<Effet> actifs = new ArrayList<>();
+
+        if (phase == Phase.BOSS && !boss.isEmpty()) {
+            ajouterPermanents(boss.getFirst().effets(), actifs);
+        }
+        for (CarteEnJeu ennemi : portes) {
+            if (ennemi.revelee()) {
+                catalogue.ennemiObjet(ennemi.carteId())
+                        .ifPresent(carte -> ajouterPermanents(carte.ennemi().effets(), actifs));
+            }
+        }
+        return actifs;
+    }
+
+    private void ajouterPermanents(List<EffetCarte> effets, List<Effet> actifs) {
+        effets.stream()
+                .filter(effet -> effet.declencheur() == Declencheur.PERMANENT)
+                .map(EffetCarte::effet)
+                .forEach(actifs::add);
+    }
+
+    /**
+     * La force d'un exemplaire une fois les effets continus appliqués.
+     *
+     * <p>Les seuils portent sur la force <strong>imprimée</strong> : la
+     * Trollette « ignore la force des Bannières 4 et plus », et c'est la valeur
+     * de la carte qui la désigne, pas le total qu'elle atteint avec ses jetons.
+     * Sans quoi poser un jeton sur une carte de force 3 la ferait disparaître.
+     */
+    private int forceSousModificateurs(Paysan paysan, CarteEnJeu carte, List<Effet> passifs) {
+        // Devenu Soldat pour la phase, le Héros du village en prend aussi la
+        // force variable : être compté parmi eux sans en avoir la valeur
+        // reviendrait à n'en être un qu'à moitié.
+        int imprimee = carte.compteCommeSoldat()
+                ? forceDUnSoldat()
+                : forceDeBase(paysan);
+        int retenue = imprimee;
+        int jetons = carte.jetonBanniere();
+
+        for (Effet passif : passifs) {
+            switch (passif) {
+                case Effet.IgnorerForceDesObjets ignore -> {
+                    if (paysan.type() == TypeCarte.OBJET) {
+                        retenue = 0;
+                    }
+                }
+                case Effet.IgnorerForceAPartirDe seuil -> {
+                    if (imprimee >= seuil.seuil()) {
+                        retenue = 0;
+                    }
+                }
+                case Effet.IgnorerJetonsBanniere ignore -> jetons = 0;
+                default -> {
+                    // Les autres effets continus ne touchent pas une force isolée.
+                }
+            }
+        }
+        return retenue + jetons;
+    }
+
+    /**
+     * 1 Soldat → 2, 2 → 3, 3 → 4, 4 et plus → 5 (§12).
+     *
+     * <p>Chaque Soldat vaut cette valeur : ils ne se partagent pas un total, ils
+     * se renforcent mutuellement.
+     */
+    private int forceDUnSoldat() {
+        return Math.min(nombreDeSoldats() + 1, 5);
     }
 
     private int forceDeBase(Paysan paysan) {
@@ -211,12 +296,11 @@ public final class Partie {
             return 0;
         }
         return switch (paysan.forceVariable()) {
-            // 1 Soldat → 2, 2 → 3, 3 → 4, 4 et plus → 5 (§12). Chaque Soldat
-            // vaut cette valeur, ils ne se partagent pas un total.
-            case SOLDAT -> Math.min(nombreDeSoldats() + 1, 5);
-            // Le Joker copie un Paysan Humain en jeu : la cible est un choix du
-            // joueur, donc une action — ticket 11. En attendant il n'apporte rien,
-            // et le dire vaut mieux que d'inventer une valeur par défaut.
+            case SOLDAT -> forceDUnSoldat();
+            // Un Joker qui a copié n'arrive jamais ici : forceEffective résout
+            // d'abord son identité effective, donc c'est la force de son modèle
+            // qui est lue. Ce zéro est celui du Joker qui n'a copié personne —
+            // et il vaut mieux que d'inventer une valeur par défaut.
             case JOKER -> 0;
         };
     }
@@ -224,12 +308,24 @@ public final class Partie {
     /**
      * Le décompte porte sur le <strong>Champ de bataille</strong> seulement (§12)
      * — ni le plateau Ennemi, ni le Garde du corps, qui n'est pas « En jeu » (§9).
+     *
+     * <p>Le Héros du village y entre pour la phase où il s'est activé : il
+     * <em>devient</em> un Soldat, donc il compte dans le total dont dépend la
+     * force de tous les autres, il ne se contente pas d'en prendre la valeur.
      */
     public int nombreDeSoldats() {
         return (int) champDeBataille.stream()
-                .map(carte -> catalogue.paysan(carte.famille(), carte.carteId()).orElse(null))
-                .filter(paysan -> paysan != null && paysan.forceVariable() == ForceVariable.SOLDAT)
+                .filter(this::compteParmiLesSoldats)
                 .count();
+    }
+
+    private boolean compteParmiLesSoldats(CarteEnJeu carte) {
+        if (carte.compteCommeSoldat()) {
+            return true;
+        }
+        return catalogue.paysan(carte.familleEffective(), carte.carteIdEffectif())
+                .map(paysan -> paysan.forceVariable() == ForceVariable.SOLDAT)
+                .orElse(false);
     }
 
     /**
@@ -240,7 +336,31 @@ public final class Partie {
      * <strong>0</strong> tant qu'elle y reste (§9).
      */
     public int forceAlliee() {
+        if (modificateursActifs().stream().anyMatch(Effet.ReduireLesDoublons.class::isInstance)) {
+            return forceAllieeSansDoublons();
+        }
         return champDeBataille.stream().mapToInt(this::forceEffective).sum();
+    }
+
+    /**
+     * Les Jumeaux : « la force des cartes en double est réduite à la force d'une
+     * seule d'entre elles ».
+     *
+     * <p>Trois Fermiers n'apportent donc plus trois fois leur force, mais une.
+     * La règle porte sur le <em>type</em> de carte, pas sur l'exemplaire : c'est
+     * le Boss qui punit les armées répétitives, et il frappe d'autant plus fort
+     * que le deck est monotone.
+     *
+     * <p>Entre deux exemplaires du même type inégalement dotés en jetons, on
+     * garde le plus fort — « une seule d'entre elles » ne dit pas laquelle, et
+     * retenir la meilleure est la lecture favorable au joueur.
+     */
+    private int forceAllieeSansDoublons() {
+        Map<String, Integer> meilleureParType = new LinkedHashMap<>();
+        for (CarteEnJeu carte : champDeBataille) {
+            meilleureParType.merge(carte.carteId(), forceEffective(carte), Integer::max);
+        }
+        return meilleureParType.values().stream().mapToInt(Integer::intValue).sum();
     }
 
     /** La force à battre : les ennemis aux Portes, jetons Bonus Ennemi compris (§8). */
@@ -268,6 +388,13 @@ public final class Partie {
      */
     public void gagnerRessources(int montant) {
         if (montant <= 0 || phase == Phase.BOSS) {
+            return;
+        }
+        // Le Troll Saboteur : « vous ne gagnez aucune ressource pour ce combat ».
+        // Même logique que le Château qui brûle — la privation est une propriété
+        // du moment, pas de l'effet qui rapporte.
+        if (modificateursActifs().stream().anyMatch(Effet.PriverDeRessources.class::isInstance)) {
+            noter("Aucune ressource gagnee : un ennemi en prive pour ce combat.");
             return;
         }
         ressources += montant;
@@ -451,6 +578,98 @@ public final class Partie {
         return champDeBataille.stream().filter(c -> c.id() == id).findFirst();
     }
 
+    public Optional<CarteEnJeu> chercherALHopital(long id) {
+        return hopital.stream().filter(c -> c.id() == id).findFirst();
+    }
+
+    /**
+     * Détruire, c'est sortir du jeu <strong>définitivement</strong> — ni
+     * l'Hôpital, ni le Château, plus rien.
+     *
+     * <p>À ne pas confondre avec défausser, qui envoie à l'Hôpital et laisse
+     * donc la carte revenir un jour. C'est la différence entre le Bourreau, qui
+     * détruit, et l'Alchimiste, qui défausse.
+     */
+    void detruire(CarteEnJeu carte) {
+        boolean retiree = champDeBataille.remove(carte) || hopital.remove(carte);
+        if (!retiree) {
+            throw new ActionInterdite("Cette carte n'est ni en jeu ni a l'Hopital.");
+        }
+        noter("%s est detruite.".formatted(nomDe(carte)));
+    }
+
+    /**
+     * La carte du dessus du Château, retirée sans être regardée — le Dragon
+     * Bleu, Trollolole. Rend {@code null} sur un Château vide : détruire ce qui
+     * n'existe pas n'est pas une faute du joueur, c'est un coup dans le vide.
+     */
+    CarteEnJeu retirerDuDessusDuChateau() {
+        return chateau.pollFirst();
+    }
+
+    /**
+     * Retourne une carte Ennemi encore face cachée — la Vision (§7).
+     *
+     * <p>La plus avancée d'abord : aux Portes, puis sur la piste en partant du
+     * plus proche. C'est celle dont l'action va partir le plus tôt, donc la
+     * seule qu'il soit encore utile de neutraliser. Révéler une carte du fond du
+     * paquet ne coûterait rien à personne.
+     *
+     * @return la carte révélée, ou {@code null} s'il n'y avait rien à retourner
+     */
+    CarteEnJeu revelerParVision() {
+        // piste() rend des cases, et une case vide vaut null.
+        return java.util.stream.Stream.concat(portes.stream(), piste().stream())
+                .filter(java.util.Objects::nonNull)
+                .filter(ennemi -> !ennemi.revelee())
+                .findFirst()
+                .map(ennemi -> {
+                    ennemi.reveler(tour);
+                    noter("Vision : un ennemi est retourne — son action ne partira pas au combat.");
+                    return ennemi;
+                })
+                .orElseGet(() -> {
+                    noter("Vision sans effet : aucun ennemi face cachee.");
+                    return null;
+                });
+    }
+
+    /** Le Hochet royal remet la carte royale à l'endroit : le pouvoir redevient jouable. */
+    void rendreLePouvoirRoyal() {
+        pouvoirRoiReineUtilise = false;
+        noter("Le pouvoir de %s redevient disponible.".formatted(role.nom()));
+    }
+
+    CarteEnJeu retirerDeLHopital(long id) {
+        CarteEnJeu carte = chercherALHopital(id)
+                .orElseThrow(() -> new ActionInterdite("Cette carte n'est pas a l'Hopital."));
+        hopital.remove(carte);
+        return carte;
+    }
+
+    /**
+     * Le Château reprend tout l'Hôpital, puis se mélange — la Reine Margot.
+     *
+     * <p>Les cartes reviennent <strong>redressées</strong> : une carte remise en
+     * jeu plus tard doit pouvoir être pivotée, sans quoi le mélange rendrait le
+     * deck progressivement inerte.
+     */
+    void melangerHopitalAuChateau() {
+        hopital.forEach(CarteEnJeu::redresser);
+        chateau.addAll(hopital);
+        hopital.clear();
+        melangerChateau();
+        noter("L'Hopital rejoint le Chateau, qui est melange.");
+    }
+
+    /** Mélanger le Château seul : rien n'entre, on perd l'ordre connu. */
+    void melangerChateau() {
+        List<CarteEnJeu> cartes = new ArrayList<>(chateau);
+        Collections.shuffle(cartes, alea);
+        chateau.clear();
+        cartes.forEach(chateau::addLast);
+    }
+
     public Optional<CarteEnJeu> chercherAuxPortes(long id) {
         return portes.stream().filter(c -> c.id() == id).findFirst();
     }
@@ -600,9 +819,29 @@ public final class Partie {
         journal.add("[T%d %s] %s".formatted(tour, phase, evenement));
     }
 
+    /**
+     * Les effets transcrits d'un exemplaire.
+     *
+     * <p>Une carte Ennemi/Objet en porte deux jeux, et lequel s'applique dépend
+     * d'où elle est : aux Portes elle est l'ennemi, ailleurs elle est devenue
+     * l'objet qu'on a gagné en l'abattant (§4). Le même partage que
+     * {@link #nomDe(CarteEnJeu)}, pour la même raison.
+     */
+    public List<EffetCarte> effetsDe(CarteEnJeu carte) {
+        if (carte.famille() == Famille.ENNEMIS_OBJETS && portes.contains(carte)) {
+            return catalogue.ennemiObjet(carte.carteId())
+                    .map(c -> c.ennemi().effets())
+                    .orElse(List.of());
+        }
+        return catalogue.paysan(carte.familleEffective(), carte.carteIdEffectif())
+                .map(Paysan::effets)
+                .orElse(List.of());
+    }
+
     /** La nature d'un exemplaire, pour vérifier un sacrifice d'entraînement (§6). */
     public Optional<TypeCarte> typeDe(CarteEnJeu carte) {
-        return catalogue.paysan(carte.famille(), carte.carteId()).map(Paysan::type);
+        return catalogue.paysan(carte.familleEffective(), carte.carteIdEffectif())
+                .map(Paysan::type);
     }
 
     /** Le nom lisible d'un exemplaire, pour le journal et l'affichage. */

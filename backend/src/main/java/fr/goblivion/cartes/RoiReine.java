@@ -1,5 +1,9 @@
 package fr.goblivion.cartes;
 
+import java.util.List;
+
+import fr.goblivion.effets.EffetCarte;
+
 /**
  * Un rôle Roi/Reine — le choix de mise en place qui fixe deux choses (§3).
  *
@@ -15,5 +19,16 @@ public record RoiReine(
         String scan,
         int ressourcesDepart,
         String gardeDuCorps,
-        String action) {
+        String action,
+        List<EffetCarte> effets) {
+
+    public RoiReine {
+        effets = effets == null ? List.of() : List.copyOf(effets);
+    }
+
+    /** Sans effets — les cartes inventées des tests, qui n'en ont pas besoin. */
+    public RoiReine(String id, String nom, String scan, int ressourcesDepart, String gardeDuCorps,
+            String action) {
+        this(id, nom, scan, ressourcesDepart, gardeDuCorps, action, List.of());
+    }
 }
