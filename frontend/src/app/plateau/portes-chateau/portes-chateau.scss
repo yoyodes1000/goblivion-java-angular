@@ -33,3 +33,84 @@
   border: 1px dashed #9b3b3b;
   border-radius: 0.3rem;
 }
+
+/* Même raison qu'à l'avancée : sans `position: relative`, l'image en `fill` se
+   cale sur la fenêtre et prend tout l'écran. */
+.portes__carte {
+  position: relative;
+  inline-size: 100%;
+  block-size: 100%;
+  border-radius: 0.3rem;
+  overflow: hidden;
+}
+
+.portes__carte img {
+  object-fit: cover;
+}
+
+.portes__carte--cachee img {
+  filter: brightness(0.85);
+}
+
+.portes__case--occupee {
+  border-style: solid;
+}
+
+/* Le nom se lit par-dessus le bas de la carte, sur un fond qui garantit le
+   contraste quel que soit le scan derrière. */
+.portes__nom {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 1;
+
+  margin: 0;
+  padding: 0.1rem 0.25rem;
+
+  background: rgb(0 0 0 / 70%);
+  color: #fff;
+  font-size: 0.65rem;
+  text-align: center;
+}
+
+.portes__valeur {
+  position: absolute;
+  inset-block-start: 0.15rem;
+  inset-inline-end: 0.15rem;
+  z-index: 1;
+
+  min-inline-size: 1.2rem;
+  padding: 0.05rem 0.25rem;
+
+  border-radius: 0.2rem;
+  background: #9b3b3b;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.portes__jeton {
+  position: absolute;
+  inset-block-start: 0.15rem;
+  inset-inline-start: 0.15rem;
+  z-index: 1;
+
+  padding: 0.05rem 0.25rem;
+
+  border-radius: 0.2rem;
+  background: #b58900;
+  color: #1a2027;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.portes__force {
+  margin-inline-start: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.2rem;
+  background: #9b3b3b;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
