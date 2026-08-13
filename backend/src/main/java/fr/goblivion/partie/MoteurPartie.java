@@ -196,8 +196,8 @@ public final class MoteurPartie {
      * totale se recalcule d'elle-même — la carte qui entre apporte la sienne,
      * celle qui sort emporte la sienne — et la carte qui <em>devient</em> Garde
      * du corps peut déclencher une action (l'Oracle, le Patron). Ce déclencheur
-     * est une troisième famille, à côté de Pivoter et de Testament ; ce qu'il
-     * fait est le ticket 11.
+     * est une troisième famille, à côté de Pivoter et de Testament — et il ne
+     * part qu'à l'entrée sur l'emplacement, jamais à l'activation.
      */
     private void echangerGardeDuCorps(long carteEnJeu, Action action) {
         if (partie.gardeDuCorpsEchange()) {

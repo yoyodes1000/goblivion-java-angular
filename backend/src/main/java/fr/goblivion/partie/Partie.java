@@ -297,9 +297,10 @@ public final class Partie {
         }
         return switch (paysan.forceVariable()) {
             case SOLDAT -> forceDUnSoldat();
-            // Le Joker copie un Paysan Humain en jeu : la cible est un choix du
-            // joueur, donc une action — ticket 11. En attendant il n'apporte rien,
-            // et le dire vaut mieux que d'inventer une valeur par défaut.
+            // Un Joker qui a copié n'arrive jamais ici : forceEffective résout
+            // d'abord son identité effective, donc c'est la force de son modèle
+            // qui est lue. Ce zéro est celui du Joker qui n'a copié personne —
+            // et il vaut mieux que d'inventer une valeur par défaut.
             case JOKER -> 0;
         };
     }

@@ -45,7 +45,8 @@ public enum Difficulte {
      * Jetons Bonus Allié +2 disponibles au départ.
      *
      * <p>Le compte est tenu ici ; ce qui les dépense relève des actions de
-     * cartes, donc du ticket 11.
+     * cartes. Aucune carte transcrite ne les pose pour l'instant : le
+     * vocabulaire des effets n'a pas encore de brique pour ça.
      */
     public int jetonsBonusAllie() {
         return jetonsBonusAllie;
