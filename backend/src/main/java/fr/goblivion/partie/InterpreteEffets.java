@@ -184,7 +184,10 @@ class InterpreteEffets {
             // une interface, les copies et les durees demandent au moteur de
             // savoir defaire ce qu'il a fait. Refuser franchement vaut mieux
             // qu'executer a moitie.
-            case Effet.Visionner e -> pasEncore("Visionner");
+            case Effet.Visionner e -> siApplique(passe, partie::revelerParVision);
+            case Effet.DoublerJetons e -> ciblesDe(e.cible(), source, passe)
+                    .forEach(carte -> siApplique(passe,
+                            () -> carte.ajouterJetonBanniere(carte.jetonBanniere())));
             case Effet.PoserDepuisChateau e -> pasEncore("Poser une carte du Chateau");
             case Effet.ObtenirDuMarche e -> pasEncore("Obtenir une carte du Marche");
             case Effet.ObtenirNiveau e -> pasEncore("Obtenir une carte d'un niveau donne");
@@ -194,7 +197,6 @@ class InterpreteEffets {
                 partie.noter("%s est considere comme un Soldat pour cette phase."
                         .formatted(partie.nomDe(source)));
             });
-            case Effet.DoublerJetons e -> pasEncore("Doubler les jetons Banniere");
             case Effet.IgnorerJetonsBanniere e -> passif();
             case Effet.IgnorerForceDesObjets e -> passif();
             case Effet.IgnorerForceAPartirDe e -> passif();
@@ -244,6 +246,21 @@ class InterpreteEffets {
     }
 
     private void detruire(Cible cible, CarteEnJeu source, Passe passe) {
+        // Le Champion n'arrache pas une carte mais le jeton d'un ennemi : la
+        // cible est aux Portes, pas au Champ de bataille.
+        if (cible == Cible.UN_JETON_ENNEMI) {
+            long id = passe.choix().carteSuivante(cible.libelle());
+            CarteEnJeu ennemi = partie.chercherAuxPortes(id)
+                    .orElseThrow(() -> new ActionInterdite("Cet ennemi n'est pas aux Portes."));
+            if (ennemi.jetonEnnemi() == 0) {
+                throw new ActionInterdite("Cet ennemi ne porte aucun jeton Bonus.");
+            }
+            siApplique(passe, () -> {
+                ennemi.retirerJetonEnnemi();
+                partie.noter("Le jeton Bonus d'un ennemi est detruit.");
+            });
+            return;
+        }
         if (cible == Cible.PROCHAINE_DU_CHATEAU) {
             siApplique(passe, () -> {
                 CarteEnJeu dessus = partie.retirerDuDessusDuChateau();
@@ -333,8 +350,14 @@ class InterpreteEffets {
     }
 
     private void reactiver(int nombre, Cible cible, Passe passe) {
+        // Le Hochet royal remet la carte royale a l'endroit. Il n'y a qu'un rôle
+        // par partie : rien à désigner, la cible se déduit.
+        if (cible == Cible.UNE_CARTE_ROYALE) {
+            siApplique(passe, partie::rendreLePouvoirRoyal);
+            return;
+        }
         if (cible != Cible.UNE_CARTE_EN_JEU) {
-            pasEncore("Reactiver autre chose qu'une carte en jeu");
+            pasEncore("Reactiver autre chose qu'une carte en jeu ou royale");
             return;
         }
         for (int i = 0; i < nombre; i++) {

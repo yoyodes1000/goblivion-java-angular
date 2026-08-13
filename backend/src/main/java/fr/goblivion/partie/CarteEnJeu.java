@@ -122,6 +122,17 @@ public final class CarteEnJeu {
     }
 
     /**
+     * Le Champion arrache le jeton d'un ennemi.
+     *
+     * <p>Le seul chemin qui le retire — {@link #attribuerJetonEnnemi(int)} ne
+     * remplace jamais un jeton acquis, et c'est ce qui donne sa valeur à cette
+     * carte : sans elle, un ennemi renforcé le reste jusqu'à sa mort.
+     */
+    void retirerJetonEnnemi() {
+        this.jetonEnnemi = 0;
+    }
+
+    /**
      * Jeton Bonus Allié posé sur la carte (§11). Il retourne à la banque à la fin
      * de chaque phase — ce que fait {@link #nettoyerFinDePhase()}.
      */

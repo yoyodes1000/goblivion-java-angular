@@ -607,6 +607,39 @@ public final class Partie {
         return chateau.pollFirst();
     }
 
+    /**
+     * Retourne une carte Ennemi encore face cachée — la Vision (§7).
+     *
+     * <p>La plus avancée d'abord : aux Portes, puis sur la piste en partant du
+     * plus proche. C'est celle dont l'action va partir le plus tôt, donc la
+     * seule qu'il soit encore utile de neutraliser. Révéler une carte du fond du
+     * paquet ne coûterait rien à personne.
+     *
+     * @return la carte révélée, ou {@code null} s'il n'y avait rien à retourner
+     */
+    CarteEnJeu revelerParVision() {
+        // piste() rend des cases, et une case vide vaut null.
+        return java.util.stream.Stream.concat(portes.stream(), piste().stream())
+                .filter(java.util.Objects::nonNull)
+                .filter(ennemi -> !ennemi.revelee())
+                .findFirst()
+                .map(ennemi -> {
+                    ennemi.reveler(tour);
+                    noter("Vision : un ennemi est retourne — son action ne partira pas au combat.");
+                    return ennemi;
+                })
+                .orElseGet(() -> {
+                    noter("Vision sans effet : aucun ennemi face cachee.");
+                    return null;
+                });
+    }
+
+    /** Le Hochet royal remet la carte royale à l'endroit : le pouvoir redevient jouable. */
+    void rendreLePouvoirRoyal() {
+        pouvoirRoiReineUtilise = false;
+        noter("Le pouvoir de %s redevient disponible.".formatted(role.nom()));
+    }
+
     CarteEnJeu retirerDeLHopital(long id) {
         CarteEnJeu carte = chercherALHopital(id)
                 .orElseThrow(() -> new ActionInterdite("Cette carte n'est pas a l'Hopital."));

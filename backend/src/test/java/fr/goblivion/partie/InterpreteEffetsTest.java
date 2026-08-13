@@ -262,7 +262,7 @@ class InterpreteEffetsTest {
     void une_brique_pas_encore_jouable_refuse_au_lieu_de_ne_rien_faire() {
         CarteEnJeu source = poserEnJeu(CataloguesFictifs.BLEUE_HUMAIN);
 
-        assertThatThrownBy(() -> jouer(new Effet.Visionner(), source,
+        assertThatThrownBy(() -> jouer(new Effet.PoserDepuisChateau(), source,
                 InterpreteEffets.Choix.aucun()))
                 .isInstanceOf(ActionInterdite.class)
                 .hasMessageContaining("pas encore jouable");
@@ -312,8 +312,8 @@ class InterpreteEffetsTest {
         CarteEnJeu carte = poserEnJeu(CataloguesFictifs.BLEUE_HUMAIN);
 
         interprete.declencherAutomatiquement(
-                new EffetCarte(Declencheur.TESTAMENT, new Effet.Visionner()), carte,
-                "Pyromane fictif");
+                new EffetCarte(Declencheur.TESTAMENT, new Effet.PoserDepuisChateau()), carte,
+                "Carte fictive");
 
         assertThat(partie.journal().getLast()).contains("pas encore jouable");
     }

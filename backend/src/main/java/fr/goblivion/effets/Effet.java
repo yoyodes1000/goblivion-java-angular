@@ -81,7 +81,18 @@ public sealed interface Effet {
     record Defausser(int nombre) implements Effet {
     }
 
-    /** {@code Visionner} — regarder puis réordonner le dessus du Château (§11). */
+    /**
+     * {@code Visionner} — révéler une carte Ennemi sur le plateau d'approche.
+     *
+     * <p>Rien à voir avec le Château, contrairement à ce que le mot suggère :
+     * le livret est explicite, « certaines actions alliées révèlent une carte
+     * Ennemi aux emplacements marqués du plateau ».
+     *
+     * <p>C'est le principal outil pour <strong>neutraliser</strong> une action
+     * ennemie : une carte révélée avant le tour en cours ne lancera pas son
+     * action au combat. Visionner tôt désamorce ; ne pas visionner laisse
+     * l'ennemi frapper en arrivant.
+     */
     record Visionner() implements Effet {
     }
 
