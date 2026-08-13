@@ -20,6 +20,8 @@ import fr.goblivion.cartes.ForceVariable;
 import fr.goblivion.cartes.Paysan;
 import fr.goblivion.cartes.RoiReine;
 import fr.goblivion.cartes.TypeCarte;
+import fr.goblivion.effets.Declencheur;
+import fr.goblivion.effets.Effet;
 import fr.goblivion.effets.EffetCarte;
 
 /**
@@ -200,8 +202,75 @@ public final class Partie {
      */
     public int forceEffective(CarteEnJeu carte) {
         return catalogue.paysan(carte.famille(), carte.carteId())
-                .map(paysan -> forceDeBase(paysan) + carte.jetonBanniere())
+                .map(paysan -> forceSousModificateurs(paysan, carte, modificateursActifs()))
                 .orElse(0);
+    }
+
+    /**
+     * Les effets continus en vigueur — ceux qui se consultent au lieu de partir.
+     *
+     * <p>Deux sources, et elles ne portent pas sur la même durée : le Boss que
+     * l'on affronte impose les siens tant qu'il est là, un ennemi révélé aux
+     * Portes seulement le temps du combat. C'est ce que
+     * {@code Duree.PERMANENTE} et {@code Duree.COMBAT} distinguent.
+     *
+     * <p>Un ennemi encore face cachée n'impose rien : on ne subit pas ce qu'on
+     * n'a pas retourné.
+     */
+    private List<Effet> modificateursActifs() {
+        List<Effet> actifs = new ArrayList<>();
+
+        if (phase == Phase.BOSS && !boss.isEmpty()) {
+            ajouterPermanents(boss.getFirst().effets(), actifs);
+        }
+        for (CarteEnJeu ennemi : portes) {
+            if (ennemi.revelee()) {
+                catalogue.ennemiObjet(ennemi.carteId())
+                        .ifPresent(carte -> ajouterPermanents(carte.ennemi().effets(), actifs));
+            }
+        }
+        return actifs;
+    }
+
+    private void ajouterPermanents(List<EffetCarte> effets, List<Effet> actifs) {
+        effets.stream()
+                .filter(effet -> effet.declencheur() == Declencheur.PERMANENT)
+                .map(EffetCarte::effet)
+                .forEach(actifs::add);
+    }
+
+    /**
+     * La force d'un exemplaire une fois les effets continus appliqués.
+     *
+     * <p>Les seuils portent sur la force <strong>imprimée</strong> : la
+     * Trollette « ignore la force des Bannières 4 et plus », et c'est la valeur
+     * de la carte qui la désigne, pas le total qu'elle atteint avec ses jetons.
+     * Sans quoi poser un jeton sur une carte de force 3 la ferait disparaître.
+     */
+    private int forceSousModificateurs(Paysan paysan, CarteEnJeu carte, List<Effet> passifs) {
+        int imprimee = forceDeBase(paysan);
+        int retenue = imprimee;
+        int jetons = carte.jetonBanniere();
+
+        for (Effet passif : passifs) {
+            switch (passif) {
+                case Effet.IgnorerForceDesObjets ignore -> {
+                    if (paysan.type() == TypeCarte.OBJET) {
+                        retenue = 0;
+                    }
+                }
+                case Effet.IgnorerForceAPartirDe seuil -> {
+                    if (imprimee >= seuil.seuil()) {
+                        retenue = 0;
+                    }
+                }
+                case Effet.IgnorerJetonsBanniere ignore -> jetons = 0;
+                default -> {
+                    // Les autres effets continus ne touchent pas une force isolée.
+                }
+            }
+        }
+        return retenue + jetons;
     }
 
     private int forceDeBase(Paysan paysan) {
@@ -241,7 +310,31 @@ public final class Partie {
      * <strong>0</strong> tant qu'elle y reste (§9).
      */
     public int forceAlliee() {
+        if (modificateursActifs().stream().anyMatch(Effet.ReduireLesDoublons.class::isInstance)) {
+            return forceAllieeSansDoublons();
+        }
         return champDeBataille.stream().mapToInt(this::forceEffective).sum();
+    }
+
+    /**
+     * Les Jumeaux : « la force des cartes en double est réduite à la force d'une
+     * seule d'entre elles ».
+     *
+     * <p>Trois Fermiers n'apportent donc plus trois fois leur force, mais une.
+     * La règle porte sur le <em>type</em> de carte, pas sur l'exemplaire : c'est
+     * le Boss qui punit les armées répétitives, et il frappe d'autant plus fort
+     * que le deck est monotone.
+     *
+     * <p>Entre deux exemplaires du même type inégalement dotés en jetons, on
+     * garde le plus fort — « une seule d'entre elles » ne dit pas laquelle, et
+     * retenir la meilleure est la lecture favorable au joueur.
+     */
+    private int forceAllieeSansDoublons() {
+        Map<String, Integer> meilleureParType = new LinkedHashMap<>();
+        for (CarteEnJeu carte : champDeBataille) {
+            meilleureParType.merge(carte.carteId(), forceEffective(carte), Integer::max);
+        }
+        return meilleureParType.values().stream().mapToInt(Integer::intValue).sum();
     }
 
     /** La force à battre : les ennemis aux Portes, jetons Bonus Ennemi compris (§8). */
@@ -269,6 +362,13 @@ public final class Partie {
      */
     public void gagnerRessources(int montant) {
         if (montant <= 0 || phase == Phase.BOSS) {
+            return;
+        }
+        // Le Troll Saboteur : « vous ne gagnez aucune ressource pour ce combat ».
+        // Même logique que le Château qui brûle — la privation est une propriété
+        // du moment, pas de l'effet qui rapporte.
+        if (modificateursActifs().stream().anyMatch(Effet.PriverDeRessources.class::isInstance)) {
+            noter("Aucune ressource gagnee : un ennemi en prive pour ce combat.");
             return;
         }
         ressources += montant;

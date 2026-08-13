@@ -71,6 +71,35 @@ public final class CataloguesFictifs {
     }
 
     /** 3 types, 40 exemplaires — le compte du vrai matériel (§2). */
+    /** Le même catalogue, mais les Boss imposent un effet continu. */
+    public static Catalogue avecPassifDeBoss(fr.goblivion.effets.Effet passif) {
+        Catalogue base = catalogue();
+        List<CarteBoss> boss = base.boss().stream()
+                .map(carte -> new CarteBoss(carte.id(), carte.nom(), carte.scan(), carte.action(),
+                        carte.ressourcesSolo(), carte.cartesAPiocherSolo(),
+                        carte.ressourcesDeuxJoueurs(), carte.cartesAPiocherDeuxJoueurs(),
+                        List.of(new fr.goblivion.effets.EffetCarte(
+                                fr.goblivion.effets.Declencheur.PERMANENT, passif))))
+                .toList();
+        return new Catalogue(base.bleues(), base.dorees(), base.roiReines(), boss,
+                base.ennemisObjets());
+    }
+
+    /** Le même catalogue, mais les ennemis imposent un effet continu de combat. */
+    public static Catalogue avecPassifDEnnemi(fr.goblivion.effets.Effet passif) {
+        Catalogue base = catalogue();
+        List<CarteEnnemiObjet> ennemis = base.ennemisObjets().stream()
+                .map(carte -> new CarteEnnemiObjet(carte.id(), carte.scan(), carte.exemplaires(),
+                        new CarteEnnemiObjet.Ennemi(carte.ennemi().nom(), carte.ennemi().niveau(),
+                                carte.ennemi().pioche(), carte.ennemi().force(),
+                                carte.ennemi().action(),
+                                List.of(new fr.goblivion.effets.EffetCarte(
+                                        fr.goblivion.effets.Declencheur.PERMANENT, passif))),
+                        carte.objet()))
+                .toList();
+        return new Catalogue(base.bleues(), base.dorees(), base.roiReines(), base.boss(), ennemis);
+    }
+
     private static List<CarteBleue> bleues() {
         return List.of(
                 new CarteBleue(BLEUE_HUMAIN, "Humain fictif", TypeCarte.HUMAIN, "x.webp", 1, null, 0, null, 20),
