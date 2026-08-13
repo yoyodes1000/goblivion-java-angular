@@ -16,17 +16,23 @@ backend/src/main/java/fr/goblivion/
 │   ├── Duree             immediate, phase, combat, permanente
 │   ├── Quantite          ce qui se compte dans un « pour chaque »
 │   └── EffetCarte        un effet et son declencheur
+│   └── PlanDeCiblage     ce qu'un effet reclamera, connu avant de le jouer
 └── partie/
     └── InterpreteEffets  l'execution, en deux passes
 ```
+
+Côté frontend, `partie/ciblage/` pose au joueur les questions que le plan
+annonce, et la zone de jeu n'offre plus « Pivoter » qu'aux cartes qui ont
+quelque chose à déclencher.
 
 Les données de cartes portent un champ `effets` à côté de `action`. **73 effets
 transcrits** couvrant les 75 actions imprimées — le Soldat et son jumeau Objet
 portent un texte dont la règle vit dans `forceVariable`, donc une transcription
 vide et assumée.
 
-Vérifié : 124 tests backend, dont deux qui lisent les vraies cartes en local et
-s'abstiennent en intégration continue.
+Vérifié : 142 tests backend et 72 frontend. Deux des tests backend lisent les
+vraies cartes en local et s'abstiennent en intégration continue. Le ciblage a
+aussi été joué dans le navigateur, contre le vrai jeu de données.
 
 ## Le choix qui structure tout : la transcription est une donnée
 
@@ -56,8 +62,8 @@ compilation à l'endroit exact qui doit savoir quoi en faire.
 
 Le Roi Yolo l'a prouvé pendant la transcription : « Mélange le Château » n'est
 pas « Mélange l'Hôpital à ton Château ». Rien n'entre, on perd seulement l'ordre
-connu — et c'est ce qui rend le `Visionner` qui suit utile plutôt que redondant.
-Vingt-huitième brique.
+connu — ce qui est précisément le prix à payer pour avoir fouillé le paquet à la
+ligne précédente. Vingt-huitième brique.
 
 ## Cinq lectures qui ont changé le code
 
@@ -106,6 +112,25 @@ que le ticket précédent a décidé vaut mieux que redécider.
 Une carte défaussée rejoint l'Hôpital et reviendra : elle n'a rien légué. Sans ce
 partage, l'Alchimiste — qui défausse — ferait du Duc une rente à 3 ressources par
 tour. Deux tests tiennent la même situation à un mot près.
+
+### La Vision ne regarde pas le Château
+
+La plus grosse erreur du ticket, et elle était dans ma transcription, pas dans le
+code. J'avais documenté `Visionner` comme « regarder puis réordonner le dessus du
+Château ». Le livret dit autre chose : « certaines actions alliées **révèlent une
+carte Ennemi** aux emplacements marqués du plateau ».
+
+Transcrite comme je l'avais écrite, la brique aurait inventé un effet qui
+n'existe pas — et personne ne s'en serait aperçu avant de jouer, puisque les deux
+lectures sont plausibles pour qui ne relit pas le §7.
+
+Elle retourne donc **le plus avancé des ennemis cachés** : celui dont l'action va
+partir le plus tôt, donc le seul qu'il soit encore utile de neutraliser. Retourner
+une carte du fond du paquet ne coûterait à personne.
+
+C'est aussi ce qui donne son sens à la règle du ticket 12 : révélé avant le tour
+où il arrive, l'ennemi ne lancera pas son action. La Vision est un effet
+**défensif** déguisé en effet de pioche.
 
 ## Les décisions, et pourquoi
 
@@ -165,6 +190,36 @@ appliqué*, jamais à moitié appliqué.
 
 Concrètement : 10 des 13 révélations fonctionnent en jeu, trois s'inscrivent au
 journal en attendant.
+
+### L'interface lit le plan, elle ne le devine pas
+
+Le moteur annonce, pour chaque carte en jeu, ce que son action réclamera : les
+désignations **dans l'ordre où l'interprète les consommera**, et les branches
+d'un `ou`. L'écran pose ces questions ; il ne les déduit pas.
+
+Les deux autres chemins étaient pires. Rejouer le vocabulaire des effets côté
+navigateur en aurait tenu une seconde version, qui aurait fini par ne plus être
+d'accord avec la première — c'est exactement ce qu'on a refusé pour le tableau
+des phases au ticket 12. Envoyer l'action et afficher le refus aurait fait
+deviner le joueur.
+
+L'ordre commande la présentation : **une question à la fois, jamais une liste à
+cocher**. Deux identifiants d'exemplaires se ressemblent, et une réponse rendue
+dans le désordre ferait détruire la mauvaise carte sans que rien ne s'en
+aperçoive.
+
+Deux canaux séparés, parce que deux choses différentes se désignent : un
+**exemplaire** posé sur la table a une identité numérique ; un **type** de carte
+au Marché n'est pas encore en jeu et n'en a pas. `Designation.parType` dit lequel
+des deux l'écran doit proposer.
+
+### Un plan vide ne veut pas dire « pas d'action »
+
+Le Boulanger agit sans rien réclamer, un Fermier n'agit pas du tout, et les deux
+ont un plan vide. D'où un drapeau distinct, `agitAuPivot` : sans lui, l'interface
+proposait « Pivoter » sur des cartes qui n'avaient rien à déclencher — un bouton
+que le moteur accepte en ne faisant rien, ce qui est pire qu'un refus puisque
+rien ne le dit.
 
 ### Les passifs de Boss ne s'exécutent pas, ils se consultent
 
@@ -227,6 +282,9 @@ et tirages se comportent exactement pareil ; seule la carte agit.
 | Un registre `id → effet` en Java | 74 identifiants de contenu Goblivion dans un dépôt public |
 | Garder la table de transcription dans le dépôt | même raison, par une autre porte |
 | Un état « en attente de désignation » | un moteur, une API et une interface à suspendre, pour cinq cartes |
+| Déduire côté navigateur ce qu'un effet réclame | une seconde version du vocabulaire, qui finirait par diverger |
+| Envoyer l'action et afficher le refus | faire deviner le joueur ce qu'il aurait dû désigner |
+| Filtrer les candidats par type à l'écran | il faudrait y connaître les conditions de chaque cible ; le moteur refuse, et sa double passe garantit que rien n'a bougé |
 | Choisir à la place du joueur sur un effet automatique | le moteur déciderait quel paysan la Sorcière Troll emporte |
 | Exécuter à moitié puis refuser | la partie resterait modifiée par une action qui a échoué |
 | Faire taire une brique non implémentée | une partie fausse sans qu'on le voie ; le refus est délibéré |
@@ -234,11 +292,13 @@ et tirages se comportent exactement pareil ; seule la carte agit.
 
 ## Reste à faire
 
-- [ ] **Sept briques refusent encore.** Visionner, poser depuis le Château,
-      obtenir du Marché, obtenir une carte d'un niveau donné, doubler les jetons,
-      copier une action Pivoter, réactiver une carte royale — plus la désignation
-      d'un jeton Bonus Ennemi. Chacune refuse avec « n'est pas encore jouable »
-      plutôt que de ne rien faire.
+- [ ] **Deux briques refusent encore**, et pour des raisons différentes. *Poser
+      une carte du Château* (Roi Yolo) demande de choisir parmi des cartes face
+      cachée : le canal de désignation existe, mais l'état n'envoie que
+      `tailleChateau`, et l'exposer est une décision de règle autant que d'API.
+      *Copier une action Pivoter* (Chapeau magique) désigne une **action** et non
+      une carte, et rejouer l'effet d'une autre carte demande de se prémunir
+      d'une copie qui se copierait elle-même.
 - [ ] **Le Joker ne part pas en partie.** Sa copie fonctionne et elle est testée,
       mais son déclencheur `ENTREE_EN_JEU` n'est pas branché — ce sera au moteur
       de repérer les cartes fraîchement piochées.
@@ -247,9 +307,10 @@ et tirages se comportent exactement pareil ; seule la carte agit.
       une désignation.
 - [ ] **Les jetons Bonus Allié se comptent toujours sans se dépenser.** Cette
       fois ce n'est pas un ticket qui manque, c'est une brique du vocabulaire.
-- [ ] **Le frontend n'envoie ni désignations ni branches.** Les 19 effets à cible
-      et les deux `ou` — l'Archer et les Scouts — restent injouables à l'écran,
-      alors que le moteur les accepte.
+- [ ] **Les Portes et la piste ne montrent toujours rien** (ticket 10). L'état
+      porte les ennemis, leurs forces et leurs jetons, mais l'écran affiche des
+      cases vides — au point qu'un combat parfaitement fondé donne l'impression
+      d'un bug.
 - [ ] **Une lecture à confirmer sur Les Jumeaux.** Entre deux exemplaires du même
       type inégalement dotés en jetons, on retient le plus fort — « la force
       d'une seule d'entre elles » ne dit pas laquelle.
