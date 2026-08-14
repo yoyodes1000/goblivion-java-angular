@@ -263,8 +263,23 @@ export class Plateau {
    * répondre n'aurait plus de sens : le moteur refuse toute action sur une
    * partie terminée, et l'écran de fin doit rester seul.
    */
-  protected readonly ciblageEnCours = computed<Ciblee | null>(() =>
-    this.etat()?.resultat === 'EN_COURS' ? this.ciblageDemande() : null,
+  protected readonly ciblageEnCours = computed<Ciblee | null>(() => {
+    const etat = this.etat();
+    if (etat?.resultat !== 'EN_COURS') return null;
+
+    // Une question du moteur passe avant tout : tant qu'elle est là, il refuse
+    // le reste, et le joueur n'a rien d'autre à faire que d'y répondre. Elle ne
+    // vient pas d'un clic, donc elle ne peut pas attendre son tour.
+    const attendue = etat.designationAttendue;
+    if (attendue) {
+      return { carteEnJeu: 0, nom: attendue.source, plan: attendue.plan };
+    }
+    return this.ciblageDemande();
+  });
+
+  /** Vrai si la question posée vient du moteur, et non d'une carte qu'on pivote. */
+  private readonly questionDuMoteur = computed(
+    () => this.etat()?.designationAttendue != null && this.etat()?.resultat === 'EN_COURS',
   );
 
   /**
@@ -324,6 +339,18 @@ export class Plateau {
   }
 
   protected pivoterAvec(reponses: Reponses): void {
+    // Répondre au moteur n'est pas pivoter une carte : l'effet est déjà parti,
+    // il ne lui manquait que sa cible.
+    if (this.questionDuMoteur()) {
+      this.partie.jouer({
+        type: 'REPONDRE_DESIGNATION',
+        cibles: reponses.cibles,
+        options: reponses.options,
+        types: reponses.types,
+      });
+      return;
+    }
+
     const demande = this.ciblageEnCours();
     if (!demande) return;
 

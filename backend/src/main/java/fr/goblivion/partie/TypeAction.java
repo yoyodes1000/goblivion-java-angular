@@ -54,6 +54,28 @@ public enum TypeAction {
     RESOUDRE_COMBAT(Phase.COMBAT),
     COMBATTRE_BOSS(Phase.BOSS),
 
+    /**
+     * Répondre à une désignation qu'un effet du moteur réclame.
+     *
+     * <p>Permise dans toutes les phases, et pour une raison de fond : ce n'est
+     * pas une décision de jeu mais la <em>suite</em> d'un effet déjà parti.
+     * Quand la Sorcière Troll se révèle, c'est au joueur de dire quel paysan
+     * elle emporte — mais il ne pouvait pas le joindre à sa demande, puisqu'il
+     * ignorait ce qui allait sortir du paquet.
+     *
+     * <p>Tant qu'une question est posée, c'est la <strong>seule</strong> action
+     * que le moteur accepte : reprendre la partie en laissant une révélation en
+     * suspens la fausserait.
+     *
+     * <p>Elle est pourtant <strong>absente de {@link #permisesEn(Phase)}</strong>,
+     * et ce n'est pas une contradiction. Cette liste dit ce que la phase
+     * <em>offre</em> au joueur ; répondre n'est pas un choix qu'on prend dans un
+     * menu, c'est la suite obligée d'un effet. La phase d'Avancée n'accepte
+     * donc toujours aucune action du joueur (§7) — l'état porte la question à
+     * part, et c'est elle qui appelle la réponse.
+     */
+    REPONDRE_DESIGNATION(Phase.values()),
+
     PHASE_SUIVANTE(Phase.values());
 
     private final Set<Phase> phases;
@@ -80,6 +102,9 @@ public enum TypeAction {
      * l'état de la partie le sait.
      */
     public static List<TypeAction> permisesEn(Phase phase) {
-        return Arrays.stream(values()).filter(action -> action.permiseEn(phase)).toList();
+        return Arrays.stream(values())
+                .filter(action -> action != REPONDRE_DESIGNATION)
+                .filter(action -> action.permiseEn(phase))
+                .toList();
     }
 }

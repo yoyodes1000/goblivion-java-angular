@@ -37,6 +37,7 @@
       [demande]="ciblageEnCours()"
       [candidats]="candidats()"
       [offresDuMarche]="offresDuMarche()"
+      [renoncable]="!etat()?.designationAttendue"
       (confirme)="pivoterAvec($event)"
       (annule)="annulerCiblage()"
     />

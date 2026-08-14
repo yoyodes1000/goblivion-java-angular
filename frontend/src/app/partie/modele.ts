@@ -30,6 +30,7 @@ export type TypeAction =
   | 'ECHANGER_GARDE_DU_CORPS'
   | 'POUVOIR_ROI_REINE'
   | 'PIVOTER'
+  | 'REPONDRE_DESIGNATION'
   | 'RESOUDRE_COMBAT'
   | 'COMBATTRE_BOSS'
   | 'PHASE_SUIVANTE';
@@ -113,6 +114,19 @@ export interface EnnemiVue {
   readonly jetonEnnemi: number;
 }
 
+/**
+ * Une question que le moteur pose, sans que le joueur l'ait demandée.
+ *
+ * Un ennemi révélé exige de désigner une carte, et le joueur ne pouvait pas le
+ * prévoir : il n'avait rien à joindre à sa demande. Tant que cette question est
+ * là, le moteur refuse toute autre action — l'écran doit donc la poser avant
+ * quoi que ce soit d'autre.
+ */
+export interface DesignationAttendue {
+  readonly source: string;
+  readonly plan: PlanDeCiblage;
+}
+
 export interface EtatPartie {
   readonly phase: Phase;
   readonly tour: number;
@@ -147,6 +161,8 @@ export interface EtatPartie {
   readonly gardeDuCorpsEchange: boolean;
   readonly pouvoirRoiReineUtilise: boolean;
   readonly jetonsBonusAllie: number;
+  /** La question en suspens, `null` s'il n'y en a pas. */
+  readonly designationAttendue: DesignationAttendue | null;
   readonly journal: readonly string[];
 }
 

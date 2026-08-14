@@ -91,3 +91,12 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* La question du moteur ne se decline pas : on le dit plutot que d'offrir un
+   bouton qui ne mene nulle part. */
+.ciblage__obligatoire {
+  margin: 0;
+  font-size: 0.8rem;
+  font-style: italic;
+  opacity: 0.7;
+}

@@ -54,7 +54,18 @@ public record EtatPartie(
         boolean gardeDuCorpsEchange,
         boolean pouvoirRoiReineUtilise,
         int jetonsBonusAllie,
+        DesignationAttendue designationAttendue,
         List<String> journal) {
+
+    /**
+     * La question que le moteur pose au joueur, {@code null} s'il n'y en a pas.
+     *
+     * <p>Elle ne vient pas d'une action qu'il aurait demandée : un ennemi
+     * révélé exige de désigner une carte, et le joueur ne pouvait pas le
+     * prévoir. Tant qu'elle est là, le moteur refuse tout le reste.
+     */
+    public record DesignationAttendue(String source, PlanDeCiblage plan) {
+    }
 
     public static EtatPartie de(Partie partie) {
         return new EtatPartie(
@@ -86,6 +97,9 @@ public record EtatPartie(
                 partie.gardeDuCorpsEchange(),
                 partie.pouvoirRoiReineUtilise(),
                 partie.jetonsBonusAllie(),
+                partie.attenteCourante()
+                        .map(attente -> new DesignationAttendue(attente.source(), attente.plan()))
+                        .orElse(null),
                 partie.journal());
     }
 

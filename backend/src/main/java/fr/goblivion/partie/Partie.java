@@ -82,6 +82,15 @@ public final class Partie {
 
     private final List<String> journal = new ArrayList<>();
 
+    /**
+     * Les effets du moteur qui attendent une désignation du joueur.
+     *
+     * <p>Une file, et non un seul : une avancée peut révéler plusieurs ennemis
+     * exigeants d'affilée. Ils se résolvent dans l'ordre d'apparition, sans
+     * quoi le joueur répondrait à une question en croyant répondre à l'autre.
+     */
+    private final Deque<EffetEnAttente> enAttente = new ArrayDeque<>();
+
     Partie(Catalogue catalogue, Random alea, Difficulte difficulte, RoiReine role) {
         this.catalogue = catalogue;
         this.alea = alea;
@@ -183,6 +192,31 @@ public final class Partie {
 
     public boolean gardeDuCorpsEchange() {
         return gardeDuCorpsEchange;
+    }
+
+    /** L'effet qui attend une réponse, s'il y en a un. */
+    public Optional<EffetEnAttente> attenteCourante() {
+        return Optional.ofNullable(enAttente.peekFirst());
+    }
+
+    void mettreEnAttente(EffetEnAttente effet) {
+        enAttente.addLast(effet);
+        noter("%s attend une designation avant de partir.".formatted(effet.source()));
+    }
+
+    void retirerAttente() {
+        enAttente.pollFirst();
+    }
+
+    /**
+     * Une partie perdue n'a plus de question à poser.
+     *
+     * <p>Sans ce nettoyage, une défaite prononcée au milieu d'une révélation
+     * laisserait une attente que plus rien ne pourrait résoudre — le moteur
+     * refuse toute action sur une partie terminée, y compris la réponse.
+     */
+    void viderLesAttentes() {
+        enAttente.clear();
     }
 
     public List<String> journal() {
@@ -411,6 +445,10 @@ public final class Partie {
         if (ressources <= 0 && resultat == Resultat.EN_COURS) {
             resultat = Resultat.DEFAITE;
             noter("Les ressources sont tombees a zero : partie perdue.");
+            // Plus rien a demander : le moteur refuse toute action sur une
+            // partie terminee, y compris la reponse a une question restee en
+            // suspens. La laisser bloquerait l'ecran de fin.
+            viderLesAttentes();
         }
     }
 

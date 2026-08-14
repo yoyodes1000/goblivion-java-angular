@@ -125,6 +125,7 @@ describe('Plateau', () => {
     gardeDuCorpsEchange: false,
     pouvoirRoiReineUtilise: false,
     jetonsBonusAllie: 0,
+    designationAttendue: null,
     journal: [],
   };
 
@@ -174,6 +175,54 @@ describe('Plateau', () => {
     const rendu = await demarrer(fixture, etat);
     return { fixture, rendu };
   }
+
+  /**
+   * Une question du moteur se pose d'elle-même, sans clic préalable.
+   *
+   * C'est ce qui la distingue du ciblage d'un Pivoter : le joueur n'a rien
+   * demandé, un ennemi révélé exige une désignation. Tant qu'elle tient, le
+   * moteur refuse tout le reste — l'écran doit donc la montrer tout de suite,
+   * et ne pas offrir d'y renoncer.
+   */
+  it('pose la question du moteur sans que le joueur l’ait demandée', async () => {
+    const { rendu } = await table({
+      ...ETAT,
+      champDeBataille: [carteEnJeu(11, 'fermier')],
+      designationAttendue: {
+        source: 'Sorcière Troll',
+        plan: {
+          designations: [{ libelle: 'un paysan Humain', parType: false }],
+          options: [],
+        },
+      },
+    });
+
+    expect(rendu.querySelector('.ciblage__titre')?.textContent?.trim()).toBe('Sorcière Troll');
+    expect(rendu.querySelector('.ciblage__question')?.textContent).toContain('un paysan Humain');
+    expect(rendu.querySelector('.ciblage__annuler')).toBeNull();
+  });
+
+  it('renvoie la réponse au moteur comme une désignation, pas comme un pivot', async () => {
+    const { fixture, rendu } = await table({
+      ...ETAT,
+      champDeBataille: [carteEnJeu(11, 'fermier')],
+      designationAttendue: {
+        source: 'Sorcière Troll',
+        plan: {
+          designations: [{ libelle: 'un paysan Humain', parType: false }],
+          options: [],
+        },
+      },
+    });
+
+    rendu.querySelectorAll<HTMLButtonElement>('.ciblage__choix')[0].click();
+    await fixture.whenStable();
+
+    const requete = http().expectOne('/api/partie/action');
+    expect(requete.request.body.type).toBe('REPONDRE_DESIGNATION');
+    expect(requete.request.body.cibles).toEqual([11]);
+    requete.flush(ETAT);
+  });
 
   it('commence par demander la difficulté, sans rien afficher de la table', async () => {
     const fixture = await monter();

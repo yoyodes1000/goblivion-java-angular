@@ -9,6 +9,7 @@ import fr.goblivion.effets.Cible;
 import fr.goblivion.effets.Declencheur;
 import fr.goblivion.effets.Effet;
 import fr.goblivion.effets.EffetCarte;
+import fr.goblivion.effets.PlanDeCiblage;
 
 /**
  * Exécute la transcription d'une carte.
@@ -135,11 +136,25 @@ class InterpreteEffets {
      * un effet <em>non appliqué</em>, jamais un effet à moitié appliqué.
      */
     void declencherAutomatiquement(EffetCarte porte, CarteEnJeu source, String quoi) {
+        // Un effet qui réclame une désignation ne peut pas se resoudre seul, et
+        // choisir a la place du joueur quel paysan meurt ne serait pas la meme
+        // partie. Il se met en attente, et la partie ne repart qu'apres reponse.
+        if (!PlanDeCiblage.de(porte.effet()).neDemandeRien()) {
+            partie.mettreEnAttente(new EffetEnAttente(quoi, porte));
+            return;
+        }
         try {
             executer(porte, source, Choix.aucun());
         } catch (ActionInterdite refus) {
+            // Reste ce qui n'est pas encore jouable : la, il n'y a rien a
+            // demander, et bloquer le tour ne servirait personne.
             partie.noter("%s : effet non applique — %s".formatted(quoi, refus.getMessage()));
         }
+    }
+
+    /** Rejoue un effet mis en attente, avec les réponses que le joueur a fini par donner. */
+    void reprendre(EffetEnAttente attente, Choix choix) {
+        executer(attente.porteur(), null, choix);
     }
 
     /**

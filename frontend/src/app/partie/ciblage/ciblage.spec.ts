@@ -127,6 +127,27 @@ describe('Ciblage', () => {
     expect(recu).toEqual({ cibles: [], options: [], types: ['bourreau'] });
   });
 
+  /**
+   * Une question du moteur ne se décline pas : il refuse toute autre action
+   * tant qu'elle tient. Offrir un « renoncer » qui ne renonce à rien mentirait
+   * sur ce qui est possible.
+   */
+  it('n’offre pas de renoncer quand la question vient du moteur', async () => {
+    fixture = TestBed.createComponent(Ciblage);
+    fixture.componentRef.setInput('candidats', CANDIDATS);
+    fixture.componentRef.setInput('renoncable', false);
+    fixture.componentRef.setInput('demande', {
+      carteEnJeu: 0,
+      nom: 'Sorcière Troll',
+      plan: { designations: [parExemplaire('un paysan Humain')], options: [] },
+    });
+    await fixture.whenStable();
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(rendu.querySelector('.ciblage__annuler')).toBeNull();
+    expect(rendu.querySelector('.ciblage__obligatoire')?.textContent).toContain('impose son effet');
+  });
+
   it('renoncer n’envoie aucune action', async () => {
     const rendu = await montrer(['une carte en jeu']);
     let annule = false;

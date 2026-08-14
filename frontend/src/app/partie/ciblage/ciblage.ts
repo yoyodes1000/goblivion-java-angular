@@ -108,9 +108,16 @@ export interface Reponses {
           </p>
         }
 
-        <button type="button" class="ciblage__annuler" (click)="renoncer()">
-          Renoncer à cette action
-        </button>
+        @if (renoncable()) {
+          <button type="button" class="ciblage__annuler" (click)="renoncer()">
+            Renoncer à cette action
+          </button>
+        } @else {
+          <!-- Une question du moteur ne se decline pas : il refuse tout le
+               reste tant qu'elle tient. Offrir un « renoncer » qui ne renonce
+               a rien serait mentir sur ce qui est possible. -->
+          <p class="ciblage__obligatoire">Cette carte impose son effet.</p>
+        }
       </section>
     }
   `,
@@ -120,6 +127,14 @@ export class Ciblage {
   readonly demande = input.required<Ciblee | null>();
   readonly candidats = input.required<readonly Candidat[]>();
   readonly offresDuMarche = input<readonly CandidatType[]>([]);
+
+  /**
+   * Faux quand la question vient du moteur.
+   *
+   * Un effet déclenché par une révélation ne s'annule pas : le moteur refuse
+   * toute autre action tant qu'il attend, donc renoncer ne mènerait nulle part.
+   */
+  readonly renoncable = input(true);
 
   readonly confirme = output<Reponses>();
   readonly annule = output<void>();
