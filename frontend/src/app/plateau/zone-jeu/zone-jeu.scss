@@ -141,3 +141,14 @@
   white-space: nowrap;
   clip-path: inset(50%);
 }
+
+/* La raison, à la place des boutons : une carte activée n'est pas une carte en
+   panne. Sans cette mention, ses boutons disparaissaient sans explication. */
+.jeu__indisponible {
+  margin: 0;
+  padding: 0.2rem 0;
+  font-size: 0.7rem;
+  font-style: italic;
+  text-align: center;
+  opacity: 0.65;
+}

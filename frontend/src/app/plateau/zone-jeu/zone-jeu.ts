@@ -88,9 +88,12 @@ export interface CarteEnJeuVue {
                     Sacrifier<span class="jeu__cible"> {{ carte.nom }}</span>
                   </button>
                 }
-                <!-- On n'échange pas le Garde du corps contre une carte déjà
-                     activée (§9) : le bouton n'existe pas plutôt que d'exister
-                     et de se faire refuser. -->
+                <!-- Une carte activée ne peut ni repivoter ni devenir Garde du
+                     corps (§9). Faire disparaître ses boutons sans rien dire
+                     laissait croire à une panne : on annonce la raison. -->
+                @if (carte.pivotee && (pivotPossible() || echangePossible())) {
+                  <p class="jeu__indisponible">Activée pour cette phase</p>
+                }
                 @if (echangePossible() && !carte.pivotee) {
                   <button type="button" (click)="echangeDemande.emit(carte.id)">
                     Garde du corps<span class="jeu__cible"> : {{ carte.nom }}</span>

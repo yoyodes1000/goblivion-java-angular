@@ -120,6 +120,26 @@ describe('ZoneJeu', () => {
     expect((fixture.nativeElement as HTMLElement).querySelectorAll('.jeu--pivotee')).toHaveLength(1);
   });
 
+  /**
+   * Retour de partie : « après avoir sacrifié une carte, on ne peut plus
+   * changer le garde du corps ». Ce n'était pas le sacrifice, c'était l'
+   * activation — et l'écran faisait disparaître le bouton sans rien dire, ce
+   * qui se lit comme une panne. La règle est juste, sa raison doit être visible.
+   */
+  it('dit pourquoi une carte activée n’offre plus rien', async () => {
+    const fixture = await monter('combat', [carte(1, 2, true)], { pivot: true, echange: true });
+
+    const mention = (fixture.nativeElement as HTMLElement).querySelector('.jeu__indisponible');
+    expect(mention?.textContent?.trim()).toBe('Activée pour cette phase');
+  });
+
+  /** Hors des phases qui offrent ces actions, il n'y a rien à expliquer. */
+  it('n’explique rien quand aucune action n’était proposée', async () => {
+    const fixture = await monter('avancee', [carte(1, 2, true)]);
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('.jeu__indisponible')).toBeNull();
+  });
+
   it('désigne l’exemplaire visé, pas son type', async () => {
     // Deux Fermiers portent le même nom : c'est l'identité qui les distingue,
     // et c'est elle qui doit partir au moteur.
