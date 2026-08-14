@@ -1,0 +1,116 @@
+/* Un arbitrage, pas une question : le joueur doit voir en même temps ce qu'il
+   dépense et ce qui lui reste. */
+
+.repartition {
+  position: fixed;
+  inset-block-end: 1.5rem;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  z-index: 20;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+
+  max-inline-size: min(30rem, calc(100vw - 2rem));
+  padding: 1rem 1.25rem;
+
+  border: 1px solid #9b3b3b;
+  border-radius: 0.5rem;
+  background: #1d1a14;
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 45%);
+}
+
+.repartition__titre {
+  margin: 0;
+  font-size: 1rem;
+  color: #e0736f;
+}
+
+.repartition__resume,
+.repartition__reste {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.repartition__reste {
+  opacity: 0.8;
+}
+
+.repartition__liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  max-block-size: 40vh;
+  overflow-y: auto;
+}
+
+.repartition__cible {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  inline-size: 100%;
+
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #6b5836;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.repartition__cible:hover:not(:disabled),
+.repartition__cible:focus-visible {
+  background: #3a3223;
+}
+
+/* Retenu : il tombera. Le liseré porte l'information, la couleur seule ne
+   suffirait pas. */
+.repartition__cible--retenue {
+  border-color: #e0736f;
+  border-inline-start-width: 0.25rem;
+}
+
+.repartition__cible:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.repartition__force {
+  font-weight: 700;
+}
+
+.repartition__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.repartition__valider {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #9b3b3b;
+  border-radius: 0.3rem;
+  background: #9b3b3b;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.repartition__annuler {
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

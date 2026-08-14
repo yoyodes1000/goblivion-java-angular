@@ -40,6 +40,17 @@
       (confirme)="pivoterAvec($event)"
       (annule)="annulerCiblage()"
     />
+
+    <!-- Le combat perdu se repartit : tout ennemi dont on couvre la force tombe
+         quand meme (§8). -->
+    <app-repartition
+      [ouvert]="repartitionOuverte()"
+      [ennemis]="portesVue()"
+      [forceDisponible]="etat()?.forceAlliee ?? 0"
+      [forceEnnemie]="etat()?.forceEnnemie ?? 0"
+      (confirme)="repartir($event)"
+      (annule)="annulerRepartition()"
+    />
     <app-cartes-royales
       class="plateau__royales"
       [roiReine]="roiReine()"

@@ -20,6 +20,7 @@ import { Commandes } from '../partie/commandes/commandes';
 import type { Difficulte, EnnemiVue, TypeAction } from '../partie/modele';
 import { NouvellePartie } from '../partie/nouvelle-partie/nouvelle-partie';
 import { Partie } from '../partie/partie';
+import { Repartition } from '../partie/repartition/repartition';
 import { BandeauPhase } from './bandeau-phase/bandeau-phase';
 import { CartesDorees } from './cartes-dorees/cartes-dorees';
 import { CartesRoyales } from './cartes-royales/cartes-royales';
@@ -64,6 +65,7 @@ import { ZoneJeu, type CarteEnJeuVue } from './zone-jeu/zone-jeu';
     PileMonstres,
     PlateauAvancee,
     PortesChateau,
+    Repartition,
     ZoneJeu,
   ],
   templateUrl: './plateau.html',
@@ -208,8 +210,36 @@ export class Plateau {
     this.partie.demarrer(difficulte);
   }
 
+  /**
+   * Un combat perdu se répartit, il ne se subit pas.
+   *
+   * Tout ennemi dont on couvre la force tombe quand même (§8). Envoyer
+   * l'action sans cible reviendrait à n'abattre personne et à laisser chaque
+   * survivant empocher un jeton — une décision prise à la place du joueur, et
+   * la pire de toutes.
+   */
   protected commande(type: TypeAction): void {
+    if (type === 'RESOUDRE_COMBAT' && this.combatPerdu()) {
+      this.repartitionOuverte.set(true);
+      return;
+    }
     this.partie.jouerSimple(type);
+  }
+
+  protected readonly repartitionOuverte = signal(false);
+
+  protected readonly combatPerdu = computed(() => {
+    const etat = this.etat();
+    return !!etat && etat.portes.length > 0 && etat.forceAlliee < etat.forceEnnemie;
+  });
+
+  protected repartir(cibles: readonly number[]): void {
+    this.repartitionOuverte.set(false);
+    this.partie.jouer({ type: 'RESOUDRE_COMBAT', cibles });
+  }
+
+  protected annulerRepartition(): void {
+    this.repartitionOuverte.set(false);
   }
 
   protected choisirEntrainement(carte: CarteDoree): void {
