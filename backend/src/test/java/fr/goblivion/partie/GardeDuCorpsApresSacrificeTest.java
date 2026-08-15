@@ -7,7 +7,11 @@ import java.util.Random;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import fr.goblivion.cartes.Catalogue;
 import fr.goblivion.cartes.Famille;
+import fr.goblivion.effets.Declencheur;
+import fr.goblivion.effets.Effet;
+import fr.goblivion.effets.EffetCarte;
 
 /**
  * Reproduction d'un retour de partie : après avoir sacrifié une carte pour
@@ -63,5 +67,35 @@ class GardeDuCorpsApresSacrificeTest {
 
         assertThat(partie.gardeDuCorps()).isPresent();
         assertThat(partie.gardeDuCorps().get().id()).isEqualTo(restante);
+    }
+
+    /**
+     * Retour de partie : « j'ai sacrifié le Pyromane fou et son Testament ne
+     * s'est pas déclenché ».
+     *
+     * <p>Sacrifier, c'est détruire — la carte quitte la partie pour de bon. Mais
+     * le sacrifice retirait la carte sans passer par le chemin de destruction,
+     * seul endroit où le legs part. Le joueur payait le coût sans toucher la
+     * contrepartie.
+     */
+    @Test
+    void le_sacrifice_declenche_le_testament_de_la_carte() {
+        Catalogue catalogue = CataloguesFictifs.avecEffetSurHumain(
+                new EffetCarte(Declencheur.TESTAMENT, new Effet.Ressource(3)));
+        partie = new MiseEnPlace(catalogue, new Random(7)).creer(Difficulte.NORMAL, null);
+        moteur = new MoteurPartie(partie);
+
+        prochainesPiochees(CataloguesFictifs.BLEUE_HUMAIN, CataloguesFictifs.BLEUE_OBJET);
+        moteur.appliquer(Action.surMarche(TypeAction.CHOISIR_ENTRAINEMENT,
+                CataloguesFictifs.DORE_ACCESSIBLE));
+        while (partie.deficitEntrainement() > 0) {
+            moteur.appliquer(Action.de(TypeAction.PAYER_DIFFERENCE));
+        }
+        int avant = partie.ressources();
+
+        moteur.appliquer(Action.surCarte(TypeAction.CONCLURE_ENTRAINEMENT,
+                idEnJeu(CataloguesFictifs.BLEUE_HUMAIN)));
+
+        assertThat(partie.ressources()).as("le legs de la carte sacrifiee").isEqualTo(avant + 3);
     }
 }

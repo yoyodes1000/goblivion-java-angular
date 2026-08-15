@@ -327,9 +327,15 @@ class InterpreteEffets {
      * de bon — sans quoi l'Alchimiste, qui défausse, en ferait une rente.
      *
      * <p>Le legs est un effet du moteur, pas une demande du joueur : il ne peut
-     * rien désigner au moment où sa carte tombe.
+     * rien désigner au moment où sa carte tombe. S'il en faut une — le Pyromane
+     * fou lègue une Vision, qui demande quel ennemi retourner — l'effet se met
+     * en attente et la question lui est posée.
+     *
+     * <p>Appelé depuis {@code detruire} et depuis le sacrifice d'entraînement :
+     * ce sont les deux façons dont une carte du joueur quitte la partie pour de
+     * bon. Le sacrifice l'oubliait, et un Pyromane sacrifié ne léguait rien.
      */
-    private void testament(CarteEnJeu detruite) {
+    void testament(CarteEnJeu detruite) {
         partie.effetsDe(detruite).stream()
                 .filter(effet -> effet.declencheur() == Declencheur.TESTAMENT)
                 .forEach(effet -> declencherAutomatiquement(effet, detruite,

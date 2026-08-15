@@ -190,6 +190,9 @@ public final class MoteurPartie {
 
         partie.retirerDuChampDeBataille(carteEnJeu);
         partie.noter("%s est detruit : la carte quitte la partie.".formatted(partie.nomDe(sacrifice)));
+        // Sacrifier, c'est detruire : le Testament part comme pour toute autre
+        // destruction. L'oublier ici privait le joueur du legs de sa carte.
+        interprete.testament(sacrifice);
 
         partie.consommerAuMarche(acquise.id());
         partie.poserAlHopital(CarteEnJeu.paysan(Famille.DOREES, acquise.id()));
