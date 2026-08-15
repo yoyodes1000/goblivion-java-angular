@@ -726,6 +726,27 @@ public final class Partie {
             public List<Long> aLHopital(fr.goblivion.effets.Cible cible) {
                 return candidatsHopitalPour(cible);
             }
+
+            @Override
+            public int combien(fr.goblivion.effets.Quantite quantite) {
+                return repetitions(quantite);
+            }
+        };
+    }
+
+    /** Combien de fois un « pour chaque » se répète, ici et maintenant. */
+    public int repetitions(fr.goblivion.effets.Quantite quantite) {
+        return switch (quantite) {
+            case OBJET_A_L_HOPITAL -> (int) hopital.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.OBJET)
+                    .count();
+            case PAYSAN_HUMAIN_EN_JEU -> (int) champDeBataille.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.HUMAIN)
+                    .count();
+            case SOLDAT_EN_JEU -> nombreDeSoldats();
+            case PIVOTER_UTILISE -> (int) champDeBataille.stream()
+                    .filter(CarteEnJeu::pivotee)
+                    .count();
         };
     }
 

@@ -517,17 +517,15 @@ class InterpreteEffets {
                         () -> partie.noter("Aucun Boss disponible a ajouter."));
     }
 
+    /**
+     * Le compte vient du moteur, comme celui que le plan annonce.
+     *
+     * <p>Deux implémentations du même décompte finiraient par diverger, et le
+     * plan promettrait alors un nombre de questions que l'exécution ne
+     * consommerait pas — ou l'inverse.
+     */
     private void repeter(Effet.PourChaque effet, CarteEnJeu source, Passe passe) {
-        int fois = switch (effet.quantite()) {
-            case OBJET_A_L_HOPITAL -> (int) partie.hopital().stream()
-                    .filter(carte -> partie.typeDe(carte).orElse(null) == TypeCarte.OBJET)
-                    .count();
-            case PAYSAN_HUMAIN_EN_JEU -> (int) humainsEnJeu().count();
-            case SOLDAT_EN_JEU -> partie.nombreDeSoldats();
-            case PIVOTER_UTILISE -> (int) partie.champDeBataille().stream()
-                    .filter(CarteEnJeu::pivotee)
-                    .count();
-        };
+        int fois = partie.repetitions(effet.quantite());
         for (int i = 0; i < fois; i++) {
             parcourir(effet.effet(), source, passe);
         }

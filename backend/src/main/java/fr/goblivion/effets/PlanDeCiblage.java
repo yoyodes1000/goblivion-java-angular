@@ -83,6 +83,16 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
          */
         List<Long> aLHopital(Cible cible);
 
+        /**
+         * Combien de fois un {@code pour chaque} se répétera, ici et maintenant.
+         *
+         * <p>Le Protecteur Mécanique pose un jeton par Objet à l'Hôpital, et
+         * chaque jeton se place où le joueur veut : il faut donc annoncer autant
+         * de questions qu'il y aura de jetons. Le compte dépend de l'état, seul
+         * le moteur le connaît.
+         */
+        int combien(Quantite quantite);
+
         /** Aucun candidat : pour les tests du vocabulaire, qui n'ont pas de partie. */
         static Eligibles aucun() {
             return new Eligibles() {
@@ -94,6 +104,11 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
                 @Override
                 public List<Long> aLHopital(Cible cible) {
                     return List.of();
+                }
+
+                @Override
+                public int combien(Quantite quantite) {
+                    return 1;
                 }
             };
         }
@@ -146,12 +161,16 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
                 options.add(new Branche(resumer(option), propres));
             });
 
-            // Le corps se répète, mais les désignations aussi : « pour chaque »
-            // ne demande jamais de cible dans les cartes transcrites, et
-            // annoncer une fois vaut mieux qu'annoncer un nombre qui dépend de
-            // l'état au moment du clic.
-            case Effet.PourChaque pourChaque ->
-                parcourir(pourChaque.effet(), designations, options, eligibles);
+            // Le corps se répète, et ses désignations avec lui : le Protecteur
+            // Mécanique pose un jeton par Objet à l'Hôpital, chacun sur la carte
+            // que le joueur veut. Annoncer une seule question ferait refuser
+            // l'effet dès le deuxième jeton.
+            case Effet.PourChaque pourChaque -> {
+                int fois = eligibles.combien(pourChaque.quantite());
+                for (int i = 0; i < fois; i++) {
+                    parcourir(pourChaque.effet(), designations, options, eligibles);
+                }
+            }
 
             case Effet.Defausser defausser -> {
                 for (int i = 0; i < defausser.nombre(); i++) {

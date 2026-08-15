@@ -279,4 +279,52 @@ class VisionEtJetonsTest {
                     .doesNotContain(objetEnJeu.id());
         });
     }
+
+    // ------------------------------------------- ou va le jeton Banniere
+
+    /**
+     * Retour de partie : « on ne peut pas choisir à qui l'on donne les jetons ».
+     *
+     * <p>C'était une erreur de transcription : « gagne Jeton Bannière +2 » avait
+     * été traduit par « la carte se le donne à elle-même », alors que le jeton se
+     * pose où le joueur veut. Cinq cartes étaient concernées.
+     */
+    @Test
+    void un_jeton_se_pose_sur_la_carte_designee() {
+        CarteEnJeu aventurier = source();
+        CarteEnJeu autre = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET);
+        partie.poserAuChampDeBataille(autre);
+
+        jouer(new Effet.JetonBanniere(2, Cible.UNE_CARTE_EN_JEU), List.of(autre.id()));
+
+        assertThat(autre.jetonBanniere()).isEqualTo(2);
+        assertThat(aventurier.jetonBanniere()).as("la carte jouee n'en profite pas d'office").isZero();
+    }
+
+    /**
+     * Le Protecteur Mécanique en pose un par Objet à l'Hôpital, chacun où le
+     * joueur veut. Le plan doit donc annoncer autant de questions qu'il y aura
+     * de jetons — en annoncer une seule ferait refuser l'effet au deuxième.
+     */
+    @Test
+    void pour_chaque_annonce_autant_de_questions_que_de_jetons() {
+        partie.poserAlHopital(CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET));
+        partie.poserAlHopital(CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET));
+        CarteEnJeu premiere = source();
+        CarteEnJeu seconde = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_HUMAIN);
+        partie.poserAuChampDeBataille(seconde);
+
+        Effet effet = new Effet.PourChaque(fr.goblivion.effets.Quantite.OBJET_A_L_HOPITAL,
+                new Effet.JetonBanniere(1, Cible.UNE_CARTE_EN_JEU));
+
+        assertThat(fr.goblivion.effets.PlanDeCiblage.de(effet, partie.eligibles()).designations())
+                .as("deux Objets a l'Hopital, donc deux jetons a placer")
+                .hasSize(2);
+
+        interprete.executer(new EffetCarte(Declencheur.PIVOTER, effet), premiere,
+                new InterpreteEffets.Choix(List.of(premiere.id(), seconde.id()), List.of()));
+
+        assertThat(premiere.jetonBanniere()).isEqualTo(1);
+        assertThat(seconde.jetonBanniere()).isEqualTo(1);
+    }
 }
