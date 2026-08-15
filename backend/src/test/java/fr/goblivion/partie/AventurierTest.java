@@ -1,0 +1,74 @@
+package fr.goblivion.partie;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import java.util.Random;
+
+import org.junit.jupiter.api.Test;
+
+import fr.goblivion.cartes.Catalogue;
+import fr.goblivion.cartes.Famille;
+import fr.goblivion.effets.Cible;
+import fr.goblivion.effets.Declencheur;
+import fr.goblivion.effets.Effet;
+import fr.goblivion.effets.EffetCarte;
+
+/**
+ * L'Aventurier : « Pivoter: Défausser 1 et gagne Jeton Bannière +2 ».
+ *
+ * <p>Retour de partie : la carte partait bien à l'Hôpital, mais l'Aventurier
+ * ne semblait pas recevoir son jeton.
+ */
+class AventurierTest {
+
+    private Partie partie;
+    private MoteurPartie moteur;
+
+    private void miseEnPlace() {
+        Catalogue catalogue = CataloguesFictifs.avecEffetSurHumain(
+                new EffetCarte(Declencheur.PIVOTER, new Effet.Sequence(List.of(
+                        new Effet.Defausser(1),
+                        new Effet.JetonBanniere(2, Cible.SOI_MEME)))));
+        partie = new MiseEnPlace(catalogue, new Random(3)).creer(Difficulte.NORMAL, null);
+        moteur = new MoteurPartie(partie);
+    }
+
+    private CarteEnJeu poser(String carteId) {
+        CarteEnJeu carte = CarteEnJeu.paysan(Famille.BLEUES, carteId);
+        partie.poserAuChampDeBataille(carte);
+        return carte;
+    }
+
+    @Test
+    void defausser_une_autre_carte_laisse_le_jeton_a_l_aventurier() {
+        miseEnPlace();
+        CarteEnJeu aventurier = poser(CataloguesFictifs.BLEUE_HUMAIN);
+        CarteEnJeu victime = poser(CataloguesFictifs.BLEUE_OBJET);
+
+        moteur.appliquer(Action.surCarteAvecChoix(TypeAction.PIVOTER, aventurier.id(),
+                List.of(victime.id()), List.of()));
+
+        assertThat(partie.hopital()).contains(victime);
+        assertThat(aventurier.jetonBanniere()).as("le jeton reste a l'Aventurier").isEqualTo(2);
+        assertThat(partie.forceEffective(aventurier)).isEqualTo(3);
+    }
+
+    /**
+     * Le cas qui explique tout : désigner l'Aventurier lui-même comme carte à
+     * défausser. Il part à l'Hôpital, et son jeton part avec lui — il n'est plus
+     * en jeu pour en profiter.
+     */
+    @Test
+    void se_defausser_soi_meme_emporte_le_jeton_a_l_hopital() {
+        miseEnPlace();
+        CarteEnJeu aventurier = poser(CataloguesFictifs.BLEUE_HUMAIN);
+
+        moteur.appliquer(Action.surCarteAvecChoix(TypeAction.PIVOTER, aventurier.id(),
+                List.of(aventurier.id()), List.of()));
+
+        assertThat(partie.champDeBataille()).doesNotContain(aventurier);
+        assertThat(partie.hopital()).contains(aventurier);
+        assertThat(partie.forceAlliee()).as("plus rien en jeu, donc aucune force").isZero();
+    }
+}
