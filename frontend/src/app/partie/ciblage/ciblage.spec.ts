@@ -29,7 +29,10 @@ describe('Ciblage', () => {
     fixture.componentRef.setInput('demande', {
       carteEnJeu: 7,
       nom: 'Bourreau',
-      plan: { designations: designations.map(parExemplaire), options },
+      plan: {
+        designations: designations.map(parExemplaire),
+        options: options.map((libelle) => ({ libelle, designations: [] })),
+      },
     });
     fixture.componentInstance.confirme.subscribe((reponses) => (recu = reponses));
     await fixture.whenStable();
@@ -94,6 +97,45 @@ describe('Ciblage', () => {
 
     await cliquer(rendu, 'Visionner');
     expect(recu).toEqual({ cibles: [], options: [1], types: [] });
+  });
+
+  /**
+   * « Piocher 1 ou Visionner » — l'Archer. Les deux branches ne réclament pas la
+   * même chose : piocher ne demande rien, visionner demande quel ennemi
+   * retourner. La branche écartée ne doit poser aucune question.
+   */
+  it('ne pose que les questions de la branche retenue', async () => {
+    const brancher = async (options: { libelle: string; designations: unknown[] }[]) => {
+      fixture = TestBed.createComponent(Ciblage);
+      fixture.componentRef.setInput('candidats', CANDIDATS);
+      fixture.componentRef.setInput('demande', {
+        carteEnJeu: 7,
+        nom: 'Archer',
+        plan: { designations: [], options },
+      });
+      fixture.componentInstance.confirme.subscribe((reponses) => (recu = reponses));
+      await fixture.whenStable();
+      return fixture.nativeElement as HTMLElement;
+    };
+    const OPTIONS = [
+      { libelle: 'Piocher 1', designations: [] },
+      { libelle: 'Visionner', designations: [parExemplaire('un ennemi face cachée à retourner')] },
+    ];
+
+    // Piocher : l'action part aussitôt la branche retenue.
+    let rendu = await brancher(OPTIONS);
+    await cliquer(rendu, 'Piocher 1');
+    expect(recu).toEqual({ cibles: [], options: [0], types: [] });
+
+    // Visionner : une question de plus, celle de la branche.
+    recu = undefined;
+    rendu = await brancher(OPTIONS);
+    await cliquer(rendu, 'Visionner');
+    expect(recu).toBeUndefined();
+    expect(rendu.querySelector('.ciblage__question')?.textContent).toContain('ennemi face cachée');
+
+    await cliquer(rendu, 'Fermier');
+    expect(recu).toEqual({ cibles: [11], options: [1], types: [] });
   });
 
   /**

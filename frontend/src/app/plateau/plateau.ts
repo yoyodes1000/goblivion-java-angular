@@ -340,9 +340,38 @@ export class Plateau {
         return affichable ? [{ id: vue.id, nom: affichable.nom, zone }] : [];
       };
 
+    /*
+      Les ennemis encore face cachée sont désignables aussi : la Vision demande
+      lequel retourner. On ne peut pas les nommer — le backend ne dit pas ce que
+      le joueur n'a pas le droit de voir — donc c'est leur **position** qui les
+      distingue, et c'est bien elle qui compte : celui des Portes arrive au
+      prochain combat, celui du fond de piste dans trois tours.
+    */
+    const caches: Candidat[] = [
+      ...etat.portes
+        .filter((ennemi) => !ennemi.revelee)
+        .map((ennemi, index) => ({
+          id: ennemi.id,
+          nom: `Ennemi caché — Portes, place ${index + 1}`,
+          zone: 'aux Portes',
+        })),
+      ...etat.piste.flatMap((ennemi, index) =>
+        ennemi && !ennemi.revelee
+          ? [
+              {
+                id: ennemi.id,
+                nom: `Ennemi caché — piste, case ${index + 1}`,
+                zone: 'sur la piste',
+              },
+            ]
+          : [],
+      ),
+    ];
+
     return [
       ...etat.champDeBataille.flatMap((vue) => nommer(vue.famille, vue.carte, 'en jeu')(vue)),
       ...etat.hopital.flatMap((vue) => nommer(vue.famille, vue.carte, 'Hôpital')(vue)),
+      ...caches,
     ];
   });
 

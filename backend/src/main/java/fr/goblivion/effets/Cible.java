@@ -43,6 +43,15 @@ public enum Cible {
     /** Un jeton Bonus Ennemi, au choix — le Champion. */
     UN_JETON_ENNEMI,
 
+    /**
+     * Un ennemi encore face cachée, sur la piste ou aux Portes — la Vision.
+     *
+     * <p>Le choix compte : retourner celui qui arrive au prochain tour le prive
+     * de son action, retourner celui du fond ne coûte rien à personne. C'est
+     * l'arbitrage qui fait de la Vision un outil et non un automatisme.
+     */
+    UN_ENNEMI_CACHE,
+
     /** Une carte Roi/Reine — le Hochet royal, qui la réactive. */
     UNE_CARTE_ROYALE,
 
@@ -95,6 +104,7 @@ public enum Cible {
             case UN_PAYSAN_HUMAIN -> "un paysan Humain";
             case UNE_CARTE_DE_FORCE_1_ET_PLUS -> "une carte de force 1 ou plus";
             case UN_JETON_ENNEMI -> "un jeton Bonus Ennemi";
+            case UN_ENNEMI_CACHE -> "un ennemi face cachée à retourner";
             case UNE_CARTE_ROYALE -> "une carte Roi/Reine";
             case UNE_ACTION_PIVOTER -> "une action Pivoter à copier";
             case SOI_MEME -> "cette carte";

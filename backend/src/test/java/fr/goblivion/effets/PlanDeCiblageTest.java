@@ -61,8 +61,18 @@ class PlanDeCiblageTest {
                 new Effet.Piocher(1),
                 new Effet.Visionner())));
 
-        assertThat(plan.options()).containsExactly("Piocher 1", "Visionner");
-        assertThat(plan.designations()).isEmpty();
+        assertThat(plan.options())
+                .extracting(PlanDeCiblage.Branche::libelle)
+                .containsExactly("Piocher 1", "Visionner");
+
+        // Chaque branche porte ce qu'elle reclame en propre : piocher ne demande
+        // rien, visionner demande l'ennemi a retourner. Les mettre en commun
+        // ferait poser une question sans objet a qui choisit de piocher.
+        assertThat(plan.options().get(0).designations()).isEmpty();
+        assertThat(plan.options().get(1).designations())
+                .extracting(PlanDeCiblage.Designation::libelle)
+                .containsExactly("un ennemi face cachée à retourner");
+        assertThat(plan.designations()).as("rien sur le tronc").isEmpty();
     }
 
     /**

@@ -18,7 +18,22 @@ import java.util.List;
  *                     l'interprète les consommera
  * @param options      les branches d'un {@code ou}, vides s'il n'y en a pas
  */
-public record PlanDeCiblage(List<Designation> designations, List<String> options) {
+public record PlanDeCiblage(List<Designation> designations, List<Branche> options) {
+
+    /**
+     * Une branche d'un {@code ou}, avec ce qu'elle réclame en propre.
+     *
+     * <p>Les désignations dépendent de la branche retenue : « Piocher 1 ou
+     * Visionner » ne demande rien dans un cas, un ennemi à retourner dans
+     * l'autre. Les mettre en commun ferait poser une question sans objet à
+     * qui choisit de piocher.
+     */
+    public record Branche(String libelle, List<Designation> designations) {
+
+        public Branche {
+            designations = List.copyOf(designations);
+        }
+    }
 
     /**
      * Une question à poser au joueur.
@@ -57,32 +72,32 @@ public record PlanDeCiblage(List<Designation> designations, List<String> options
     /**
      * Le plan d'un effet.
      *
-     * <p><strong>Limite connue et volontaire :</strong> les désignations sont
-     * relevées en traversant les branches d'un {@code ou} comme le reste. Un
-     * effet dont une seule branche demanderait une cible annoncerait donc une
-     * désignation que l'autre branche ne consomme pas. Aucune carte du jeu n'est
-     * dans ce cas — les deux {@code ou} transcrits, l'Archer et les Scouts,
-     * n'ont aucune cible — et traiter un cas qui n'existe pas coûterait un plan
-     * par branche dans l'état. Le jour où une carte le fait, c'est ici que ça se
-     * corrige.
+     * <p>Chaque branche d'un {@code ou} porte ses propres désignations. Ce
+     * n'était pas nécessaire tant qu'aucune branche ne réclamait de cible ;
+     * ça l'est devenu quand la Vision s'est mise à demander quel ennemi
+     * retourner — l'Archer et les Scouts l'offrent en alternative à une pioche
+     * qui, elle, ne demande rien.
      */
     public static PlanDeCiblage de(Effet effet) {
         List<Designation> designations = new ArrayList<>();
-        List<String> options = new ArrayList<>();
+        List<Branche> options = new ArrayList<>();
         parcourir(effet, designations, options);
         return new PlanDeCiblage(designations, options);
     }
 
     private static void parcourir(Effet effet, List<Designation> designations,
-            List<String> options) {
+            List<Branche> options) {
         switch (effet) {
             case Effet.Sequence sequence ->
                 sequence.effets().forEach(sous -> parcourir(sous, designations, options));
 
-            case Effet.Choix choix -> {
-                choix.options().forEach(option -> options.add(resumer(option)));
-                choix.options().forEach(option -> parcourir(option, designations, options));
-            }
+            // Chaque branche garde ses designations pour elle : celles de la
+            // branche retenue s'ajouteront a celles du tronc, pas les autres.
+            case Effet.Choix choix -> choix.options().forEach(option -> {
+                List<Designation> propres = new ArrayList<>();
+                parcourir(option, propres, new ArrayList<>());
+                options.add(new Branche(resumer(option), propres));
+            });
 
             // Le corps se répète, mais les désignations aussi : « pour chaque »
             // ne demande jamais de cible dans les cartes transcrites, et
@@ -96,6 +111,12 @@ public record PlanDeCiblage(List<Designation> designations, List<String> options
                     designations.add(Designation.exemplaire("une carte à défausser"));
                 }
             }
+
+            // Visionner ne porte pas de cible dans les donnees : elle vise
+            // toujours la meme chose, et la nommer dans chaque carte n'aurait
+            // rien appris. Le plan la reclame quand meme.
+            case Effet.Visionner visionner -> designations.add(
+                    Designation.exemplaire(Cible.UN_ENNEMI_CACHE.libelle()));
 
             case Effet.ObtenirDuMarche marche -> designations.add(
                     Designation.type("un %s du Marché".formatted(marche.typeCarte())));

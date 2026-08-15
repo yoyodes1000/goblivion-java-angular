@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
-import type { PlanDeCiblage } from '../modele';
+import type { Designation, PlanDeCiblage } from '../modele';
 
 /** Un exemplaire posé sur la table, avec l'endroit où il se trouve. */
 export interface Candidat {
@@ -70,7 +70,7 @@ export interface Reponses {
               @for (option of demande.plan.options; track $index) {
                 <li>
                   <button type="button" class="ciblage__choix" (click)="retenirBranche($index)">
-                    {{ option }}
+                    {{ option.libelle }}
                   </button>
                 </li>
               }
@@ -146,10 +146,25 @@ export class Ciblage {
   /** La question du moment porte-t-elle sur un type de carte plutôt qu'un exemplaire ? */
   protected readonly attendUnType = computed(() => this.designationCourante()?.parType ?? false);
 
-  private readonly designationCourante = computed(() => {
+  /**
+   * Les questions à poser, branche retenue comprise.
+   *
+   * Le tronc de l'effet réclame toujours les siennes ; la branche choisie
+   * ajoute les siennes derrière. Les branches écartées n'en ajoutent aucune —
+   * c'est tout l'intérêt de les avoir séparées.
+   */
+  private readonly questions = computed<readonly Designation[]>(() => {
     const plan = this.demande()?.plan;
-    if (!plan || this.attendUneBranche()) return undefined;
-    return plan.designations[this.cibles().length + this.types().length];
+    if (!plan) return [];
+
+    const retenue = this.options()[0];
+    const deLaBranche = retenue === undefined ? [] : plan.options[retenue].designations;
+    return [...plan.designations, ...deLaBranche];
+  });
+
+  private readonly designationCourante = computed(() => {
+    if (this.attendUneBranche()) return undefined;
+    return this.questions()[this.cibles().length + this.types().length];
   });
 
   /**
@@ -171,7 +186,7 @@ export class Ciblage {
   protected readonly total = computed(() => {
     const plan = this.demande()?.plan;
     if (!plan) return 0;
-    return plan.designations.length + (plan.options.length > 0 ? 1 : 0);
+    return this.questions().length + (plan.options.length > 0 ? 1 : 0);
   });
 
   protected readonly titre = computed(() => `Choix pour ${this.demande()?.nom ?? 'cette carte'}`);

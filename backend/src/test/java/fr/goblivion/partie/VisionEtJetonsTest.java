@@ -46,15 +46,32 @@ class VisionEtJetonsTest {
                 new InterpreteEffets.Choix(designations, List.of()));
     }
 
+    /**
+     * C'est le joueur qui désigne l'ennemi retourné, pas le moteur : retourner
+     * celui qui arrive au prochain tour le prive de son action, retourner celui
+     * du fond ne coûte rien. Le choix est tout l'intérêt de la Vision.
+     */
     @Test
-    void visionner_retourne_un_ennemi_face_cachee() {
+    void visionner_retourne_l_ennemi_designe() {
         partie.avancerEnnemi();
-        CarteEnJeu ennemi = partie.piste().stream().filter(c -> c != null).findFirst().orElseThrow();
-        assertThat(ennemi.revelee()).isFalse();
+        partie.avancerEnnemi();
+        List<CarteEnJeu> caches = partie.ennemisCaches();
+        assertThat(caches).hasSizeGreaterThan(1);
+        CarteEnJeu vise = caches.get(1);
 
-        jouer(new Effet.Visionner(), List.of());
+        jouer(new Effet.Visionner(), List.of(vise.id()));
 
-        assertThat(ennemi.revelee()).isTrue();
+        assertThat(vise.revelee()).isTrue();
+        assertThat(caches.get(0).revelee()).as("l'autre reste cache").isFalse();
+    }
+
+    @Test
+    void visionner_sans_designation_est_un_refus_lisible() {
+        partie.avancerEnnemi();
+
+        assertThatThrownBy(() -> jouer(new Effet.Visionner(), List.of()))
+                .isInstanceOf(ActionInterdite.class)
+                .hasMessageContaining("ennemi face cachée");
     }
 
     /**
@@ -64,9 +81,9 @@ class VisionEtJetonsTest {
     @Test
     void un_ennemi_visionne_tot_ne_declenchera_pas_son_action() {
         partie.avancerEnnemi();
-        CarteEnJeu ennemi = partie.piste().stream().filter(c -> c != null).findFirst().orElseThrow();
+        CarteEnJeu ennemi = partie.ennemisCaches().getFirst();
 
-        jouer(new Effet.Visionner(), List.of());
+        jouer(new Effet.Visionner(), List.of(ennemi.id()));
         partie.tourSuivant();
 
         assertThat(ennemi.actionDeclenchableAu(partie.tour())).isFalse();

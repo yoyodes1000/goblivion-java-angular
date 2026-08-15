@@ -219,7 +219,7 @@ class InterpreteEffets {
             // une interface, les copies et les durees demandent au moteur de
             // savoir defaire ce qu'il a fait. Refuser franchement vaut mieux
             // qu'executer a moitie.
-            case Effet.Visionner e -> siApplique(passe, partie::revelerParVision);
+            case Effet.Visionner e -> visionner(passe);
             case Effet.DoublerJetons e -> ciblesDe(e.cible(), source, passe)
                     .forEach(carte -> siApplique(passe,
                             () -> carte.ajouterJetonBanniere(carte.jetonBanniere())));
@@ -446,6 +446,33 @@ class InterpreteEffets {
         });
     }
 
+    /**
+     * Retourner un ennemi, celui que le joueur désigne.
+     *
+     * <p>Le choix est tout l'intérêt : retourner celui qui arrive au prochain
+     * tour le prive de son action, retourner celui du fond ne coûte rien. Le
+     * moteur choisissait à sa place — c'était en faire un automatisme.
+     *
+     * <p>Aucun ennemi caché n'est pas une faute du joueur : la Vision tombe
+     * dans le vide, comme détruire la carte d'un Château vide.
+     */
+    private void visionner(Passe passe) {
+        List<CarteEnJeu> caches = partie.ennemisCaches();
+        if (caches.isEmpty()) {
+            siApplique(passe, () -> partie.noter("Vision sans effet : aucun ennemi face cachee."));
+            return;
+        }
+
+        long id = passe.choix().carteSuivante(Cible.UN_ENNEMI_CACHE.libelle());
+        CarteEnJeu ennemi = caches.stream()
+                .filter(carte -> carte.id() == id)
+                .findFirst()
+                .orElseThrow(() -> new ActionInterdite(
+                        "Cette carte n'est pas un ennemi face cachee."));
+
+        siApplique(passe, () -> partie.revelerParVision(ennemi));
+    }
+
     private void ajouterUnBoss() {
         partie.catalogue().boss().stream()
                 .filter(boss -> !partie.bossRestants().contains(boss))
@@ -512,6 +539,11 @@ class InterpreteEffets {
             }
 
             case PROCHAINE_DU_CHATEAU -> List.of();
+
+            // La Vision se resout dans visionner() : l'ennemi vise n'est ni au
+            // Champ de bataille ni a l'Hopital, mais sur le plateau Ennemi.
+            case UN_ENNEMI_CACHE -> List.of();
+
             case UN_JETON_ENNEMI, UNE_CARTE_ROYALE, UNE_ACTION_PIVOTER -> {
                 pasEncore("Designer " + descriptionDe(cible));
                 yield List.of();

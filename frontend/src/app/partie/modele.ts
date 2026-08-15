@@ -66,10 +66,22 @@ export interface Designation {
   readonly parType: boolean;
 }
 
+/**
+ * Une branche d'un « ou », avec ce qu'elle réclame en propre.
+ *
+ * « Piocher 1 ou Visionner » ne demande rien dans un cas, un ennemi à retourner
+ * dans l'autre. Mettre les deux en commun ferait poser une question sans objet
+ * à qui choisit de piocher.
+ */
+export interface Branche {
+  readonly libelle: string;
+  readonly designations: readonly Designation[];
+}
+
 export interface PlanDeCiblage {
   readonly designations: readonly Designation[];
   /** Les branches d'un « ou » — vide s'il n'y en a pas. */
-  readonly options: readonly string[];
+  readonly options: readonly Branche[];
 }
 
 export interface CarteVue {
