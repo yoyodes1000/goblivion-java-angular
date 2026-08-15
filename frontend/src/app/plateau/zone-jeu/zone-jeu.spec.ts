@@ -27,6 +27,11 @@ describe('ZoneJeu', () => {
     return carte(id, force, false, false);
   }
 
+  /** Une récompense gagnée sur un ennemi : même carte physique, autre moitié. */
+  function recompense(id: number, force: number): CarteEnJeuVue {
+    return { ...carte(id, force), famille: 'ennemis-objets' };
+  }
+
   async function monter(
     phase: Phase,
     cartes: CarteEnJeuVue[] = [],
@@ -154,5 +159,25 @@ describe('ZoneJeu', () => {
     await fixture.whenStable();
 
     expect(vises).toEqual([12]);
+  });
+
+  /**
+   * L'ennemi et l'objet sont les deux moitiés tête-bêche d'une seule carte
+   * physique (§4). Vaincu, l'ennemi est pivoté à 180° : c'est l'objet qui passe
+   * en haut. Sans cette rotation, le joueur verrait un gobelin dans son armée
+   * au lieu de la récompense qu'il a gagnée.
+   */
+  it('retourne la carte gagnée sur un ennemi', async () => {
+    const fixture = await monter('combat', [recompense(1, 2)]);
+    const image = (fixture.nativeElement as HTMLElement).querySelector('.jeu__scan img');
+
+    expect(image?.classList.contains('carte--objet-en-haut')).toBe(true);
+  });
+
+  it('laisse les cartes du joueur dans leur sens', async () => {
+    const fixture = await monter('combat', [carte(1, 2)]);
+    const image = (fixture.nativeElement as HTMLElement).querySelector('.jeu__scan img');
+
+    expect(image?.classList.contains('carte--objet-en-haut')).toBe(false);
   });
 });

@@ -28,7 +28,11 @@ import type { EnnemiSurPlateau } from '../ennemi-sur-plateau';
             <div class="avancee__carte" [class.avancee__carte--cachee]="!ennemi.revelee">
               <img [ngSrc]="ennemi.image" fill sizes="7vw" [alt]="ennemi.nom" />
               @if (ennemi.revelee) {
-                <span class="avancee__force">{{ ennemi.force }}</span>
+                <span
+                  class="avancee__force"
+                  [title]="'Force à battre : ' + ennemi.force + ' (jeton compris)'"
+                  >{{ ennemi.force }}</span
+                >
               }
             </div>
           }

@@ -29,7 +29,13 @@ import type { CarteAffichable, RoiReine } from '../../cartes/modele';
         <h2 class="royales__titre">Garde du corps</h2>
         <div class="royales__emplacement" data-orientation="droite">
           @if (gardeDuCorps(); as carte) {
-            <img [ngSrc]="urlGarde(carte)" fill sizes="8vw" [alt]="carte.nom" />
+            <img
+              [ngSrc]="urlGarde(carte)"
+              fill
+              sizes="8vw"
+              [alt]="carte.nom"
+              [class.carte--objet-en-haut]="carte.famille === 'ennemis-objets'"
+            />
           } @else {
             <span class="royales__attente">1× par phase</span>
           }

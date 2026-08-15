@@ -67,7 +67,13 @@ export interface CarteEnJeuVue {
           @for (carte of cartes(); track carte.id) {
             <li class="jeu" [class.jeu--pivotee]="carte.pivotee">
               <div class="jeu__scan">
-                <img [ngSrc]="url(carte)" fill sizes="8vw" [alt]="carte.nom" />
+                <img
+                  [ngSrc]="url(carte)"
+                  fill
+                  sizes="8vw"
+                  [alt]="carte.nom"
+                  [class.carte--objet-en-haut]="estRecompense(carte)"
+                />
               </div>
 
               <p class="jeu__nom">
@@ -136,5 +142,17 @@ export class ZoneJeu {
 
   protected url(carte: CarteEnJeuVue): string {
     return urlScan(carte.famille, carte.scan);
+  }
+
+  /**
+   * Une carte gagnée sur un ennemi se montre à l'envers.
+   *
+   * L'ennemi et l'objet sont les deux moitiés tête-bêche d'une seule carte
+   * physique (§4). Vaincu, l'ennemi est pivoté à 180° et c'est l'objet qui
+   * passe en haut — sans cette rotation, le joueur verrait un gobelin dans son
+   * armée au lieu de la récompense qu'il a gagnée.
+   */
+  protected estRecompense(carte: CarteEnJeuVue): boolean {
+    return carte.famille === 'ennemis-objets';
   }
 }

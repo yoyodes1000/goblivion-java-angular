@@ -19,7 +19,9 @@ import type { EnnemiSurPlateau } from '../ennemi-sur-plateau';
     <h2 class="portes__titre">
       Portes du château
       @if (ennemis().length > 0) {
-        <span class="portes__force">force {{ forceEnnemie() }}</span>
+        <span class="portes__force" title="Force totale à battre pour gagner le combat"
+          >force {{ forceEnnemie() }}</span
+        >
       }
     </h2>
 
@@ -31,10 +33,21 @@ import type { EnnemiSurPlateau } from '../ennemi-sur-plateau';
               <img [ngSrc]="place.image" fill sizes="7vw" [alt]="place.nom" />
               @if (place.revelee) {
                 <p class="portes__nom">{{ place.nom }}</p>
-                <span class="portes__valeur">{{ place.force }}</span>
+                <!-- Le nombre seul est muet : la question s'est posee en
+                     jouant. Il vaut d'etre la parce qu'il peut differer de la
+                     valeur imprimee sur le scan, jeton Bonus compris. -->
+                <span
+                  class="portes__valeur"
+                  [title]="'Force à battre : ' + place.force + ' (jeton compris)'"
+                  >{{ place.force }}</span
+                >
                 <!-- Un jeton acquis ne se reprend plus : il vaut d'être vu. -->
                 @if (place.jetonEnnemi > 0) {
-                  <span class="portes__jeton">+{{ place.jetonEnnemi }}</span>
+                  <span
+                    class="portes__jeton"
+                    [title]="'Jeton Bonus Ennemi +' + place.jetonEnnemi + ', acquis en survivant à un combat'"
+                    >+{{ place.jetonEnnemi }}</span
+                  >
                 }
               }
             </div>
