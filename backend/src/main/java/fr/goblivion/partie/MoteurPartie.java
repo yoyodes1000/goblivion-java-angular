@@ -198,6 +198,14 @@ public final class MoteurPartie {
         partie.poserAlHopital(CarteEnJeu.paysan(Famille.DOREES, acquise.id()));
         partie.abandonnerEntrainement();
         partie.noter("%s rejoint l'Hopital : la carte est acquise.".formatted(acquise.nom()));
+
+        // Le Chevalier offre une carte de niveau 1 a qui l'entraine. C'etait le
+        // seul declencheur du vocabulaire que le moteur n'appelait nulle part :
+        // l'effet existait dans les donnees et ne partait jamais.
+        acquise.effets().stream()
+                .filter(effet -> effet.declencheur() == Declencheur.ENTRAINEMENT)
+                .forEach(effet -> interprete.declencherAutomatiquement(effet, null,
+                        "Entrainement de %s".formatted(acquise.nom())));
     }
 
     private void abandonnerEntrainement() {

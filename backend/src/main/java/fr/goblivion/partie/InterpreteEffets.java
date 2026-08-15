@@ -225,10 +225,13 @@ class InterpreteEffets {
             case Effet.PoserDepuisChateau e -> pasEncore("Poser une carte du Chateau");
             case Effet.ObtenirDuMarche e -> obtenirDuMarche(
                     doree -> doree.type() == e.typeCarte(),
-                    "un %s du Marche".formatted(e.typeCarte()), passe);
+                    "un %s du Marche".formatted(e.typeCarte()), passe, true);
+            // Le Chevalier « obtient » une carte : elle rejoint l'Hopital comme
+            // celle qu'on vient d'entrainer. Le Roi Brad, lui, dit « pose-le en
+            // jeu » — d'ou deux destinations pour un meme geste.
             case Effet.ObtenirNiveau e -> obtenirDuMarche(
                     doree -> doree.niveau() == e.niveau(),
-                    "une carte de niveau %d".formatted(e.niveau()), passe);
+                    "une carte de niveau %d".formatted(e.niveau()), passe, false);
             case Effet.Copier e -> copier(e, source, passe);
             case Effet.CompterCommeSoldat e -> siApplique(passe, () -> {
                 exigerSource(source).compterCommeSoldat();
@@ -447,7 +450,7 @@ class InterpreteEffets {
      * @param convient ce que la carte doit être — un Objet, un niveau donné
      */
     private void obtenirDuMarche(java.util.function.Predicate<fr.goblivion.cartes.CarteDoree> convient,
-            String description, Passe passe) {
+            String description, Passe passe, boolean directementEnJeu) {
         String choisi = passe.choix().typeSuivant(description);
 
         fr.goblivion.cartes.CarteDoree doree = partie.catalogue().doree(choisi)
@@ -463,9 +466,15 @@ class InterpreteEffets {
 
         siApplique(passe, () -> {
             partie.consommerAuMarche(choisi);
-            partie.poserAuChampDeBataille(
-                    CarteEnJeu.paysan(fr.goblivion.cartes.Famille.DOREES, choisi));
-            partie.noter("%s est obtenue du Marche et entre en jeu.".formatted(doree.nom()));
+            CarteEnJeu obtenue = CarteEnJeu.paysan(fr.goblivion.cartes.Famille.DOREES, choisi);
+            if (directementEnJeu) {
+                partie.poserAuChampDeBataille(obtenue);
+                partie.noter("%s est obtenue du Marche et entre en jeu.".formatted(doree.nom()));
+            } else {
+                partie.poserAlHopital(obtenue);
+                partie.noter("%s est obtenue du Marche et rejoint l'Hopital."
+                        .formatted(doree.nom()));
+            }
         });
     }
 

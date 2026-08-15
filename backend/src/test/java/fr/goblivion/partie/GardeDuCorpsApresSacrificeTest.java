@@ -2,6 +2,7 @@ package fr.goblivion.partie;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Random;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -97,5 +98,44 @@ class GardeDuCorpsApresSacrificeTest {
                 idEnJeu(CataloguesFictifs.BLEUE_HUMAIN)));
 
         assertThat(partie.ressources()).as("le legs de la carte sacrifiee").isEqualTo(avant + 3);
+    }
+
+    /**
+     * Retour de partie : « on entraîne un Chevalier, on devrait gagner une carte
+     * de niveau 1, et on ne l'a pas ».
+     *
+     * <p>{@code ENTRAINEMENT} était le seul déclencheur du vocabulaire que le
+     * moteur n'appelait nulle part : l'effet existait dans les données et ne
+     * partait jamais. Il réclame de choisir la carte offerte, donc il se met en
+     * attente et la question suit l'acquisition.
+     */
+    @Test
+    void entrainer_un_chevalier_offre_une_carte_du_marche() {
+        Catalogue catalogue = CataloguesFictifs.avecEffetSurDoreAccessible(
+                new EffetCarte(Declencheur.ENTRAINEMENT, new Effet.ObtenirNiveau(1)));
+        partie = new MiseEnPlace(catalogue, new Random(7)).creer(Difficulte.NORMAL, null);
+        moteur = new MoteurPartie(partie);
+
+        prochainesPiochees(CataloguesFictifs.BLEUE_HUMAIN, CataloguesFictifs.BLEUE_OBJET);
+        moteur.appliquer(Action.surMarche(TypeAction.CHOISIR_ENTRAINEMENT,
+                CataloguesFictifs.DORE_ACCESSIBLE));
+        while (partie.deficitEntrainement() > 0) {
+            moteur.appliquer(Action.de(TypeAction.PAYER_DIFFERENCE));
+        }
+        moteur.appliquer(Action.surCarte(TypeAction.CONCLURE_ENTRAINEMENT,
+                idEnJeu(CataloguesFictifs.BLEUE_HUMAIN)));
+
+        // La carte offerte est un choix : le moteur attend que le joueur le fasse.
+        assertThat(partie.attenteCourante()).isPresent();
+
+        int stockAvant = partie.stockMarche(CataloguesFictifs.DORE_ACCESSIBLE);
+        moteur.appliquer(new Action(TypeAction.REPONDRE_DESIGNATION, null, null, List.of(),
+                List.of(), List.of(CataloguesFictifs.DORE_ACCESSIBLE)));
+
+        assertThat(partie.stockMarche(CataloguesFictifs.DORE_ACCESSIBLE)).isEqualTo(stockAvant - 1);
+        // Obtenue, donc acquise : elle rejoint l'Hopital comme la carte entrainee.
+        assertThat(partie.hopital())
+                .filteredOn(carte -> CataloguesFictifs.DORE_ACCESSIBLE.equals(carte.carteId()))
+                .hasSize(2);
     }
 }

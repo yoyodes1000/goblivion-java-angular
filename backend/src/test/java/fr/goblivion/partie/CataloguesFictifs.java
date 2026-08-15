@@ -70,7 +70,21 @@ public final class CataloguesFictifs {
                 base.ennemisObjets());
     }
 
-    /** 3 types, 40 exemplaires — le compte du vrai matériel (§2). */
+    /** Le même catalogue, mais la Dorée accessible porte un effet — le Chevalier. */
+    public static Catalogue avecEffetSurDoreAccessible(fr.goblivion.effets.EffetCarte effet) {
+        Catalogue base = catalogue();
+        List<CarteDoree> dorees = base.dorees().stream()
+                .map(carte -> carte.id().equals(DORE_ACCESSIBLE)
+                        ? new CarteDoree(carte.id(), carte.nom(), carte.type(), carte.scan(),
+                                carte.force(), carte.forceVariable(), carte.niveau(),
+                                carte.action(), carte.entrainement(), carte.exemplaires(),
+                                List.of(effet))
+                        : carte)
+                .toList();
+        return new Catalogue(base.bleues(), dorees, base.roiReines(), base.boss(),
+                base.ennemisObjets());
+    }
+
     /** Le même catalogue, mais les Boss imposent un effet continu. */
     public static Catalogue avecPassifDeBoss(fr.goblivion.effets.Effet passif) {
         Catalogue base = catalogue();
@@ -100,6 +114,7 @@ public final class CataloguesFictifs {
         return new Catalogue(base.bleues(), base.dorees(), base.roiReines(), base.boss(), ennemis);
     }
 
+    /** 3 types, 40 exemplaires — le compte du vrai matériel (§2). */
     private static List<CarteBleue> bleues() {
         return List.of(
                 new CarteBleue(BLEUE_HUMAIN, "Humain fictif", TypeCarte.HUMAIN, "x.webp", 1, null, 0, null, 20),
