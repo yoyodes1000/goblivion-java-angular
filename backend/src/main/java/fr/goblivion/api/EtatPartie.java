@@ -99,7 +99,7 @@ public record EtatPartie(
                 partie.jetonsBonusAllie(),
                 partie.attenteCourante()
                         .map(attente -> new DesignationAttendue(attente.source(),
-                                PlanDeCiblage.de(attente.porteur().effet(), partie::candidatsPour)))
+                                PlanDeCiblage.de(attente.porteur().effet(), partie.eligibles())))
                         .orElse(null),
                 partie.journal());
     }
@@ -148,7 +148,7 @@ public record EtatPartie(
             return partie.effetsDe(carte).stream()
                     .filter(effet -> effet.declencheur() == Declencheur.PIVOTER)
                     .findFirst()
-                    .map(effet -> PlanDeCiblage.de(effet.effet(), partie::candidatsPour))
+                    .map(effet -> PlanDeCiblage.de(effet.effet(), partie.eligibles()))
                     .orElseGet(PlanDeCiblage::vide);
         }
     }

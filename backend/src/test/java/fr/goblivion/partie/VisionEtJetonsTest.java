@@ -253,4 +253,30 @@ class VisionEtJetonsTest {
         assertThat(partie.candidatsPour(Cible.UN_PAYSAN_HUMAIN)).contains(humain.id())
                 .doesNotContain(objet.id());
     }
+
+    /**
+     * Retour de partie : le Forgeron ne proposait que des Objets **en jeu**.
+     *
+     * <p>Il en ramène un de l'Hôpital. La cible ne dit pas où chercher — « un
+     * Objet » désigne une carte en jeu pour le Booba Brise-Fer qui la détruit,
+     * une carte de l'Hôpital pour le Forgeron qui l'en tire. C'est l'effet qui
+     * tranche.
+     */
+    @Test
+    void le_forgeron_puise_a_l_hopital_et_non_sur_la_table() {
+        CarteEnJeu objetEnJeu = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET);
+        CarteEnJeu objetBlesse = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET);
+        partie.poserAuChampDeBataille(objetEnJeu);
+        partie.poserAlHopital(objetBlesse);
+
+        var plan = fr.goblivion.effets.PlanDeCiblage.de(
+                new Effet.RamenerDeLHopital(Cible.UN_OBJET, 0), partie.eligibles());
+
+        assertThat(plan.designations()).singleElement().satisfies(designation -> {
+            assertThat(designation.libelle()).contains("Hôpital");
+            assertThat(designation.candidats())
+                    .containsExactly(objetBlesse.id())
+                    .doesNotContain(objetEnJeu.id());
+        });
+    }
 }

@@ -695,6 +695,40 @@ public final class Partie {
         };
     }
 
+    /**
+     * Les mêmes conditions, appliquées à l'Hôpital.
+     *
+     * <p>Le Forgeron ramène « un Objet » — de l'Hôpital, pas de la table. La
+     * cible ne dit pas où chercher, c'est l'effet qui le sait.
+     */
+    public List<Long> candidatsHopitalPour(fr.goblivion.effets.Cible cible) {
+        return switch (cible) {
+            case UNE_CARTE_HOPITAL -> identites(hopital);
+            case UN_OBJET -> identites(hopital.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.OBJET)
+                    .toList());
+            case UN_PAYSAN_HUMAIN -> identites(hopital.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.HUMAIN)
+                    .toList());
+            default -> List.of();
+        };
+    }
+
+    /** Ce que le plan de ciblage interroge pour savoir quoi proposer au joueur. */
+    public fr.goblivion.effets.PlanDeCiblage.Eligibles eligibles() {
+        return new fr.goblivion.effets.PlanDeCiblage.Eligibles() {
+            @Override
+            public List<Long> pour(fr.goblivion.effets.Cible cible) {
+                return candidatsPour(cible);
+            }
+
+            @Override
+            public List<Long> aLHopital(fr.goblivion.effets.Cible cible) {
+                return candidatsHopitalPour(cible);
+            }
+        };
+    }
+
     private static List<Long> identites(List<CarteEnJeu> cartes) {
         return cartes.stream().map(CarteEnJeu::id).toList();
     }

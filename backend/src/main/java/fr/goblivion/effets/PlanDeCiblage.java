@@ -68,13 +68,34 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
      * le dire — l'interface qui déduirait la liste tiendrait une seconde version
      * des règles de ciblage.
      */
-    @FunctionalInterface
     public interface Eligibles {
+
+        /** Les exemplaires que la cible accepte là où elle les cherche d'ordinaire. */
         List<Long> pour(Cible cible);
+
+        /**
+         * Les mêmes conditions, mais cherchées <strong>à l'Hôpital</strong>.
+         *
+         * <p>La cible seule ne dit pas où regarder : « un Objet » désigne une
+         * carte en jeu pour le Booba Brise-Fer qui la détruit, et une carte de
+         * l'Hôpital pour le Forgeron qui l'en ramène. C'est l'effet qui tranche,
+         * pas la cible — d'où deux questions plutôt qu'une.
+         */
+        List<Long> aLHopital(Cible cible);
 
         /** Aucun candidat : pour les tests du vocabulaire, qui n'ont pas de partie. */
         static Eligibles aucun() {
-            return cible -> List.of();
+            return new Eligibles() {
+                @Override
+                public List<Long> pour(Cible cible) {
+                    return List.of();
+                }
+
+                @Override
+                public List<Long> aLHopital(Cible cible) {
+                    return List.of();
+                }
+            };
         }
     }
 
@@ -159,7 +180,14 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
 
             case Effet.Detruire detruire -> ajouter(detruire.cible(), designations, eligibles);
             case Effet.EnvoyerALHopital envoyer -> ajouter(envoyer.cible(), designations, eligibles);
-            case Effet.RamenerDeLHopital ramener -> ajouter(ramener.cible(), designations, eligibles);
+            // Le Forgeron et le Pretre puisent a l'Hopital, pas sur la table.
+            case Effet.RamenerDeLHopital ramener -> {
+                if (ramener.cible().demandeUnChoix()) {
+                    designations.add(Designation.exemplaire(
+                            "%s de l'Hôpital".formatted(ramener.cible().libelle()),
+                            eligibles.aLHopital(ramener.cible())));
+                }
+            }
             case Effet.JetonBanniere jeton -> ajouter(jeton.cible(), designations, eligibles);
             case Effet.DoublerJetons doubler -> ajouter(doubler.cible(), designations, eligibles);
             case Effet.Copier copier -> ajouter(copier.cible(), designations, eligibles);
