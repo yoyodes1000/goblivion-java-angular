@@ -1,4 +1,4 @@
-@if (etat(); as partie) {
+@if (tableVisible(); as partie) {
   <app-bandeau-phase [phase]="partie.phase" [tour]="partie.tour" />
 
   <main class="plateau__corps" [attr.data-phase]="partie.phase">
@@ -88,6 +88,17 @@
           }}
           Tour {{ partie.tour }}.
         </p>
+
+        <!-- Une partie finie doit pouvoir se rejouer sans recharger la page.
+             Deux sorties : reprendre au meme niveau, ou revenir le choisir. -->
+        <div class="fin__actions">
+          <button type="button" class="fin__rejouer" (click)="rejouer()">
+            Rejouer en {{ LIBELLES_DIFFICULTE[partie.difficulte] }}
+          </button>
+          <button type="button" class="fin__changer" (click)="revenirAuChoix()">
+            Changer de difficulté
+          </button>
+        </div>
       </div>
     </div>
   }

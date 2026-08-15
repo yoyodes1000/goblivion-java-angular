@@ -224,6 +224,37 @@ describe('Plateau', () => {
     requete.flush(ETAT);
   });
 
+  /**
+   * Le ticket 12 laissait « pas de rejouer une partie sans recharger la page »
+   * en reste à faire. Une partie finie doit offrir sa sortie.
+   */
+  it('propose de rejouer après une défaite, au même niveau', async () => {
+    const { fixture, rendu } = await table({ ...ETAT, resultat: 'DEFAITE', difficulte: 'FACILE' });
+
+    const rejouer = rendu.querySelector<HTMLButtonElement>('.fin__rejouer');
+    expect(rejouer?.textContent).toContain('Facile');
+
+    rejouer!.click();
+    await fixture.whenStable();
+
+    const requete = http().expectOne('/api/partie');
+    expect(requete.request.body).toEqual({ difficulte: 'FACILE', role: null });
+    requete.flush({ ...ETAT, difficulte: 'FACILE' });
+  });
+
+  it('renvoie au choix de difficulté sans rien demander au moteur', async () => {
+    const { fixture, rendu } = await table({ ...ETAT, resultat: 'DEFAITE' });
+
+    rendu.querySelector<HTMLButtonElement>('.fin__changer')!.click();
+    await fixture.whenStable();
+
+    // La table disparaît au profit de l'écran de mise en place, et le moteur
+    // n'a rien reçu : c'est un souhait d'affichage, pas une action de jeu.
+    expect(rendu.querySelector('app-nouvelle-partie')).toBeTruthy();
+    expect(rendu.querySelector('.fin')).toBeNull();
+    http().expectNone('/api/partie');
+  });
+
   it('commence par demander la difficulté, sans rien afficher de la table', async () => {
     const fixture = await monter();
     const rendu = fixture.nativeElement as HTMLElement;

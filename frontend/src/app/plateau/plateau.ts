@@ -76,6 +76,37 @@ export class Plateau {
   private readonly partie = inject(Partie);
 
   protected readonly etat = this.partie.etat;
+
+  /**
+   * Vrai quand le joueur a demandé à revenir choisir une difficulté.
+   *
+   * Le moteur, lui, garde sa partie finie : c'est un souhait d'affichage, pas
+   * un état de jeu. Il se lève tout seul dès qu'une nouvelle partie arrive.
+   */
+  private readonly choixDemande = signal(false);
+
+  /** La table, ou `undefined` quand c'est l'écran de mise en place qu'il faut montrer. */
+  protected readonly tableVisible = computed(() =>
+    this.choixDemande() ? undefined : this.etat(),
+  );
+
+  /** Rejouer au même niveau : la sortie la plus courante après une défaite. */
+  protected rejouer(): void {
+    const difficulte = this.etat()?.difficulte;
+    if (difficulte) {
+      this.partie.demarrer(difficulte);
+    }
+  }
+
+  protected revenirAuChoix(): void {
+    this.choixDemande.set(true);
+  }
+
+  protected readonly LIBELLES_DIFFICULTE: Readonly<Record<Difficulte, string>> = {
+    FACILE: 'Facile',
+    NORMAL: 'Normal',
+    DIFFICILE: 'Difficile',
+  };
   protected readonly refus = this.partie.refus;
 
   protected readonly roiReine = computed(() => {
@@ -207,6 +238,7 @@ export class Plateau {
   });
 
   protected demarrer(difficulte: Difficulte): void {
+    this.choixDemande.set(false);
     this.partie.demarrer(difficulte);
   }
 

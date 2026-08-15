@@ -128,3 +128,34 @@
   font-size: 0.85rem;
   color: #cbd2d9;
 }
+
+/* Les deux sorties d'une partie finie. Sans elles, seul un rechargement de la
+   page permettait d'en relancer une. */
+.fin__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-block-start: 1.25rem;
+}
+
+.fin__rejouer {
+  padding: 0.5rem 1.1rem;
+  border: 1px solid #b58900;
+  border-radius: 0.3rem;
+  background: #b58900;
+  color: #1a2027;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fin__changer {
+  padding: 0.5rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
