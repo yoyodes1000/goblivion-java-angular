@@ -123,12 +123,14 @@ public record EtatPartie(
      *                    proposerait de pivoter une carte qui ne ferait rien.
      */
     public record CarteVue(long id, String carte, Famille famille, int force, boolean pivotee,
-            String copie, PlanDeCiblage plan, boolean agitAuPivot) {
+            String copie, PlanDeCiblage plan, PlanDeCiblage planEchange, boolean agitAuPivot) {
 
         static CarteVue de(Partie partie, CarteEnJeu carte) {
             return new CarteVue(carte.id(), carte.carteId(), carte.famille(),
                     partie.forceEffective(carte), carte.pivotee(), carte.copie(),
-                    planDe(partie, carte), agitAuPivot(partie, carte));
+                    planDe(partie, carte, Declencheur.PIVOTER),
+                    planDe(partie, carte, Declencheur.GARDE_DU_CORPS),
+                    agitAuPivot(partie, carte));
         }
 
         private static boolean agitAuPivot(Partie partie, CarteEnJeu carte) {
@@ -137,16 +139,22 @@ public record EtatPartie(
         }
 
         /**
-         * Le plan de l'action que le joueur peut déclencher lui-même.
+         * Le plan d'une action que le joueur déclenche lui-même.
          *
-         * <p>Seul {@code PIVOTER} est concerné : c'est la seule action de carte
-         * dont l'effet réclame des désignations au moment du clic. Ce qu'un
-         * Testament ou une révélation demanderaient ne regarde pas l'interface,
-         * puisque le joueur n'a pas la main à ce moment-là.
+         * <p>Deux déclencheurs le sont : pivoter la carte, et l'échanger contre
+         * le Garde du corps. Les deux partent d'un clic, donc les désignations
+         * peuvent voyager avec la demande.
+         *
+         * <p>L'Oracle l'a montré : sa Vision part quand il <em>devient</em>
+         * Garde du corps, et tant que seul {@code PIVOTER} portait un plan,
+         * l'échange était refusé en bloc faute de réponse. Un Testament ou une
+         * révélation, eux, ne regardent pas l'interface — le joueur n'a pas la
+         * main à ce moment-là, et c'est l'attente du moteur qui prend le relais.
          */
-        private static PlanDeCiblage planDe(Partie partie, CarteEnJeu carte) {
+        private static PlanDeCiblage planDe(Partie partie, CarteEnJeu carte,
+                Declencheur declencheur) {
             return partie.effetsDe(carte).stream()
-                    .filter(effet -> effet.declencheur() == Declencheur.PIVOTER)
+                    .filter(effet -> effet.declencheur() == declencheur)
                     .findFirst()
                     .map(effet -> PlanDeCiblage.de(effet.effet(), partie.eligibles()))
                     .orElseGet(PlanDeCiblage::vide);

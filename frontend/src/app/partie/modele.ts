@@ -110,6 +110,14 @@ export interface CarteVue {
   readonly copie: string | null;
   readonly plan: PlanDeCiblage;
   /**
+   * Ce que la carte réclamera si elle **devient Garde du corps**.
+   *
+   * L'Oracle visionne à ce moment-là, le Prêtre ramène un Humain de l'Hôpital.
+   * Les deux partent d'un clic du joueur, donc leurs désignations peuvent
+   * voyager avec la demande — mais il faut les lui demander avant.
+   */
+  readonly planEchange: PlanDeCiblage;
+  /**
    * Vrai si la carte a quelque chose à déclencher quand on la pivote.
    *
    * Un plan vide ne suffit pas à le dire : le Boulanger agit sans rien

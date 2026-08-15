@@ -69,6 +69,7 @@ describe('Plateau', () => {
     pivotee = false,
     plan = { designations: [], options: [] },
     agitAuPivot = true,
+    planEchange = { designations: [], options: [] },
   ) => ({
     id,
     carte,
@@ -77,6 +78,7 @@ describe('Plateau', () => {
     pivotee,
     copie: null,
     plan,
+    planEchange,
     agitAuPivot,
   });
 
@@ -95,6 +97,7 @@ describe('Plateau', () => {
       pivotee: false,
       copie: null,
       plan: { designations: [], options: [] },
+      planEchange: { designations: [], options: [] },
       agitAuPivot: true,
     },
     marche: { catapulte: 3 },
@@ -221,6 +224,50 @@ describe('Plateau', () => {
     const requete = http().expectOne('/api/partie/action');
     expect(requete.request.body.type).toBe('REPONDRE_DESIGNATION');
     expect(requete.request.body.cibles).toEqual([11]);
+    requete.flush(ETAT);
+  });
+
+  /**
+   * Retour de partie : « je ne peux pas faire le pouvoir de l'Oracle ».
+   *
+   * Sa Vision part quand il **devient** Garde du corps, et elle réclame quel
+   * ennemi retourner. Tant que seul Pivoter portait un plan, l'échange partait
+   * sans réponse et le moteur le refusait en bloc : la carte était impossible à
+   * poser. Le Prêtre avait le même défaut.
+   */
+  it('demande sa désignation avant d’échanger le Garde du corps', async () => {
+    const oracle = {
+      ...carteEnJeu(11, 'fermier'),
+      planEchange: {
+        designations: [
+          { libelle: 'un ennemi face cachée à retourner', parType: false, candidats: [77] },
+        ],
+        options: [],
+      },
+    };
+    const { fixture, rendu } = await table({
+      ...ETAT,
+      champDeBataille: [oracle],
+      piste: [{ id: 77, carte: null, revelee: false, force: 0, jetonEnnemi: 0 }, null, null],
+    });
+
+    const echange = [...rendu.querySelectorAll<HTMLButtonElement>('.jeu__actions button')].find(
+      (bouton) => bouton.textContent?.replace(/\s+/g, ' ').trim().startsWith('Garde du corps'),
+    );
+    expect(echange, 'le bouton Garde du corps doit être offert').toBeDefined();
+    echange!.click();
+    await fixture.whenStable();
+
+    // Rien n'est parti : l'écran pose d'abord la question.
+    http().expectNone('/api/partie/action');
+    expect(rendu.querySelector('.ciblage__question')?.textContent).toContain('ennemi face cachée');
+
+    rendu.querySelector<HTMLButtonElement>('.ciblage__choix')!.click();
+    await fixture.whenStable();
+
+    const requete = http().expectOne('/api/partie/action');
+    expect(requete.request.body.type).toBe('ECHANGER_GARDE_DU_CORPS');
+    expect(requete.request.body.cibles).toEqual([77]);
     requete.flush(ETAT);
   });
 

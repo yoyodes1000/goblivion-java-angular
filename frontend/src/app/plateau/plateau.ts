@@ -17,7 +17,7 @@ import {
   type Reponses,
 } from '../partie/ciblage/ciblage';
 import { Commandes } from '../partie/commandes/commandes';
-import type { Difficulte, EnnemiVue, TypeAction } from '../partie/modele';
+import type { Difficulte, EnnemiVue, PlanDeCiblage, TypeAction } from '../partie/modele';
 import { NouvellePartie } from '../partie/nouvelle-partie/nouvelle-partie';
 import { Partie } from '../partie/partie';
 import { Repartition } from '../partie/repartition/repartition';
@@ -288,6 +288,15 @@ export class Plateau {
   private readonly ciblageDemande = signal<Ciblee | null>(null);
 
   /**
+   * L'action que les réponses en cours serviront.
+   *
+   * Deux actions de carte réclament des désignations — pivoter, et échanger le
+   * Garde du corps. Sans retenir laquelle, les réponses de l'Oracle partiraient
+   * en Pivoter.
+   */
+  private readonly actionCiblee = signal<'PIVOTER' | 'ECHANGER_GARDE_DU_CORPS'>('PIVOTER');
+
+  /**
    * La question disparaît dès que la partie s'achève.
    *
    * Une victoire ou une défaite peut tomber pendant qu'on demande une
@@ -393,6 +402,31 @@ export class Plateau {
       return;
     }
 
+    this.actionCiblee.set('PIVOTER');
+    this.ouvrirCiblage(carteEnJeu, plan);
+  }
+
+  /**
+   * Échanger le Garde du corps peut réclamer, lui aussi.
+   *
+   * L'Oracle visionne en prenant l'emplacement, le Prêtre ramène un Humain de
+   * l'Hôpital. Envoyer l'échange sans leur réponse le faisait refuser en bloc :
+   * la carte devenait impossible à poser.
+   */
+  protected echanger(carteEnJeu: number): void {
+    const vue = this.etat()?.champDeBataille.find((carte) => carte.id === carteEnJeu);
+    const plan = vue?.planEchange;
+
+    if (!plan || (plan.designations.length === 0 && plan.options.length === 0)) {
+      this.partie.jouer({ type: 'ECHANGER_GARDE_DU_CORPS', carteEnJeu });
+      return;
+    }
+    this.actionCiblee.set('ECHANGER_GARDE_DU_CORPS');
+    this.ouvrirCiblage(carteEnJeu, plan);
+  }
+
+  private ouvrirCiblage(carteEnJeu: number, plan: PlanDeCiblage): void {
+    const vue = this.etat()?.champDeBataille.find((carte) => carte.id === carteEnJeu);
     const affichable = vue ? this.cartes.afficher(vue.famille, vue.carte) : undefined;
     this.ciblageDemande.set({
       carteEnJeu,
@@ -419,7 +453,7 @@ export class Plateau {
 
     this.ciblageDemande.set(null);
     this.partie.jouer({
-      type: 'PIVOTER',
+      type: this.actionCiblee(),
       carteEnJeu: demande.carteEnJeu,
       cibles: reponses.cibles,
       options: reponses.options,
@@ -433,10 +467,6 @@ export class Plateau {
 
   protected sacrifier(carteEnJeu: number): void {
     this.partie.jouer({ type: 'CONCLURE_ENTRAINEMENT', carteEnJeu });
-  }
-
-  protected echanger(carteEnJeu: number): void {
-    this.partie.jouer({ type: 'ECHANGER_GARDE_DU_CORPS', carteEnJeu });
   }
 
   private permise(type: TypeAction): boolean {
