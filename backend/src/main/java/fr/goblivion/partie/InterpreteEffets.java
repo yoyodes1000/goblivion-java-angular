@@ -193,7 +193,7 @@ class InterpreteEffets {
             case Effet.Defausser e -> defausser(e.nombre(), passe);
 
             case Effet.JetonBanniere e -> ciblesDe(e.cible(), source, passe)
-                    .forEach(carte -> siApplique(passe, () -> carte.ajouterJetonBanniere(e.valeur())));
+                    .forEach(carte -> siApplique(passe, () -> poserJeton(carte, e.valeur())));
             case Effet.JetonEnnemi e -> siApplique(passe,
                     () -> exigerSource(source).attribuerJetonEnnemi(
                             exigerSource(source).jetonEnnemi() + e.valeur()));
@@ -221,8 +221,7 @@ class InterpreteEffets {
             // qu'executer a moitie.
             case Effet.Visionner e -> visionner(passe);
             case Effet.DoublerJetons e -> ciblesDe(e.cible(), source, passe)
-                    .forEach(carte -> siApplique(passe,
-                            () -> carte.ajouterJetonBanniere(carte.jetonBanniere())));
+                    .forEach(carte -> siApplique(passe, () -> poserJeton(carte, carte.jetonBanniere())));
             case Effet.PoserDepuisChateau e -> pasEncore("Poser une carte du Chateau");
             case Effet.ObtenirDuMarche e -> obtenirDuMarche(
                     doree -> doree.type() == e.typeCarte(),
@@ -245,6 +244,24 @@ class InterpreteEffets {
     }
 
     // ------------------------------------------------------------------ briques
+
+    /**
+     * Poser un jeton, et le <strong>dire</strong>.
+     *
+     * <p>Un jeton était le seul effet muet du jeu : ressources, pioches,
+     * défausses, destructions et visions s'inscrivent toutes au journal. Le
+     * joueur voyait donc son action « ne rien faire » — d'autant que la force
+     * gagnée se noie dans un total, là où une carte piochée saute aux yeux.
+     */
+    private void poserJeton(CarteEnJeu carte, int valeur) {
+        if (valeur == 0) {
+            partie.noter("%s n'a aucun jeton a doubler.".formatted(partie.nomDe(carte)));
+            return;
+        }
+        carte.ajouterJetonBanniere(valeur);
+        partie.noter("%s gagne un jeton Banniere +%d — force %d."
+                .formatted(partie.nomDe(carte), valeur, partie.forceEffective(carte)));
+    }
 
     /** N'agit qu'à la passe d'application ; la vérification ne fait que passer. */
     private void siApplique(Passe passe, Runnable action) {

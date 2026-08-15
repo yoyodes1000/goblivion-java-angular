@@ -71,4 +71,26 @@ class AventurierTest {
         assertThat(partie.hopital()).contains(aventurier);
         assertThat(partie.forceAlliee()).as("plus rien en jeu, donc aucune force").isZero();
     }
+
+    /**
+     * Un jeton était le seul effet muet du jeu.
+     *
+     * <p>Retour de partie : « j'ai l'impression que ça pioche au lieu
+     * d'augmenter la force ». Une carte piochée saute aux yeux ; un point de
+     * force se noie dans un total. Sans une ligne au journal, le joueur n'a
+     * aucun moyen de savoir que son action a porté.
+     */
+    @Test
+    void le_journal_dit_le_jeton_pose_et_la_force_atteinte() {
+        miseEnPlace();
+        CarteEnJeu aventurier = poser(CataloguesFictifs.BLEUE_HUMAIN);
+        CarteEnJeu victime = poser(CataloguesFictifs.BLEUE_OBJET);
+
+        moteur.appliquer(Action.surCarteAvecChoix(TypeAction.PIVOTER, aventurier.id(),
+                List.of(victime.id()), List.of()));
+
+        assertThat(partie.journal().getLast())
+                .contains("jeton Banniere +2")
+                .contains("force 3");
+    }
 }
