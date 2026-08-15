@@ -191,7 +191,7 @@ describe('Plateau', () => {
       designationAttendue: {
         source: 'Sorcière Troll',
         plan: {
-          designations: [{ libelle: 'un paysan Humain', parType: false }],
+          designations: [{ libelle: 'un paysan Humain', parType: false, candidats: [11] }],
           options: [],
         },
       },
@@ -209,7 +209,7 @@ describe('Plateau', () => {
       designationAttendue: {
         source: 'Sorcière Troll',
         plan: {
-          designations: [{ libelle: 'un paysan Humain', parType: false }],
+          designations: [{ libelle: 'un paysan Humain', parType: false, candidats: [11] }],
           options: [],
         },
       },

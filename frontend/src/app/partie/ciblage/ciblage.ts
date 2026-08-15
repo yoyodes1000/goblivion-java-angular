@@ -48,11 +48,11 @@ export interface Reponses {
  * l'ordre où le plan les annonce ; les renvoyer autrement ferait détruire la
  * mauvaise carte. D'où une question à la fois, jamais une liste à cocher.
  *
- * Les candidats ne sont pas filtrés par type. Désigner un Humain là où un Objet
- * est attendu se fait refuser par le moteur, avec son motif rédigé — et la
- * double passe garantit qu'un refus n'a rien modifié. Filtrer ici demanderait au
- * navigateur de connaître les conditions de chaque cible, c'est-à-dire d'en
- * tenir une seconde version.
+ * Les candidats sont **filtrés par le moteur**, pas par cet écran : chaque
+ * désignation porte la liste des exemplaires qu'elle accepte. Déduire ici « un
+ * Objet, donc les cartes de type OBJET » reviendrait à tenir une seconde version
+ * des règles de ciblage — et c'est ce qui rendait le Champion injouable, sa
+ * cible étant un ennemi aux Portes que la liste ne proposait pas.
  */
 @Component({
   selector: 'app-ciblage',
@@ -90,7 +90,7 @@ export interface Reponses {
             </ul>
           } @else {
             <ul class="ciblage__liste">
-              @for (candidat of candidats(); track candidat.id) {
+              @for (candidat of candidatsRetenus(); track candidat.id) {
                 <li>
                   <button type="button" class="ciblage__choix" (click)="designer(candidat.id)">
                     {{ candidat.nom }}
@@ -199,6 +199,18 @@ export class Ciblage {
     const courante = this.designationCourante();
     if (!courante) return undefined;
     return courante.parType ? `Choisir ${courante.libelle}.` : `Désigner ${courante.libelle}.`;
+  });
+
+  /**
+   * Les candidats que la question du moment accepte.
+   *
+   * Le moteur en donne les identifiants ; l'écran ne fait que garder ceux-là et
+   * les afficher dans l'ordre où il les connaît.
+   */
+  protected readonly candidatsRetenus = computed<readonly Candidat[]>(() => {
+    const permis = this.designationCourante()?.candidats;
+    if (!permis) return [];
+    return this.candidats().filter((candidat) => permis.includes(candidat.id));
   });
 
   protected choisirType(id: string): void {

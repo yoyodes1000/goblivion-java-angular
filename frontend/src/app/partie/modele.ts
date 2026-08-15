@@ -64,6 +64,15 @@ export type TypeAction =
 export interface Designation {
   readonly libelle: string;
   readonly parType: boolean;
+  /**
+   * Les exemplaires que cette cible accepte, calculés par le moteur.
+   *
+   * L'écran n'a qu'à filtrer sur cette liste. La déduire lui-même — « un Objet,
+   * donc les cartes de type OBJET en jeu » — reviendrait à tenir une seconde
+   * version des règles de ciblage, qui finirait par proposer une carte que
+   * l'interprète refuse, ou par en cacher une qu'il accepte.
+   */
+  readonly candidats: readonly number[];
 }
 
 /**

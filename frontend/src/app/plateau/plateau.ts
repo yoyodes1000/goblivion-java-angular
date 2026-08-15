@@ -347,14 +347,15 @@ export class Plateau {
       distingue, et c'est bien elle qui compte : celui des Portes arrive au
       prochain combat, celui du fond de piste dans trois tours.
     */
+    const auxPortes: Candidat[] = etat.portes.map((ennemi, index) => ({
+      id: ennemi.id,
+      nom: ennemi.revelee
+        ? (this.cartes.ennemi(ennemi.carte ?? '')?.nom ?? 'Ennemi')
+        : `Ennemi caché — Portes, place ${index + 1}`,
+      zone: ennemi.jetonEnnemi > 0 ? `aux Portes, jeton +${ennemi.jetonEnnemi}` : 'aux Portes',
+    }));
+
     const caches: Candidat[] = [
-      ...etat.portes
-        .filter((ennemi) => !ennemi.revelee)
-        .map((ennemi, index) => ({
-          id: ennemi.id,
-          nom: `Ennemi caché — Portes, place ${index + 1}`,
-          zone: 'aux Portes',
-        })),
       ...etat.piste.flatMap((ennemi, index) =>
         ennemi && !ennemi.revelee
           ? [
@@ -371,6 +372,7 @@ export class Plateau {
     return [
       ...etat.champDeBataille.flatMap((vue) => nommer(vue.famille, vue.carte, 'en jeu')(vue)),
       ...etat.hopital.flatMap((vue) => nommer(vue.famille, vue.carte, 'Hôpital')(vue)),
+      ...auxPortes,
       ...caches,
     ];
   });

@@ -205,4 +205,52 @@ class VisionEtJetonsTest {
 
         assertThat(cible.jetonBanniere()).isZero();
     }
+
+    // ------------------------------------------- ce que chaque cible accepte
+
+    /**
+     * Retour de partie : le Champion n'était pas jouable, faute de pouvoir
+     * désigner un ennemi aux Portes.
+     *
+     * <p>C'est le moteur qui dit ce qu'une cible accepte. L'interface qui le
+     * déduirait tiendrait une seconde version des règles de ciblage — et c'est
+     * exactement ce qui cachait les ennemis, absents des zones du joueur.
+     */
+    @Test
+    void le_champion_ne_vise_que_les_ennemis_qui_portent_un_jeton() {
+        while (partie.portes().size() < 2) {
+            partie.avancerEnnemi();
+        }
+        CarteEnJeu porteur = partie.portes().getFirst();
+        CarteEnJeu sansJeton = partie.portes().get(1);
+        porteur.attribuerJetonEnnemi(2);
+
+        assertThat(partie.candidatsPour(Cible.UN_JETON_ENNEMI))
+                .containsExactly(porteur.id())
+                .doesNotContain(sansJeton.id());
+    }
+
+    @Test
+    void une_cible_du_champ_de_bataille_ne_propose_pas_l_hopital() {
+        CarteEnJeu enJeu = source();
+        CarteEnJeu blessee = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_HUMAIN);
+        partie.poserAlHopital(blessee);
+
+        assertThat(partie.candidatsPour(Cible.UNE_CARTE_EN_JEU)).contains(enJeu.id())
+                .doesNotContain(blessee.id());
+        assertThat(partie.candidatsPour(Cible.UNE_CARTE_HOPITAL)).contains(blessee.id())
+                .doesNotContain(enJeu.id());
+    }
+
+    /** « Un Objet » ne propose pas les Humains, et réciproquement. */
+    @Test
+    void une_cible_typee_ne_propose_que_son_type() {
+        CarteEnJeu humain = source();
+        CarteEnJeu objet = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET);
+        partie.poserAuChampDeBataille(objet);
+
+        assertThat(partie.candidatsPour(Cible.UN_OBJET)).containsExactly(objet.id());
+        assertThat(partie.candidatsPour(Cible.UN_PAYSAN_HUMAIN)).contains(humain.id())
+                .doesNotContain(objet.id());
+    }
 }

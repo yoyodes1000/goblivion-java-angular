@@ -45,14 +45,36 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
      *                voyagent par des canaux séparés, et l'interface doit
      *                proposer les bonnes cartes.
      */
-    public record Designation(String libelle, boolean parType) {
+    public record Designation(String libelle, boolean parType, List<Long> candidats) {
 
-        static Designation exemplaire(String libelle) {
-            return new Designation(libelle, false);
+        public Designation {
+            candidats = List.copyOf(candidats);
+        }
+
+        static Designation exemplaire(String libelle, List<Long> candidats) {
+            return new Designation(libelle, false, candidats);
         }
 
         static Designation type(String libelle) {
-            return new Designation(libelle, true);
+            return new Designation(libelle, true, List.of());
+        }
+    }
+
+    /**
+     * Qui sait dire, pour une cible, les exemplaires qu'elle accepte.
+     *
+     * <p>Le plan seul ne peut pas répondre : « un Objet en jeu » dépend de ce
+     * qu'il y a sur la table. C'est le moteur qui le sait, et c'est lui qui doit
+     * le dire — l'interface qui déduirait la liste tiendrait une seconde version
+     * des règles de ciblage.
+     */
+    @FunctionalInterface
+    public interface Eligibles {
+        List<Long> pour(Cible cible);
+
+        /** Aucun candidat : pour les tests du vocabulaire, qui n'ont pas de partie. */
+        static Eligibles aucun() {
+            return cible -> List.of();
         }
     }
 
@@ -79,23 +101,27 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
      * qui, elle, ne demande rien.
      */
     public static PlanDeCiblage de(Effet effet) {
+        return de(effet, Eligibles.aucun());
+    }
+
+    public static PlanDeCiblage de(Effet effet, Eligibles eligibles) {
         List<Designation> designations = new ArrayList<>();
         List<Branche> options = new ArrayList<>();
-        parcourir(effet, designations, options);
+        parcourir(effet, designations, options, eligibles);
         return new PlanDeCiblage(designations, options);
     }
 
     private static void parcourir(Effet effet, List<Designation> designations,
-            List<Branche> options) {
+            List<Branche> options, Eligibles eligibles) {
         switch (effet) {
             case Effet.Sequence sequence ->
-                sequence.effets().forEach(sous -> parcourir(sous, designations, options));
+                sequence.effets().forEach(sous -> parcourir(sous, designations, options, eligibles));
 
             // Chaque branche garde ses designations pour elle : celles de la
             // branche retenue s'ajouteront a celles du tronc, pas les autres.
             case Effet.Choix choix -> choix.options().forEach(option -> {
                 List<Designation> propres = new ArrayList<>();
-                parcourir(option, propres, new ArrayList<>());
+                parcourir(option, propres, new ArrayList<>(), eligibles);
                 options.add(new Branche(resumer(option), propres));
             });
 
@@ -104,11 +130,12 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
             // annoncer une fois vaut mieux qu'annoncer un nombre qui dépend de
             // l'état au moment du clic.
             case Effet.PourChaque pourChaque ->
-                parcourir(pourChaque.effet(), designations, options);
+                parcourir(pourChaque.effet(), designations, options, eligibles);
 
             case Effet.Defausser defausser -> {
                 for (int i = 0; i < defausser.nombre(); i++) {
-                    designations.add(Designation.exemplaire("une carte à défausser"));
+                    designations.add(Designation.exemplaire("une carte à défausser",
+                            eligibles.pour(Cible.UNE_CARTE_EN_JEU)));
                 }
             }
 
@@ -116,7 +143,8 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
             // toujours la meme chose, et la nommer dans chaque carte n'aurait
             // rien appris. Le plan la reclame quand meme.
             case Effet.Visionner visionner -> designations.add(
-                    Designation.exemplaire(Cible.UN_ENNEMI_CACHE.libelle()));
+                    Designation.exemplaire(Cible.UN_ENNEMI_CACHE.libelle(),
+                            eligibles.pour(Cible.UN_ENNEMI_CACHE)));
 
             case Effet.ObtenirDuMarche marche -> designations.add(
                     Designation.type("un %s du Marché".formatted(marche.typeCarte())));
@@ -125,16 +153,16 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
 
             case Effet.Reactiver reactiver -> {
                 for (int i = 0; i < reactiver.nombre(); i++) {
-                    ajouter(reactiver.cible(), designations);
+                    ajouter(reactiver.cible(), designations, eligibles);
                 }
             }
 
-            case Effet.Detruire detruire -> ajouter(detruire.cible(), designations);
-            case Effet.EnvoyerALHopital envoyer -> ajouter(envoyer.cible(), designations);
-            case Effet.RamenerDeLHopital ramener -> ajouter(ramener.cible(), designations);
-            case Effet.JetonBanniere jeton -> ajouter(jeton.cible(), designations);
-            case Effet.DoublerJetons doubler -> ajouter(doubler.cible(), designations);
-            case Effet.Copier copier -> ajouter(copier.cible(), designations);
+            case Effet.Detruire detruire -> ajouter(detruire.cible(), designations, eligibles);
+            case Effet.EnvoyerALHopital envoyer -> ajouter(envoyer.cible(), designations, eligibles);
+            case Effet.RamenerDeLHopital ramener -> ajouter(ramener.cible(), designations, eligibles);
+            case Effet.JetonBanniere jeton -> ajouter(jeton.cible(), designations, eligibles);
+            case Effet.DoublerJetons doubler -> ajouter(doubler.cible(), designations, eligibles);
+            case Effet.Copier copier -> ajouter(copier.cible(), designations, eligibles);
 
             default -> {
                 // Les autres briques se résolvent sans rien demander.
@@ -142,9 +170,9 @@ public record PlanDeCiblage(List<Designation> designations, List<Branche> option
         }
     }
 
-    private static void ajouter(Cible cible, List<Designation> designations) {
+    private static void ajouter(Cible cible, List<Designation> designations, Eligibles eligibles) {
         if (cible.demandeUnChoix()) {
-            designations.add(Designation.exemplaire(cible.libelle()));
+            designations.add(Designation.exemplaire(cible.libelle(), eligibles.pour(cible)));
         }
     }
 

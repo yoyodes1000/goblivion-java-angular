@@ -655,6 +655,50 @@ public final class Partie {
      *
      * @return la carte révélée, ou {@code null} s'il n'y avait rien à retourner
      */
+    /**
+     * Les exemplaires qu'une cible accepte, ici et maintenant.
+     *
+     * <p>C'est le moteur qui répond, et c'est tout l'enjeu : l'interface qui
+     * déduirait la liste tiendrait une seconde version des règles de ciblage, et
+     * finirait par proposer une carte que l'interprète refuse — ou par en cacher
+     * une qu'il accepte. Le Champion, dont la cible est un ennemi aux Portes,
+     * n'était pas jouable pour cette raison exacte.
+     */
+    public List<Long> candidatsPour(fr.goblivion.effets.Cible cible) {
+        return switch (cible) {
+            case UNE_CARTE_EN_JEU -> identites(champDeBataille);
+            case UNE_CARTE_HOPITAL -> identites(hopital);
+
+            case UN_OBJET -> identites(champDeBataille.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.OBJET)
+                    .toList());
+            case UN_PAYSAN_HUMAIN -> identites(champDeBataille.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.HUMAIN)
+                    .toList());
+            case UNE_CARTE_DE_FORCE_1_ET_PLUS -> identites(champDeBataille.stream()
+                    .filter(carte -> forceEffective(carte) >= 1)
+                    .toList());
+
+            // Le Champion vise un ennemi aux Portes, pas une carte du joueur —
+            // et seulement un qui porte quelque chose a lui arracher.
+            case UN_JETON_ENNEMI -> identites(portes.stream()
+                    .filter(ennemi -> ennemi.jetonEnnemi() > 0)
+                    .toList());
+
+            case UN_ENNEMI_CACHE -> identites(ennemisCaches());
+
+            // Rien a designer : la regle choisit seule, ou la brique n'est pas
+            // encore jouable.
+            case SOI_MEME, HUMAIN_LE_PLUS_FORT, PROCHAINE_DU_CHATEAU,
+                    CHAQUE_OBJET, CHAQUE_PAYSAN_HUMAIN, CHAQUE_CARTE_BLEUE,
+                    UNE_CARTE_ROYALE, UNE_ACTION_PIVOTER -> List.of();
+        };
+    }
+
+    private static List<Long> identites(List<CarteEnJeu> cartes) {
+        return cartes.stream().map(CarteEnJeu::id).toList();
+    }
+
     /** Les ennemis encore face cachée, des Portes vers le fond de la piste. */
     public List<CarteEnJeu> ennemisCaches() {
         // piste() rend des cases, et une case vide vaut null.
