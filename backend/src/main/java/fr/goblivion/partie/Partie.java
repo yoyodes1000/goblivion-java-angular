@@ -687,11 +687,16 @@ public final class Partie {
 
             case UN_ENNEMI_CACHE -> identites(ennemisCaches());
 
+            // Le Chapeau magique copie l'action d'une autre carte, jouee ou non.
+            case UNE_ACTION_PIVOTER -> identites(champDeBataille.stream()
+                    .filter(this::porteUneActionCopiable)
+                    .toList());
+
             // Rien a designer : la regle choisit seule, ou la brique n'est pas
             // encore jouable.
             case SOI_MEME, HUMAIN_LE_PLUS_FORT, PROCHAINE_DU_CHATEAU,
                     CHAQUE_OBJET, CHAQUE_PAYSAN_HUMAIN, CHAQUE_CARTE_BLEUE,
-                    UNE_CARTE_ROYALE, UNE_ACTION_PIVOTER -> List.of();
+                    UNE_CARTE_ROYALE -> List.of();
         };
     }
 
@@ -732,6 +737,24 @@ public final class Partie {
                 return repetitions(quantite);
             }
         };
+    }
+
+    /**
+     * Une carte dont l'action Pivoter peut être copiée.
+     *
+     * <p>Une action de copie en est exclue : copier une copie n'aurait pas de
+     * fin, et deux Chapeaux magiques en jeu se renverraient l'un à l'autre.
+     */
+    public boolean porteUneActionCopiable(CarteEnJeu carte) {
+        return actionPivoterDe(carte).isPresent();
+    }
+
+    /** L'action Pivoter d'une carte, s'il y en a une à copier. */
+    public Optional<EffetCarte> actionPivoterDe(CarteEnJeu carte) {
+        return effetsDe(carte).stream()
+                .filter(effet -> effet.declencheur() == Declencheur.PIVOTER)
+                .filter(effet -> !(effet.effet() instanceof Effet.Copier))
+                .findFirst();
     }
 
     /** Combien de fois un « pour chaque » se répète, ici et maintenant. */

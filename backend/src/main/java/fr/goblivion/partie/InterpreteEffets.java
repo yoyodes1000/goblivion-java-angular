@@ -396,7 +396,7 @@ class InterpreteEffets {
      */
     private void copier(Effet.Copier effet, CarteEnJeu source, Passe passe) {
         if (effet.cible() == Cible.UNE_ACTION_PIVOTER) {
-            pasEncore("Copier une action Pivoter");
+            copierUneAction(passe);
             return;
         }
         CarteEnJeu modele = enJeu(passe.choix().carteSuivante(descriptionDe(effet.cible())), passe);
@@ -411,6 +411,33 @@ class InterpreteEffets {
             source.copier(modele.familleEffective(), modele.carteIdEffectif());
             partie.noter("%s copie %s pour cette phase."
                     .formatted(avant, partie.nomDe(modele)));
+        });
+    }
+
+    /**
+     * Le Chapeau magique rejoue l'action d'une autre carte en jeu.
+     *
+     * <p>Copier n'est pas déclencher : la carte copiée garde son propre Pivoter
+     * intact et pourra le jouer, et elle n'a pas besoin de l'avoir déjà utilisé.
+     * Deux exemplaires de l'effet partent, pas un seul déplacé.
+     *
+     * <p>L'action copiée peut à son tour réclamer une désignation — « détruis
+     * une carte en jeu » — que le joueur ne pouvait pas prévoir en choisissant
+     * la carte. Elle passe donc par la file d'attente, comme une révélation :
+     * une question à la fois, dans l'ordre.
+     */
+    private void copierUneAction(Passe passe) {
+        CarteEnJeu modele = enJeu(
+                passe.choix().carteSuivante(Cible.UNE_ACTION_PIVOTER.libelle()), passe);
+
+        EffetCarte copiee = partie.actionPivoterDe(modele)
+                .orElseThrow(() -> new ActionInterdite(
+                        "%s n'a pas d'action Pivoter a copier.".formatted(partie.nomDe(modele))));
+
+        siApplique(passe, () -> {
+            partie.noter("L'action de %s est copiee.".formatted(partie.nomDe(modele)));
+            declencherAutomatiquement(copiee, modele,
+                    "Action copiee de %s".formatted(partie.nomDe(modele)));
         });
     }
 
