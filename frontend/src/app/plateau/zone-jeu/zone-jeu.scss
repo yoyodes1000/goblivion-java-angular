@@ -85,6 +85,28 @@
   transition: transform 120ms ease;
 }
 
+/*
+  Le jeton Bonus Allié, en haut à droite du scan — le même or que le jeton
+  Bonus Ennemi des Portes, parce que c'est le même objet sur la table.
+
+  Il tourne avec la carte pivotée, et c'est voulu : un jeton posé suit le
+  carton qu'il augmente.
+*/
+.jeu__jeton {
+  position: absolute;
+  inset-block-start: 0.15rem;
+  inset-inline-end: 0.15rem;
+  z-index: 1;
+
+  padding: 0.05rem 0.25rem;
+
+  border-radius: 0.2rem;
+  background: #b58900;
+  color: #1a2027;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
 .jeu__nom {
   display: flex;
   gap: 0.3rem;

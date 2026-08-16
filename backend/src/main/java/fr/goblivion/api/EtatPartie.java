@@ -111,6 +111,11 @@ public record EtatPartie(
      * @param carte l'identifiant de <em>type</em>, qui renvoie au catalogue du frontend
      * @param force l'apport réel, jetons et forces variables compris — le
      *              frontend ne peut pas le déduire de la valeur imprimée
+     * @param jetonBanniere le jeton Bonus Allié posé sur l'exemplaire, 0 sinon.
+     *                      Il est <strong>déjà compté</strong> dans {@code force} et
+     *                      voyage pourtant à part : un total ne dit pas d'où il
+     *                      vient, et le joueur qui vient de choisir à qui donner
+     *                      le jeton a besoin de le voir arriver quelque part
      * @param copie le type que la carte joue pour cette phase, {@code null} si
      *              elle est elle-même — le Joker, et lui seul aujourd'hui
      * @param plan        ce que son action réclamera si on la pivote, calculé
@@ -122,12 +127,14 @@ public record EtatPartie(
      *                    deux ont un plan vide. Sans ce drapeau, l'interface
      *                    proposerait de pivoter une carte qui ne ferait rien.
      */
-    public record CarteVue(long id, String carte, Famille famille, int force, boolean pivotee,
-            String copie, PlanDeCiblage plan, PlanDeCiblage planEchange, boolean agitAuPivot) {
+    public record CarteVue(long id, String carte, Famille famille, int force, int jetonBanniere,
+            boolean pivotee, String copie, PlanDeCiblage plan, PlanDeCiblage planEchange,
+            boolean agitAuPivot) {
 
         static CarteVue de(Partie partie, CarteEnJeu carte) {
             return new CarteVue(carte.id(), carte.carteId(), carte.famille(),
-                    partie.forceEffective(carte), carte.pivotee(), carte.copie(),
+                    partie.forceEffective(carte), carte.jetonBanniere(),
+                    carte.pivotee(), carte.copie(),
                     planDe(partie, carte, Declencheur.PIVOTER),
                     planDe(partie, carte, Declencheur.GARDE_DU_CORPS),
                     agitAuPivot(partie, carte));

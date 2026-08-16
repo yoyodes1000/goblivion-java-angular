@@ -10,13 +10,20 @@ describe('ZoneJeu', () => {
     }).compileComponents();
   });
 
-  function carte(id: number, force: number, pivotee = false, agitAuPivot = true): CarteEnJeuVue {
+  function carte(
+    id: number,
+    force: number,
+    pivotee = false,
+    agitAuPivot = true,
+    jetonBanniere = 0,
+  ): CarteEnJeuVue {
     return {
       id,
       nom: `Carte ${id}`,
       scan: `c${id}.webp`,
       famille: 'bleues',
       force,
+      jetonBanniere,
       pivotee,
       agitAuPivot,
     };
@@ -172,6 +179,30 @@ describe('ZoneJeu', () => {
     const image = (fixture.nativeElement as HTMLElement).querySelector('.jeu__scan img');
 
     expect(image?.classList.contains('carte--objet-en-haut')).toBe(true);
+  });
+
+  /**
+   * Retour de partie : « j'ai l'impression que les bonus ne sont pas
+   * appliqués ». Ils l'étaient — la force les compte depuis le début — mais
+   * rien sur la carte ne disait où le jeton était tombé. Les ennemis portent
+   * le leur aux Portes ; les cartes du joueur ne portaient rien.
+   */
+  it('montre le jeton Bonus Allié posé sur une carte', async () => {
+    const fixture = await monter('combat', [carte(1, 4, false, true, 2)]);
+    const jeton = (fixture.nativeElement as HTMLElement).querySelector('.jeu__jeton');
+
+    expect(jeton?.textContent?.trim()).toBe('+2');
+    // La force affichée reste le total : le badge dit d'où viennent les points,
+    // il ne les ajoute pas une seconde fois.
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.jeu__force')?.textContent?.trim(),
+    ).toBe('4');
+  });
+
+  it('n’affiche aucun jeton sur une carte qui n’en porte pas', async () => {
+    const fixture = await monter('combat', [carte(1, 2)]);
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('.jeu__jeton')).toBeNull();
   });
 
   it('laisse les cartes du joueur dans leur sens', async () => {

@@ -99,6 +99,14 @@ export interface CarteVue {
   readonly famille: Famille;
   /** L'apport **réel**, jetons et forces variables compris — pas la valeur imprimée. */
   readonly force: number;
+  /**
+   * Le jeton Bonus Allié posé sur l'exemplaire, `0` s'il n'y en a pas.
+   *
+   * Déjà compté dans `force`, et pourtant envoyé à part : un total ne dit pas
+   * d'où il vient. Sans lui, le joueur qui vient de désigner à qui donner son
+   * jeton voit un nombre bouger sans savoir que c'est le sien.
+   */
+  readonly jetonBanniere: number;
   readonly pivotee: boolean;
   /**
    * Le type que la carte joue pour cette phase, `null` si elle est elle-même.

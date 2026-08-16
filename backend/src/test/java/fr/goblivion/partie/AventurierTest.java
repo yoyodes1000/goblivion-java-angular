@@ -7,6 +7,7 @@ import java.util.Random;
 
 import org.junit.jupiter.api.Test;
 
+import fr.goblivion.api.EtatPartie;
 import fr.goblivion.cartes.Catalogue;
 import fr.goblivion.cartes.Famille;
 import fr.goblivion.effets.Cible;
@@ -92,5 +93,32 @@ class AventurierTest {
         assertThat(partie.journal().getLast())
                 .contains("jeton Banniere +2")
                 .contains("force 3");
+    }
+
+    /**
+     * Retour de partie, le second sur le même jeton : « les bonus n'ont pas
+     * l'air appliqués ».
+     *
+     * <p>Ils l'étaient — {@code force} les compte depuis toujours — mais un
+     * total ne dit pas d'où il vient, et rien sur la carte ne montrait le
+     * jeton. Il voyage donc <em>en plus</em> du total, pour que l'affichage
+     * puisse dire où il est tombé sans recalculer quoi que ce soit.
+     */
+    @Test
+    void l_etat_envoie_le_jeton_en_plus_du_total() {
+        miseEnPlace();
+        CarteEnJeu aventurier = poser(CataloguesFictifs.BLEUE_HUMAIN);
+        CarteEnJeu victime = poser(CataloguesFictifs.BLEUE_OBJET);
+
+        moteur.appliquer(Action.surCarteAvecChoix(TypeAction.PIVOTER, aventurier.id(),
+                List.of(victime.id()), List.of()));
+
+        EtatPartie.CarteVue vue = EtatPartie.de(partie).champDeBataille().stream()
+                .filter(carte -> carte.id() == aventurier.id())
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(vue.jetonBanniere()).isEqualTo(2);
+        assertThat(vue.force()).as("le total compte deja le jeton").isEqualTo(3);
     }
 }

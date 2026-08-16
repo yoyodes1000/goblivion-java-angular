@@ -151,6 +151,7 @@ export class Plateau {
               ...carte,
               id: vue.id,
               force: vue.force,
+              jetonBanniere: vue.jetonBanniere,
               pivotee: vue.pivotee,
               agitAuPivot: vue.agitAuPivot,
             },

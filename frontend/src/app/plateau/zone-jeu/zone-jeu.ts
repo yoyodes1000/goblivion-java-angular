@@ -18,6 +18,16 @@ export interface CarteEnJeuVue {
   readonly famille: Famille;
   /** L'apport réel, jetons et forces variables compris — calculé par le moteur. */
   readonly force: number;
+  /**
+   * Le jeton Bonus Allié posé sur la carte, `0` s'il n'y en a pas.
+   *
+   * Il compte déjà dans `force`. Le montrer à part répond à ce que la force
+   * seule ne dit pas : *où* le jeton est tombé. Les ennemis portent le leur
+   * depuis le début — les cartes du joueur ne le portaient pas, et un joueur
+   * qui vient de choisir sa cible n'avait aucun moyen de voir qu'elle l'avait
+   * reçu.
+   */
+  readonly jetonBanniere: number;
   readonly pivotee: boolean;
   /**
    * Vrai si pivoter la carte déclenche quelque chose.
@@ -74,6 +84,19 @@ export interface CarteEnJeuVue {
                   [alt]="carte.nom"
                   [class.carte--objet-en-haut]="estRecompense(carte)"
                 />
+                <!-- Le jeton compte déjà dans la force : ce badge dit où il est
+                     tombé, ce qu'un total ne montre pas. -->
+                @if (carte.jetonBanniere > 0) {
+                  <span
+                    class="jeu__jeton"
+                    [title]="
+                      'Jeton Bonus Allié +' +
+                      carte.jetonBanniere +
+                      ', déjà compté dans la force — rendu à la banque en fin de phase'
+                    "
+                    >+{{ carte.jetonBanniere }}</span
+                  >
+                }
               </div>
 
               <p class="jeu__nom">
