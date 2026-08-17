@@ -271,12 +271,15 @@ class InterpreteEffetsTest {
     // ------------------------------------------------ declenche par le moteur
 
     /**
-     * Un effet que le moteur déclenche n'a personne à qui refuser : le joueur
-     * ne pouvait rien joindre à une révélation qu'il n'avait pas vue venir.
-     * L'écart part au journal, en toutes lettres, et le tour continue.
+     * Un effet que le moteur déclenche et qui exige une désignation **attend**.
+     *
+     * <p>La première version notait l'écart au journal et passait. Un retour de
+     * partie l'a tranché : quand un monstre exige de sacrifier un paysan, c'est
+     * au joueur de dire lequel. Le jeu qui choisit à sa place ne joue pas la
+     * même partie.
      */
     @Test
-    void un_effet_automatique_qui_exige_une_designation_est_note_pas_lance() {
+    void un_effet_automatique_qui_exige_une_designation_attend_le_joueur() {
         CarteEnJeu ennemi = poserEnJeu(CataloguesFictifs.BLEUE_HUMAIN);
         int avant = partie.ressources();
 
@@ -284,10 +287,12 @@ class InterpreteEffetsTest {
                 new EffetCarte(Declencheur.REVELATION, new Effet.Detruire(Cible.UN_PAYSAN_HUMAIN)),
                 ennemi, "Sorciere fictive");
 
-        assertThat(partie.journal().getLast())
-                .contains("Sorciere fictive")
-                .contains("effet non applique");
-        assertThat(partie.ressources()).isEqualTo(avant);
+        assertThat(partie.attenteCourante()).isPresent();
+        assertThat(partie.attenteCourante().get().source()).isEqualTo("Sorciere fictive");
+        assertThat(partie.attenteCourante().get().plan().designations())
+                .singleElement()
+                .satisfies(d -> assertThat(d.libelle()).contains("paysan Humain"));
+        assertThat(partie.ressources()).as("rien n'a bouge en attendant").isEqualTo(avant);
     }
 
     /** Ce qui peut partir part : la majorité des révélations ne demande rien. */

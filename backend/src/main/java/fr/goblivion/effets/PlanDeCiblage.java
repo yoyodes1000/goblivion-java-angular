@@ -18,7 +18,22 @@ import java.util.List;
  *                     l'interprète les consommera
  * @param options      les branches d'un {@code ou}, vides s'il n'y en a pas
  */
-public record PlanDeCiblage(List<Designation> designations, List<String> options) {
+public record PlanDeCiblage(List<Designation> designations, List<Branche> options) {
+
+    /**
+     * Une branche d'un {@code ou}, avec ce qu'elle réclame en propre.
+     *
+     * <p>Les désignations dépendent de la branche retenue : « Piocher 1 ou
+     * Visionner » ne demande rien dans un cas, un ennemi à retourner dans
+     * l'autre. Les mettre en commun ferait poser une question sans objet à
+     * qui choisit de piocher.
+     */
+    public record Branche(String libelle, List<Designation> designations) {
+
+        public Branche {
+            designations = List.copyOf(designations);
+        }
+    }
 
     /**
      * Une question à poser au joueur.
@@ -30,14 +45,72 @@ public record PlanDeCiblage(List<Designation> designations, List<String> options
      *                voyagent par des canaux séparés, et l'interface doit
      *                proposer les bonnes cartes.
      */
-    public record Designation(String libelle, boolean parType) {
+    public record Designation(String libelle, boolean parType, List<Long> candidats) {
 
-        static Designation exemplaire(String libelle) {
-            return new Designation(libelle, false);
+        public Designation {
+            candidats = List.copyOf(candidats);
+        }
+
+        static Designation exemplaire(String libelle, List<Long> candidats) {
+            return new Designation(libelle, false, candidats);
         }
 
         static Designation type(String libelle) {
-            return new Designation(libelle, true);
+            return new Designation(libelle, true, List.of());
+        }
+    }
+
+    /**
+     * Qui sait dire, pour une cible, les exemplaires qu'elle accepte.
+     *
+     * <p>Le plan seul ne peut pas répondre : « un Objet en jeu » dépend de ce
+     * qu'il y a sur la table. C'est le moteur qui le sait, et c'est lui qui doit
+     * le dire — l'interface qui déduirait la liste tiendrait une seconde version
+     * des règles de ciblage.
+     */
+    public interface Eligibles {
+
+        /** Les exemplaires que la cible accepte là où elle les cherche d'ordinaire. */
+        List<Long> pour(Cible cible);
+
+        /**
+         * Les mêmes conditions, mais cherchées <strong>à l'Hôpital</strong>.
+         *
+         * <p>La cible seule ne dit pas où regarder : « un Objet » désigne une
+         * carte en jeu pour le Booba Brise-Fer qui la détruit, et une carte de
+         * l'Hôpital pour le Forgeron qui l'en ramène. C'est l'effet qui tranche,
+         * pas la cible — d'où deux questions plutôt qu'une.
+         */
+        List<Long> aLHopital(Cible cible);
+
+        /**
+         * Combien de fois un {@code pour chaque} se répétera, ici et maintenant.
+         *
+         * <p>Le Protecteur Mécanique pose un jeton par Objet à l'Hôpital, et
+         * chaque jeton se place où le joueur veut : il faut donc annoncer autant
+         * de questions qu'il y aura de jetons. Le compte dépend de l'état, seul
+         * le moteur le connaît.
+         */
+        int combien(Quantite quantite);
+
+        /** Aucun candidat : pour les tests du vocabulaire, qui n'ont pas de partie. */
+        static Eligibles aucun() {
+            return new Eligibles() {
+                @Override
+                public List<Long> pour(Cible cible) {
+                    return List.of();
+                }
+
+                @Override
+                public List<Long> aLHopital(Cible cible) {
+                    return List.of();
+                }
+
+                @Override
+                public int combien(Quantite quantite) {
+                    return 1;
+                }
+            };
         }
     }
 
@@ -57,45 +130,61 @@ public record PlanDeCiblage(List<Designation> designations, List<String> options
     /**
      * Le plan d'un effet.
      *
-     * <p><strong>Limite connue et volontaire :</strong> les désignations sont
-     * relevées en traversant les branches d'un {@code ou} comme le reste. Un
-     * effet dont une seule branche demanderait une cible annoncerait donc une
-     * désignation que l'autre branche ne consomme pas. Aucune carte du jeu n'est
-     * dans ce cas — les deux {@code ou} transcrits, l'Archer et les Scouts,
-     * n'ont aucune cible — et traiter un cas qui n'existe pas coûterait un plan
-     * par branche dans l'état. Le jour où une carte le fait, c'est ici que ça se
-     * corrige.
+     * <p>Chaque branche d'un {@code ou} porte ses propres désignations. Ce
+     * n'était pas nécessaire tant qu'aucune branche ne réclamait de cible ;
+     * ça l'est devenu quand la Vision s'est mise à demander quel ennemi
+     * retourner — l'Archer et les Scouts l'offrent en alternative à une pioche
+     * qui, elle, ne demande rien.
      */
     public static PlanDeCiblage de(Effet effet) {
+        return de(effet, Eligibles.aucun());
+    }
+
+    public static PlanDeCiblage de(Effet effet, Eligibles eligibles) {
         List<Designation> designations = new ArrayList<>();
-        List<String> options = new ArrayList<>();
-        parcourir(effet, designations, options);
+        List<Branche> options = new ArrayList<>();
+        parcourir(effet, designations, options, eligibles);
         return new PlanDeCiblage(designations, options);
     }
 
     private static void parcourir(Effet effet, List<Designation> designations,
-            List<String> options) {
+            List<Branche> options, Eligibles eligibles) {
         switch (effet) {
             case Effet.Sequence sequence ->
-                sequence.effets().forEach(sous -> parcourir(sous, designations, options));
+                sequence.effets().forEach(sous -> parcourir(sous, designations, options, eligibles));
 
-            case Effet.Choix choix -> {
-                choix.options().forEach(option -> options.add(resumer(option)));
-                choix.options().forEach(option -> parcourir(option, designations, options));
+            // Chaque branche garde ses designations pour elle : celles de la
+            // branche retenue s'ajouteront a celles du tronc, pas les autres.
+            case Effet.Choix choix -> choix.options().forEach(option -> {
+                List<Designation> propres = new ArrayList<>();
+                parcourir(option, propres, new ArrayList<>(), eligibles);
+                options.add(new Branche(resumer(option), propres));
+            });
+
+            // Le corps se répète, et ses désignations avec lui : le Protecteur
+            // Mécanique pose un jeton par Objet à l'Hôpital, chacun sur la carte
+            // que le joueur veut. Annoncer une seule question ferait refuser
+            // l'effet dès le deuxième jeton.
+            case Effet.PourChaque pourChaque -> {
+                int fois = eligibles.combien(pourChaque.quantite());
+                for (int i = 0; i < fois; i++) {
+                    parcourir(pourChaque.effet(), designations, options, eligibles);
+                }
             }
-
-            // Le corps se répète, mais les désignations aussi : « pour chaque »
-            // ne demande jamais de cible dans les cartes transcrites, et
-            // annoncer une fois vaut mieux qu'annoncer un nombre qui dépend de
-            // l'état au moment du clic.
-            case Effet.PourChaque pourChaque ->
-                parcourir(pourChaque.effet(), designations, options);
 
             case Effet.Defausser defausser -> {
                 for (int i = 0; i < defausser.nombre(); i++) {
-                    designations.add(Designation.exemplaire("une carte à défausser"));
+                    designations.add(Designation.exemplaire("une carte à défausser",
+                            eligibles.pour(Cible.UNE_CARTE_EN_JEU)));
                 }
             }
+
+            // Visionner ne porte pas de cible dans les donnees : elle vise
+            // toujours la meme chose, et la nommer dans chaque carte n'aurait
+            // rien appris. Le plan la reclame quand meme.
+            case Effet.Visionner visionner -> designations.add(
+                    Designation.exemplaire(Cible.UN_ENNEMI_CACHE.libelle(),
+                            eligibles.pour(Cible.UN_ENNEMI_CACHE)));
 
             case Effet.ObtenirDuMarche marche -> designations.add(
                     Designation.type("un %s du Marché".formatted(marche.typeCarte())));
@@ -104,16 +193,23 @@ public record PlanDeCiblage(List<Designation> designations, List<String> options
 
             case Effet.Reactiver reactiver -> {
                 for (int i = 0; i < reactiver.nombre(); i++) {
-                    ajouter(reactiver.cible(), designations);
+                    ajouter(reactiver.cible(), designations, eligibles);
                 }
             }
 
-            case Effet.Detruire detruire -> ajouter(detruire.cible(), designations);
-            case Effet.EnvoyerALHopital envoyer -> ajouter(envoyer.cible(), designations);
-            case Effet.RamenerDeLHopital ramener -> ajouter(ramener.cible(), designations);
-            case Effet.JetonBanniere jeton -> ajouter(jeton.cible(), designations);
-            case Effet.DoublerJetons doubler -> ajouter(doubler.cible(), designations);
-            case Effet.Copier copier -> ajouter(copier.cible(), designations);
+            case Effet.Detruire detruire -> ajouter(detruire.cible(), designations, eligibles);
+            case Effet.EnvoyerALHopital envoyer -> ajouter(envoyer.cible(), designations, eligibles);
+            // Le Forgeron et le Pretre puisent a l'Hopital, pas sur la table.
+            case Effet.RamenerDeLHopital ramener -> {
+                if (ramener.cible().demandeUnChoix()) {
+                    designations.add(Designation.exemplaire(
+                            "%s de l'Hôpital".formatted(ramener.cible().libelle()),
+                            eligibles.aLHopital(ramener.cible())));
+                }
+            }
+            case Effet.JetonBanniere jeton -> ajouter(jeton.cible(), designations, eligibles);
+            case Effet.DoublerJetons doubler -> ajouter(doubler.cible(), designations, eligibles);
+            case Effet.Copier copier -> ajouter(copier.cible(), designations, eligibles);
 
             default -> {
                 // Les autres briques se résolvent sans rien demander.
@@ -121,9 +217,9 @@ public record PlanDeCiblage(List<Designation> designations, List<String> options
         }
     }
 
-    private static void ajouter(Cible cible, List<Designation> designations) {
+    private static void ajouter(Cible cible, List<Designation> designations, Eligibles eligibles) {
         if (cible.demandeUnChoix()) {
-            designations.add(Designation.exemplaire(cible.libelle()));
+            designations.add(Designation.exemplaire(cible.libelle(), eligibles.pour(cible)));
         }
     }
 

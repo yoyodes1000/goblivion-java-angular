@@ -18,6 +18,16 @@ export interface CarteEnJeuVue {
   readonly famille: Famille;
   /** L'apport réel, jetons et forces variables compris — calculé par le moteur. */
   readonly force: number;
+  /**
+   * Le jeton Bonus Allié posé sur la carte, `0` s'il n'y en a pas.
+   *
+   * Il compte déjà dans `force`. Le montrer à part répond à ce que la force
+   * seule ne dit pas : *où* le jeton est tombé. Les ennemis portent le leur
+   * depuis le début — les cartes du joueur ne le portaient pas, et un joueur
+   * qui vient de choisir sa cible n'avait aucun moyen de voir qu'elle l'avait
+   * reçu.
+   */
+  readonly jetonBanniere: number;
   readonly pivotee: boolean;
   /**
    * Vrai si pivoter la carte déclenche quelque chose.
@@ -67,7 +77,26 @@ export interface CarteEnJeuVue {
           @for (carte of cartes(); track carte.id) {
             <li class="jeu" [class.jeu--pivotee]="carte.pivotee">
               <div class="jeu__scan">
-                <img [ngSrc]="url(carte)" fill sizes="8vw" [alt]="carte.nom" />
+                <img
+                  [ngSrc]="url(carte)"
+                  fill
+                  sizes="8vw"
+                  [alt]="carte.nom"
+                  [class.carte--objet-en-haut]="estRecompense(carte)"
+                />
+                <!-- Le jeton compte déjà dans la force : ce badge dit où il est
+                     tombé, ce qu'un total ne montre pas. -->
+                @if (carte.jetonBanniere > 0) {
+                  <span
+                    class="jeu__jeton"
+                    [title]="
+                      'Jeton Bonus Allié +' +
+                      carte.jetonBanniere +
+                      ', déjà compté dans la force — rendu à la banque en fin de phase'
+                    "
+                    >+{{ carte.jetonBanniere }}</span
+                  >
+                }
               </div>
 
               <p class="jeu__nom">
@@ -88,9 +117,12 @@ export interface CarteEnJeuVue {
                     Sacrifier<span class="jeu__cible"> {{ carte.nom }}</span>
                   </button>
                 }
-                <!-- On n'échange pas le Garde du corps contre une carte déjà
-                     activée (§9) : le bouton n'existe pas plutôt que d'exister
-                     et de se faire refuser. -->
+                <!-- Une carte activée ne peut ni repivoter ni devenir Garde du
+                     corps (§9). Faire disparaître ses boutons sans rien dire
+                     laissait croire à une panne : on annonce la raison. -->
+                @if (carte.pivotee && (pivotPossible() || echangePossible())) {
+                  <p class="jeu__indisponible">Activée pour cette phase</p>
+                }
                 @if (echangePossible() && !carte.pivotee) {
                   <button type="button" (click)="echangeDemande.emit(carte.id)">
                     Garde du corps<span class="jeu__cible"> : {{ carte.nom }}</span>
@@ -133,5 +165,17 @@ export class ZoneJeu {
 
   protected url(carte: CarteEnJeuVue): string {
     return urlScan(carte.famille, carte.scan);
+  }
+
+  /**
+   * Une carte gagnée sur un ennemi se montre à l'envers.
+   *
+   * L'ennemi et l'objet sont les deux moitiés tête-bêche d'une seule carte
+   * physique (§4). Vaincu, l'ennemi est pivoté à 180° et c'est l'objet qui
+   * passe en haut — sans cette rotation, le joueur verrait un gobelin dans son
+   * armée au lieu de la récompense qu'il a gagnée.
+   */
+  protected estRecompense(carte: CarteEnJeuVue): boolean {
+    return carte.famille === 'ennemis-objets';
   }
 }

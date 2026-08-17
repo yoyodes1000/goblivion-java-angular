@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
-import type { PlanDeCiblage } from '../modele';
+import type { Designation, PlanDeCiblage } from '../modele';
 
 /** Un exemplaire posé sur la table, avec l'endroit où il se trouve. */
 export interface Candidat {
@@ -48,11 +48,11 @@ export interface Reponses {
  * l'ordre où le plan les annonce ; les renvoyer autrement ferait détruire la
  * mauvaise carte. D'où une question à la fois, jamais une liste à cocher.
  *
- * Les candidats ne sont pas filtrés par type. Désigner un Humain là où un Objet
- * est attendu se fait refuser par le moteur, avec son motif rédigé — et la
- * double passe garantit qu'un refus n'a rien modifié. Filtrer ici demanderait au
- * navigateur de connaître les conditions de chaque cible, c'est-à-dire d'en
- * tenir une seconde version.
+ * Les candidats sont **filtrés par le moteur**, pas par cet écran : chaque
+ * désignation porte la liste des exemplaires qu'elle accepte. Déduire ici « un
+ * Objet, donc les cartes de type OBJET » reviendrait à tenir une seconde version
+ * des règles de ciblage — et c'est ce qui rendait le Champion injouable, sa
+ * cible étant un ennemi aux Portes que la liste ne proposait pas.
  */
 @Component({
   selector: 'app-ciblage',
@@ -70,7 +70,7 @@ export interface Reponses {
               @for (option of demande.plan.options; track $index) {
                 <li>
                   <button type="button" class="ciblage__choix" (click)="retenirBranche($index)">
-                    {{ option }}
+                    {{ option.libelle }}
                   </button>
                 </li>
               }
@@ -90,7 +90,7 @@ export interface Reponses {
             </ul>
           } @else {
             <ul class="ciblage__liste">
-              @for (candidat of candidats(); track candidat.id) {
+              @for (candidat of candidatsRetenus(); track candidat.id) {
                 <li>
                   <button type="button" class="ciblage__choix" (click)="designer(candidat.id)">
                     {{ candidat.nom }}
@@ -108,9 +108,16 @@ export interface Reponses {
           </p>
         }
 
-        <button type="button" class="ciblage__annuler" (click)="renoncer()">
-          Renoncer à cette action
-        </button>
+        @if (renoncable()) {
+          <button type="button" class="ciblage__annuler" (click)="renoncer()">
+            Renoncer à cette action
+          </button>
+        } @else {
+          <!-- Une question du moteur ne se decline pas : il refuse tout le
+               reste tant qu'elle tient. Offrir un « renoncer » qui ne renonce
+               a rien serait mentir sur ce qui est possible. -->
+          <p class="ciblage__obligatoire">Cette carte impose son effet.</p>
+        }
       </section>
     }
   `,
@@ -120,6 +127,14 @@ export class Ciblage {
   readonly demande = input.required<Ciblee | null>();
   readonly candidats = input.required<readonly Candidat[]>();
   readonly offresDuMarche = input<readonly CandidatType[]>([]);
+
+  /**
+   * Faux quand la question vient du moteur.
+   *
+   * Un effet déclenché par une révélation ne s'annule pas : le moteur refuse
+   * toute autre action tant qu'il attend, donc renoncer ne mènerait nulle part.
+   */
+  readonly renoncable = input(true);
 
   readonly confirme = output<Reponses>();
   readonly annule = output<void>();
@@ -131,10 +146,25 @@ export class Ciblage {
   /** La question du moment porte-t-elle sur un type de carte plutôt qu'un exemplaire ? */
   protected readonly attendUnType = computed(() => this.designationCourante()?.parType ?? false);
 
-  private readonly designationCourante = computed(() => {
+  /**
+   * Les questions à poser, branche retenue comprise.
+   *
+   * Le tronc de l'effet réclame toujours les siennes ; la branche choisie
+   * ajoute les siennes derrière. Les branches écartées n'en ajoutent aucune —
+   * c'est tout l'intérêt de les avoir séparées.
+   */
+  private readonly questions = computed<readonly Designation[]>(() => {
     const plan = this.demande()?.plan;
-    if (!plan || this.attendUneBranche()) return undefined;
-    return plan.designations[this.cibles().length + this.types().length];
+    if (!plan) return [];
+
+    const retenue = this.options()[0];
+    const deLaBranche = retenue === undefined ? [] : plan.options[retenue].designations;
+    return [...plan.designations, ...deLaBranche];
+  });
+
+  private readonly designationCourante = computed(() => {
+    if (this.attendUneBranche()) return undefined;
+    return this.questions()[this.cibles().length + this.types().length];
   });
 
   /**
@@ -156,7 +186,7 @@ export class Ciblage {
   protected readonly total = computed(() => {
     const plan = this.demande()?.plan;
     if (!plan) return 0;
-    return plan.designations.length + (plan.options.length > 0 ? 1 : 0);
+    return this.questions().length + (plan.options.length > 0 ? 1 : 0);
   });
 
   protected readonly titre = computed(() => `Choix pour ${this.demande()?.nom ?? 'cette carte'}`);
@@ -169,6 +199,18 @@ export class Ciblage {
     const courante = this.designationCourante();
     if (!courante) return undefined;
     return courante.parType ? `Choisir ${courante.libelle}.` : `Désigner ${courante.libelle}.`;
+  });
+
+  /**
+   * Les candidats que la question du moment accepte.
+   *
+   * Le moteur en donne les identifiants ; l'écran ne fait que garder ceux-là et
+   * les afficher dans l'ordre où il les connaît.
+   */
+  protected readonly candidatsRetenus = computed<readonly Candidat[]>(() => {
+    const permis = this.designationCourante()?.candidats;
+    if (!permis) return [];
+    return this.candidats().filter((candidat) => permis.includes(candidat.id));
   });
 
   protected choisirType(id: string): void {

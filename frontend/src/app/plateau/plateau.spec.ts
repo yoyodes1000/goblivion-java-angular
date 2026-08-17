@@ -69,14 +69,17 @@ describe('Plateau', () => {
     pivotee = false,
     plan = { designations: [], options: [] },
     agitAuPivot = true,
+    planEchange = { designations: [], options: [] },
   ) => ({
     id,
     carte,
     famille: 'bleues' as const,
     force: 1,
+    jetonBanniere: 0,
     pivotee,
     copie: null,
     plan,
+    planEchange,
     agitAuPivot,
   });
 
@@ -92,9 +95,11 @@ describe('Plateau', () => {
       carte: 'catapulte',
       famille: 'dorees',
       force: 3,
+      jetonBanniere: 0,
       pivotee: false,
       copie: null,
       plan: { designations: [], options: [] },
+      planEchange: { designations: [], options: [] },
       agitAuPivot: true,
     },
     marche: { catapulte: 3 },
@@ -125,6 +130,7 @@ describe('Plateau', () => {
     gardeDuCorpsEchange: false,
     pouvoirRoiReineUtilise: false,
     jetonsBonusAllie: 0,
+    designationAttendue: null,
     journal: [],
   };
 
@@ -174,6 +180,129 @@ describe('Plateau', () => {
     const rendu = await demarrer(fixture, etat);
     return { fixture, rendu };
   }
+
+  /**
+   * Une question du moteur se pose d'elle-même, sans clic préalable.
+   *
+   * C'est ce qui la distingue du ciblage d'un Pivoter : le joueur n'a rien
+   * demandé, un ennemi révélé exige une désignation. Tant qu'elle tient, le
+   * moteur refuse tout le reste — l'écran doit donc la montrer tout de suite,
+   * et ne pas offrir d'y renoncer.
+   */
+  it('pose la question du moteur sans que le joueur l’ait demandée', async () => {
+    const { rendu } = await table({
+      ...ETAT,
+      champDeBataille: [carteEnJeu(11, 'fermier')],
+      designationAttendue: {
+        source: 'Sorcière Troll',
+        plan: {
+          designations: [{ libelle: 'un paysan Humain', parType: false, candidats: [11] }],
+          options: [],
+        },
+      },
+    });
+
+    expect(rendu.querySelector('.ciblage__titre')?.textContent?.trim()).toBe('Sorcière Troll');
+    expect(rendu.querySelector('.ciblage__question')?.textContent).toContain('un paysan Humain');
+    expect(rendu.querySelector('.ciblage__annuler')).toBeNull();
+  });
+
+  it('renvoie la réponse au moteur comme une désignation, pas comme un pivot', async () => {
+    const { fixture, rendu } = await table({
+      ...ETAT,
+      champDeBataille: [carteEnJeu(11, 'fermier')],
+      designationAttendue: {
+        source: 'Sorcière Troll',
+        plan: {
+          designations: [{ libelle: 'un paysan Humain', parType: false, candidats: [11] }],
+          options: [],
+        },
+      },
+    });
+
+    rendu.querySelectorAll<HTMLButtonElement>('.ciblage__choix')[0].click();
+    await fixture.whenStable();
+
+    const requete = http().expectOne('/api/partie/action');
+    expect(requete.request.body.type).toBe('REPONDRE_DESIGNATION');
+    expect(requete.request.body.cibles).toEqual([11]);
+    requete.flush(ETAT);
+  });
+
+  /**
+   * Retour de partie : « je ne peux pas faire le pouvoir de l'Oracle ».
+   *
+   * Sa Vision part quand il **devient** Garde du corps, et elle réclame quel
+   * ennemi retourner. Tant que seul Pivoter portait un plan, l'échange partait
+   * sans réponse et le moteur le refusait en bloc : la carte était impossible à
+   * poser. Le Prêtre avait le même défaut.
+   */
+  it('demande sa désignation avant d’échanger le Garde du corps', async () => {
+    const oracle = {
+      ...carteEnJeu(11, 'fermier'),
+      planEchange: {
+        designations: [
+          { libelle: 'un ennemi face cachée à retourner', parType: false, candidats: [77] },
+        ],
+        options: [],
+      },
+    };
+    const { fixture, rendu } = await table({
+      ...ETAT,
+      champDeBataille: [oracle],
+      piste: [{ id: 77, carte: null, revelee: false, force: 0, jetonEnnemi: 0 }, null, null],
+    });
+
+    const echange = [...rendu.querySelectorAll<HTMLButtonElement>('.jeu__actions button')].find(
+      (bouton) => bouton.textContent?.replace(/\s+/g, ' ').trim().startsWith('Garde du corps'),
+    );
+    expect(echange, 'le bouton Garde du corps doit être offert').toBeDefined();
+    echange!.click();
+    await fixture.whenStable();
+
+    // Rien n'est parti : l'écran pose d'abord la question.
+    http().expectNone('/api/partie/action');
+    expect(rendu.querySelector('.ciblage__question')?.textContent).toContain('ennemi face cachée');
+
+    rendu.querySelector<HTMLButtonElement>('.ciblage__choix')!.click();
+    await fixture.whenStable();
+
+    const requete = http().expectOne('/api/partie/action');
+    expect(requete.request.body.type).toBe('ECHANGER_GARDE_DU_CORPS');
+    expect(requete.request.body.cibles).toEqual([77]);
+    requete.flush(ETAT);
+  });
+
+  /**
+   * Le ticket 12 laissait « pas de rejouer une partie sans recharger la page »
+   * en reste à faire. Une partie finie doit offrir sa sortie.
+   */
+  it('propose de rejouer après une défaite, au même niveau', async () => {
+    const { fixture, rendu } = await table({ ...ETAT, resultat: 'DEFAITE', difficulte: 'FACILE' });
+
+    const rejouer = rendu.querySelector<HTMLButtonElement>('.fin__rejouer');
+    expect(rejouer?.textContent).toContain('Facile');
+
+    rejouer!.click();
+    await fixture.whenStable();
+
+    const requete = http().expectOne('/api/partie');
+    expect(requete.request.body).toEqual({ difficulte: 'FACILE', role: null });
+    requete.flush({ ...ETAT, difficulte: 'FACILE' });
+  });
+
+  it('renvoie au choix de difficulté sans rien demander au moteur', async () => {
+    const { fixture, rendu } = await table({ ...ETAT, resultat: 'DEFAITE' });
+
+    rendu.querySelector<HTMLButtonElement>('.fin__changer')!.click();
+    await fixture.whenStable();
+
+    // La table disparaît au profit de l'écran de mise en place, et le moteur
+    // n'a rien reçu : c'est un souhait d'affichage, pas une action de jeu.
+    expect(rendu.querySelector('app-nouvelle-partie')).toBeTruthy();
+    expect(rendu.querySelector('.fin')).toBeNull();
+    http().expectNone('/api/partie');
+  });
 
   it('commence par demander la difficulté, sans rien afficher de la table', async () => {
     const fixture = await monter();

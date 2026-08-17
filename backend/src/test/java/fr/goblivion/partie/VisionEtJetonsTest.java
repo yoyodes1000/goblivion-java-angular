@@ -46,15 +46,32 @@ class VisionEtJetonsTest {
                 new InterpreteEffets.Choix(designations, List.of()));
     }
 
+    /**
+     * C'est le joueur qui désigne l'ennemi retourné, pas le moteur : retourner
+     * celui qui arrive au prochain tour le prive de son action, retourner celui
+     * du fond ne coûte rien. Le choix est tout l'intérêt de la Vision.
+     */
     @Test
-    void visionner_retourne_un_ennemi_face_cachee() {
+    void visionner_retourne_l_ennemi_designe() {
         partie.avancerEnnemi();
-        CarteEnJeu ennemi = partie.piste().stream().filter(c -> c != null).findFirst().orElseThrow();
-        assertThat(ennemi.revelee()).isFalse();
+        partie.avancerEnnemi();
+        List<CarteEnJeu> caches = partie.ennemisCaches();
+        assertThat(caches).hasSizeGreaterThan(1);
+        CarteEnJeu vise = caches.get(1);
 
-        jouer(new Effet.Visionner(), List.of());
+        jouer(new Effet.Visionner(), List.of(vise.id()));
 
-        assertThat(ennemi.revelee()).isTrue();
+        assertThat(vise.revelee()).isTrue();
+        assertThat(caches.get(0).revelee()).as("l'autre reste cache").isFalse();
+    }
+
+    @Test
+    void visionner_sans_designation_est_un_refus_lisible() {
+        partie.avancerEnnemi();
+
+        assertThatThrownBy(() -> jouer(new Effet.Visionner(), List.of()))
+                .isInstanceOf(ActionInterdite.class)
+                .hasMessageContaining("ennemi face cachée");
     }
 
     /**
@@ -64,9 +81,9 @@ class VisionEtJetonsTest {
     @Test
     void un_ennemi_visionne_tot_ne_declenchera_pas_son_action() {
         partie.avancerEnnemi();
-        CarteEnJeu ennemi = partie.piste().stream().filter(c -> c != null).findFirst().orElseThrow();
+        CarteEnJeu ennemi = partie.ennemisCaches().getFirst();
 
-        jouer(new Effet.Visionner(), List.of());
+        jouer(new Effet.Visionner(), List.of(ennemi.id()));
         partie.tourSuivant();
 
         assertThat(ennemi.actionDeclenchableAu(partie.tour())).isFalse();
@@ -187,5 +204,127 @@ class VisionEtJetonsTest {
         jouer(new Effet.DoublerJetons(Cible.UNE_CARTE_EN_JEU), List.of(cible.id()));
 
         assertThat(cible.jetonBanniere()).isZero();
+    }
+
+    // ------------------------------------------- ce que chaque cible accepte
+
+    /**
+     * Retour de partie : le Champion n'était pas jouable, faute de pouvoir
+     * désigner un ennemi aux Portes.
+     *
+     * <p>C'est le moteur qui dit ce qu'une cible accepte. L'interface qui le
+     * déduirait tiendrait une seconde version des règles de ciblage — et c'est
+     * exactement ce qui cachait les ennemis, absents des zones du joueur.
+     */
+    @Test
+    void le_champion_ne_vise_que_les_ennemis_qui_portent_un_jeton() {
+        while (partie.portes().size() < 2) {
+            partie.avancerEnnemi();
+        }
+        CarteEnJeu porteur = partie.portes().getFirst();
+        CarteEnJeu sansJeton = partie.portes().get(1);
+        porteur.attribuerJetonEnnemi(2);
+
+        assertThat(partie.candidatsPour(Cible.UN_JETON_ENNEMI))
+                .containsExactly(porteur.id())
+                .doesNotContain(sansJeton.id());
+    }
+
+    @Test
+    void une_cible_du_champ_de_bataille_ne_propose_pas_l_hopital() {
+        CarteEnJeu enJeu = source();
+        CarteEnJeu blessee = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_HUMAIN);
+        partie.poserAlHopital(blessee);
+
+        assertThat(partie.candidatsPour(Cible.UNE_CARTE_EN_JEU)).contains(enJeu.id())
+                .doesNotContain(blessee.id());
+        assertThat(partie.candidatsPour(Cible.UNE_CARTE_HOPITAL)).contains(blessee.id())
+                .doesNotContain(enJeu.id());
+    }
+
+    /** « Un Objet » ne propose pas les Humains, et réciproquement. */
+    @Test
+    void une_cible_typee_ne_propose_que_son_type() {
+        CarteEnJeu humain = source();
+        CarteEnJeu objet = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET);
+        partie.poserAuChampDeBataille(objet);
+
+        assertThat(partie.candidatsPour(Cible.UN_OBJET)).containsExactly(objet.id());
+        assertThat(partie.candidatsPour(Cible.UN_PAYSAN_HUMAIN)).contains(humain.id())
+                .doesNotContain(objet.id());
+    }
+
+    /**
+     * Retour de partie : le Forgeron ne proposait que des Objets **en jeu**.
+     *
+     * <p>Il en ramène un de l'Hôpital. La cible ne dit pas où chercher — « un
+     * Objet » désigne une carte en jeu pour le Booba Brise-Fer qui la détruit,
+     * une carte de l'Hôpital pour le Forgeron qui l'en tire. C'est l'effet qui
+     * tranche.
+     */
+    @Test
+    void le_forgeron_puise_a_l_hopital_et_non_sur_la_table() {
+        CarteEnJeu objetEnJeu = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET);
+        CarteEnJeu objetBlesse = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET);
+        partie.poserAuChampDeBataille(objetEnJeu);
+        partie.poserAlHopital(objetBlesse);
+
+        var plan = fr.goblivion.effets.PlanDeCiblage.de(
+                new Effet.RamenerDeLHopital(Cible.UN_OBJET, 0), partie.eligibles());
+
+        assertThat(plan.designations()).singleElement().satisfies(designation -> {
+            assertThat(designation.libelle()).contains("Hôpital");
+            assertThat(designation.candidats())
+                    .containsExactly(objetBlesse.id())
+                    .doesNotContain(objetEnJeu.id());
+        });
+    }
+
+    // ------------------------------------------- ou va le jeton Banniere
+
+    /**
+     * Retour de partie : « on ne peut pas choisir à qui l'on donne les jetons ».
+     *
+     * <p>C'était une erreur de transcription : « gagne Jeton Bannière +2 » avait
+     * été traduit par « la carte se le donne à elle-même », alors que le jeton se
+     * pose où le joueur veut. Cinq cartes étaient concernées.
+     */
+    @Test
+    void un_jeton_se_pose_sur_la_carte_designee() {
+        CarteEnJeu aventurier = source();
+        CarteEnJeu autre = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET);
+        partie.poserAuChampDeBataille(autre);
+
+        jouer(new Effet.JetonBanniere(2, Cible.UNE_CARTE_EN_JEU), List.of(autre.id()));
+
+        assertThat(autre.jetonBanniere()).isEqualTo(2);
+        assertThat(aventurier.jetonBanniere()).as("la carte jouee n'en profite pas d'office").isZero();
+    }
+
+    /**
+     * Le Protecteur Mécanique en pose un par Objet à l'Hôpital, chacun où le
+     * joueur veut. Le plan doit donc annoncer autant de questions qu'il y aura
+     * de jetons — en annoncer une seule ferait refuser l'effet au deuxième.
+     */
+    @Test
+    void pour_chaque_annonce_autant_de_questions_que_de_jetons() {
+        partie.poserAlHopital(CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET));
+        partie.poserAlHopital(CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_OBJET));
+        CarteEnJeu premiere = source();
+        CarteEnJeu seconde = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_HUMAIN);
+        partie.poserAuChampDeBataille(seconde);
+
+        Effet effet = new Effet.PourChaque(fr.goblivion.effets.Quantite.OBJET_A_L_HOPITAL,
+                new Effet.JetonBanniere(1, Cible.UNE_CARTE_EN_JEU));
+
+        assertThat(fr.goblivion.effets.PlanDeCiblage.de(effet, partie.eligibles()).designations())
+                .as("deux Objets a l'Hopital, donc deux jetons a placer")
+                .hasSize(2);
+
+        interprete.executer(new EffetCarte(Declencheur.PIVOTER, effet), premiere,
+                new InterpreteEffets.Choix(List.of(premiere.id(), seconde.id()), List.of()));
+
+        assertThat(premiere.jetonBanniere()).isEqualTo(1);
+        assertThat(seconde.jetonBanniere()).isEqualTo(1);
     }
 }

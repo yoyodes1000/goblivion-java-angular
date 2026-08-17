@@ -1,4 +1,4 @@
-@if (etat(); as partie) {
+@if (tableVisible(); as partie) {
   <app-bandeau-phase [phase]="partie.phase" [tour]="partie.tour" />
 
   <main class="plateau__corps" [attr.data-phase]="partie.phase">
@@ -12,8 +12,12 @@
     </div>
 
     <app-pile-monstres class="plateau__pile" [nombre]="partie.taillePileEnnemie" />
-    <app-plateau-avancee class="plateau__avancee" />
-    <app-portes-chateau class="plateau__portes" />
+    <app-plateau-avancee class="plateau__avancee" [cases]="pisteVue()" />
+    <app-portes-chateau
+      class="plateau__portes"
+      [ennemis]="portesVue()"
+      [forceEnnemie]="etat()?.forceEnnemie ?? 0"
+    />
 
     <app-zone-jeu
       class="plateau__zone"
@@ -33,8 +37,20 @@
       [demande]="ciblageEnCours()"
       [candidats]="candidats()"
       [offresDuMarche]="offresDuMarche()"
+      [renoncable]="!etat()?.designationAttendue"
       (confirme)="pivoterAvec($event)"
       (annule)="annulerCiblage()"
+    />
+
+    <!-- Le combat perdu se repartit : tout ennemi dont on couvre la force tombe
+         quand meme (§8). -->
+    <app-repartition
+      [ouvert]="repartitionOuverte()"
+      [ennemis]="portesVue()"
+      [forceDisponible]="etat()?.forceAlliee ?? 0"
+      [forceEnnemie]="etat()?.forceEnnemie ?? 0"
+      (confirme)="repartir($event)"
+      (annule)="annulerRepartition()"
     />
     <app-cartes-royales
       class="plateau__royales"
@@ -72,6 +88,17 @@
           }}
           Tour {{ partie.tour }}.
         </p>
+
+        <!-- Une partie finie doit pouvoir se rejouer sans recharger la page.
+             Deux sorties : reprendre au meme niveau, ou revenir le choisir. -->
+        <div class="fin__actions">
+          <button type="button" class="fin__rejouer" (click)="rejouer()">
+            Rejouer en {{ LIBELLES_DIFFICULTE[partie.difficulte] }}
+          </button>
+          <button type="button" class="fin__changer" (click)="revenirAuChoix()">
+            Changer de difficulté
+          </button>
+        </div>
       </div>
     </div>
   }

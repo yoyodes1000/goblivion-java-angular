@@ -134,6 +134,22 @@ export class Cartes {
     return afficher(this.catalogue(), famille, id);
   }
 
+  /**
+   * La moitié **ennemi** d'une carte Ennemi/Objet.
+   *
+   * `afficher()` rend l'autre moitié, et c'est voulu : dans les zones du
+   * joueur, une carte Ennemi/Objet est la récompense qu'on a gagnée en
+   * l'abattant. Sur la piste et aux Portes, c'est l'ennemi qu'on affronte. Une
+   * seule carte physique, deux lectures selon l'endroit (§4) — le backend fait
+   * le même partage dans `nomDe`.
+   */
+  ennemi(id: string): CarteAffichable | undefined {
+    const carte = this.ennemisObjets.value().find((c) => c.id === id);
+    return carte
+      ? { id, nom: carte.ennemi.nom, scan: carte.scan, famille: 'ennemis-objets' }
+      : undefined;
+  }
+
   doree(id: string): CarteDoree | undefined {
     return this.dorees.value().find((carte) => carte.id === id);
   }

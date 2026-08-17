@@ -21,7 +21,14 @@ describe('Ciblage', () => {
   let recu: Reponses | undefined;
 
   /** Une désignation d'exemplaire — le cas courant ; le Marché a son propre test. */
-  const parExemplaire = (libelle: string) => ({ libelle, parType: false });
+  const TOUS = CANDIDATS.map((c) => c.id);
+
+  /** Par défaut, la question accepte tous les candidats fournis au composant. */
+  const parExemplaire = (libelle: string, candidats: readonly number[] = TOUS) => ({
+    libelle,
+    parType: false,
+    candidats,
+  });
 
   async function montrer(designations: string[], options: string[] = []) {
     fixture = TestBed.createComponent(Ciblage);
@@ -29,7 +36,10 @@ describe('Ciblage', () => {
     fixture.componentRef.setInput('demande', {
       carteEnJeu: 7,
       nom: 'Bourreau',
-      plan: { designations: designations.map(parExemplaire), options },
+      plan: {
+        designations: designations.map((libelle) => parExemplaire(libelle)),
+        options: options.map((libelle) => ({ libelle, designations: [] })),
+      },
     });
     fixture.componentInstance.confirme.subscribe((reponses) => (recu = reponses));
     await fixture.whenStable();
@@ -97,6 +107,85 @@ describe('Ciblage', () => {
   });
 
   /**
+   * « Piocher 1 ou Visionner » — l'Archer. Les deux branches ne réclament pas la
+   * même chose : piocher ne demande rien, visionner demande quel ennemi
+   * retourner. La branche écartée ne doit poser aucune question.
+   */
+  it('ne pose que les questions de la branche retenue', async () => {
+    const brancher = async (options: { libelle: string; designations: unknown[] }[]) => {
+      fixture = TestBed.createComponent(Ciblage);
+      fixture.componentRef.setInput('candidats', CANDIDATS);
+      fixture.componentRef.setInput('demande', {
+        carteEnJeu: 7,
+        nom: 'Archer',
+        plan: { designations: [], options },
+      });
+      fixture.componentInstance.confirme.subscribe((reponses) => (recu = reponses));
+      await fixture.whenStable();
+      return fixture.nativeElement as HTMLElement;
+    };
+    const OPTIONS = [
+      { libelle: 'Piocher 1', designations: [] },
+      { libelle: 'Visionner', designations: [parExemplaire('un ennemi face cachée à retourner')] },
+    ];
+
+    // Piocher : l'action part aussitôt la branche retenue.
+    let rendu = await brancher(OPTIONS);
+    await cliquer(rendu, 'Piocher 1');
+    expect(recu).toEqual({ cibles: [], options: [0], types: [] });
+
+    // Visionner : une question de plus, celle de la branche.
+    recu = undefined;
+    rendu = await brancher(OPTIONS);
+    await cliquer(rendu, 'Visionner');
+    expect(recu).toBeUndefined();
+    expect(rendu.querySelector('.ciblage__question')?.textContent).toContain('ennemi face cachée');
+
+    await cliquer(rendu, 'Fermier');
+    expect(recu).toEqual({ cibles: [11], options: [1], types: [] });
+  });
+
+  /**
+   * Retour de partie : « on voit les cartes de l'Hôpital, les cartes en jeu et
+   * celles de la piste ». Chaque question porte la liste de ce qu'elle accepte,
+   * calculée par le moteur — l'écran n'affiche que celle-là.
+   */
+  it('n’offre que les candidats que la question accepte', async () => {
+    fixture = TestBed.createComponent(Ciblage);
+    fixture.componentRef.setInput('candidats', CANDIDATS);
+    fixture.componentRef.setInput('demande', {
+      carteEnJeu: 7,
+      nom: 'Champion',
+      // Seul l'exemplaire 12 convient : les deux autres ne doivent pas paraître.
+      plan: { designations: [parExemplaire('un jeton Bonus Ennemi', [12])], options: [] },
+    });
+    fixture.componentInstance.confirme.subscribe((reponses) => (recu = reponses));
+    await fixture.whenStable();
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(boutons(rendu).map((b) => b.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'Bûcheron en jeu',
+    ]);
+
+    await cliquer(rendu, 'Bûcheron');
+    expect(recu).toEqual({ cibles: [12], options: [], types: [] });
+  });
+
+  it('le dit quand aucune carte ne convient', async () => {
+    fixture = TestBed.createComponent(Ciblage);
+    fixture.componentRef.setInput('candidats', CANDIDATS);
+    fixture.componentRef.setInput('demande', {
+      carteEnJeu: 7,
+      nom: 'Champion',
+      plan: { designations: [parExemplaire('un jeton Bonus Ennemi', [])], options: [] },
+    });
+    await fixture.whenStable();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('.ciblage__vide')?.textContent)
+      .toContain('Aucune carte à désigner');
+  });
+
+  /**
    * Une carte du Marché n'a pas d'exemplaire à désigner : c'est le Marché qu'il
    * faut proposer, pas la table. Offrir les cartes en jeu ici enverrait un
    * identifiant que le moteur ne saurait pas lire.
@@ -111,7 +200,10 @@ describe('Ciblage', () => {
     fixture.componentRef.setInput('demande', {
       carteEnJeu: 7,
       nom: 'Roi Brad',
-      plan: { designations: [{ libelle: 'un OBJET du Marché', parType: true }], options: [] },
+      plan: {
+        designations: [{ libelle: 'un OBJET du Marché', parType: true, candidats: [] }],
+        options: [],
+      },
     });
     fixture.componentInstance.confirme.subscribe((reponses) => (recu = reponses));
     await fixture.whenStable();
@@ -125,6 +217,27 @@ describe('Ciblage', () => {
 
     await cliquer(rendu, 'Bourreau');
     expect(recu).toEqual({ cibles: [], options: [], types: ['bourreau'] });
+  });
+
+  /**
+   * Une question du moteur ne se décline pas : il refuse toute autre action
+   * tant qu'elle tient. Offrir un « renoncer » qui ne renonce à rien mentirait
+   * sur ce qui est possible.
+   */
+  it('n’offre pas de renoncer quand la question vient du moteur', async () => {
+    fixture = TestBed.createComponent(Ciblage);
+    fixture.componentRef.setInput('candidats', CANDIDATS);
+    fixture.componentRef.setInput('renoncable', false);
+    fixture.componentRef.setInput('demande', {
+      carteEnJeu: 0,
+      nom: 'Sorcière Troll',
+      plan: { designations: [parExemplaire('un paysan Humain')], options: [] },
+    });
+    await fixture.whenStable();
+    const rendu = fixture.nativeElement as HTMLElement;
+
+    expect(rendu.querySelector('.ciblage__annuler')).toBeNull();
+    expect(rendu.querySelector('.ciblage__obligatoire')?.textContent).toContain('impose son effet');
   });
 
   it('renoncer n’envoie aucune action', async () => {

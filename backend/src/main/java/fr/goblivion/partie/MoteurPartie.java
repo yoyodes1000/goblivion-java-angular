@@ -73,6 +73,13 @@ public final class MoteurPartie {
         if (!action.type().permiseEn(partie.phase())) {
             throw ActionInterdite.horsPhase(action.type(), partie.phase());
         }
+        // Une question posée bloque tout le reste : reprendre la partie en
+        // laissant une révélation en suspens la fausserait.
+        if (partie.attenteCourante().isPresent()
+                && action.type() != TypeAction.REPONDRE_DESIGNATION) {
+            throw new ActionInterdite("%s attend une designation avant que la partie reprenne."
+                    .formatted(partie.attenteCourante().get().source()));
+        }
 
         switch (action.type()) {
             case CHOISIR_ENTRAINEMENT -> choisirEntrainement(action.exigeCarteDuMarche());
@@ -84,8 +91,24 @@ public final class MoteurPartie {
             case PIVOTER -> pivoter(action.exigeCarteEnJeu(), action);
             case RESOUDRE_COMBAT -> resoudreCombat(action.cibles());
             case COMBATTRE_BOSS -> combattreBoss(action);
+            case REPONDRE_DESIGNATION -> repondreDesignation(action);
             case PHASE_SUIVANTE -> phaseSuivante();
         }
+    }
+
+    /**
+     * Donne à un effet en attente les désignations qui lui manquaient.
+     *
+     * <p>L'effet repart entier — la double passe de l'interprète garantit qu'une
+     * réponse insuffisante ne laisse rien de modifié, et la question reste
+     * posée. Le joueur peut donc se tromper sans conséquence.
+     */
+    private void repondreDesignation(Action action) {
+        EffetEnAttente attente = partie.attenteCourante()
+                .orElseThrow(() -> new ActionInterdite("Aucune designation n'est attendue."));
+
+        interprete.reprendre(attente, choixDe(action));
+        partie.retirerAttente();
     }
 
     // ------------------------------------------------------------------
@@ -167,11 +190,22 @@ public final class MoteurPartie {
 
         partie.retirerDuChampDeBataille(carteEnJeu);
         partie.noter("%s est detruit : la carte quitte la partie.".formatted(partie.nomDe(sacrifice)));
+        // Sacrifier, c'est detruire : le Testament part comme pour toute autre
+        // destruction. L'oublier ici privait le joueur du legs de sa carte.
+        interprete.testament(sacrifice);
 
         partie.consommerAuMarche(acquise.id());
         partie.poserAlHopital(CarteEnJeu.paysan(Famille.DOREES, acquise.id()));
         partie.abandonnerEntrainement();
         partie.noter("%s rejoint l'Hopital : la carte est acquise.".formatted(acquise.nom()));
+
+        // Le Chevalier offre une carte de niveau 1 a qui l'entraine. C'etait le
+        // seul declencheur du vocabulaire que le moteur n'appelait nulle part :
+        // l'effet existait dans les donnees et ne partait jamais.
+        acquise.effets().stream()
+                .filter(effet -> effet.declencheur() == Declencheur.ENTRAINEMENT)
+                .forEach(effet -> interprete.declencherAutomatiquement(effet, null,
+                        "Entrainement de %s".formatted(acquise.nom())));
     }
 
     private void abandonnerEntrainement() {

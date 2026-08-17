@@ -30,6 +30,7 @@ export type TypeAction =
   | 'ECHANGER_GARDE_DU_CORPS'
   | 'POUVOIR_ROI_REINE'
   | 'PIVOTER'
+  | 'REPONDRE_DESIGNATION'
   | 'RESOUDRE_COMBAT'
   | 'COMBATTRE_BOSS'
   | 'PHASE_SUIVANTE';
@@ -63,12 +64,33 @@ export type TypeAction =
 export interface Designation {
   readonly libelle: string;
   readonly parType: boolean;
+  /**
+   * Les exemplaires que cette cible accepte, calculés par le moteur.
+   *
+   * L'écran n'a qu'à filtrer sur cette liste. La déduire lui-même — « un Objet,
+   * donc les cartes de type OBJET en jeu » — reviendrait à tenir une seconde
+   * version des règles de ciblage, qui finirait par proposer une carte que
+   * l'interprète refuse, ou par en cacher une qu'il accepte.
+   */
+  readonly candidats: readonly number[];
+}
+
+/**
+ * Une branche d'un « ou », avec ce qu'elle réclame en propre.
+ *
+ * « Piocher 1 ou Visionner » ne demande rien dans un cas, un ennemi à retourner
+ * dans l'autre. Mettre les deux en commun ferait poser une question sans objet
+ * à qui choisit de piocher.
+ */
+export interface Branche {
+  readonly libelle: string;
+  readonly designations: readonly Designation[];
 }
 
 export interface PlanDeCiblage {
   readonly designations: readonly Designation[];
   /** Les branches d'un « ou » — vide s'il n'y en a pas. */
-  readonly options: readonly string[];
+  readonly options: readonly Branche[];
 }
 
 export interface CarteVue {
@@ -77,6 +99,14 @@ export interface CarteVue {
   readonly famille: Famille;
   /** L'apport **réel**, jetons et forces variables compris — pas la valeur imprimée. */
   readonly force: number;
+  /**
+   * Le jeton Bonus Allié posé sur l'exemplaire, `0` s'il n'y en a pas.
+   *
+   * Déjà compté dans `force`, et pourtant envoyé à part : un total ne dit pas
+   * d'où il vient. Sans lui, le joueur qui vient de désigner à qui donner son
+   * jeton voit un nombre bouger sans savoir que c'est le sien.
+   */
+  readonly jetonBanniere: number;
   readonly pivotee: boolean;
   /**
    * Le type que la carte joue pour cette phase, `null` si elle est elle-même.
@@ -87,6 +117,14 @@ export interface CarteVue {
    */
   readonly copie: string | null;
   readonly plan: PlanDeCiblage;
+  /**
+   * Ce que la carte réclamera si elle **devient Garde du corps**.
+   *
+   * L'Oracle visionne à ce moment-là, le Prêtre ramène un Humain de l'Hôpital.
+   * Les deux partent d'un clic du joueur, donc leurs désignations peuvent
+   * voyager avec la demande — mais il faut les lui demander avant.
+   */
+  readonly planEchange: PlanDeCiblage;
   /**
    * Vrai si la carte a quelque chose à déclencher quand on la pivote.
    *
@@ -111,6 +149,19 @@ export interface EnnemiVue {
   readonly revelee: boolean;
   readonly force: number;
   readonly jetonEnnemi: number;
+}
+
+/**
+ * Une question que le moteur pose, sans que le joueur l'ait demandée.
+ *
+ * Un ennemi révélé exige de désigner une carte, et le joueur ne pouvait pas le
+ * prévoir : il n'avait rien à joindre à sa demande. Tant que cette question est
+ * là, le moteur refuse toute autre action — l'écran doit donc la poser avant
+ * quoi que ce soit d'autre.
+ */
+export interface DesignationAttendue {
+  readonly source: string;
+  readonly plan: PlanDeCiblage;
 }
 
 export interface EtatPartie {
@@ -147,6 +198,8 @@ export interface EtatPartie {
   readonly gardeDuCorpsEchange: boolean;
   readonly pouvoirRoiReineUtilise: boolean;
   readonly jetonsBonusAllie: number;
+  /** La question en suspens, `null` s'il n'y en a pas. */
+  readonly designationAttendue: DesignationAttendue | null;
   readonly journal: readonly string[];
 }
 

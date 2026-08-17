@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 
-import { Cartes } from '../cartes/cartes';
+import { Cartes, urlDos, urlScan } from '../cartes/cartes';
 import type { CarteAffichable, CarteDoree, OffreMarche } from '../cartes/modele';
 import {
   Ciblage,
@@ -17,9 +17,10 @@ import {
   type Reponses,
 } from '../partie/ciblage/ciblage';
 import { Commandes } from '../partie/commandes/commandes';
-import type { Difficulte, TypeAction } from '../partie/modele';
+import type { Difficulte, EnnemiVue, PlanDeCiblage, TypeAction } from '../partie/modele';
 import { NouvellePartie } from '../partie/nouvelle-partie/nouvelle-partie';
 import { Partie } from '../partie/partie';
+import { Repartition } from '../partie/repartition/repartition';
 import { BandeauPhase } from './bandeau-phase/bandeau-phase';
 import { CartesDorees } from './cartes-dorees/cartes-dorees';
 import { CartesRoyales } from './cartes-royales/cartes-royales';
@@ -29,6 +30,7 @@ import { EntrainementEnCours } from './entrainement-en-cours/entrainement-en-cou
 import { PileMonstres } from './pile-monstres/pile-monstres';
 import { PlateauAvancee } from './plateau-avancee/plateau-avancee';
 import { PortesChateau } from './portes-chateau/portes-chateau';
+import type { EnnemiSurPlateau } from './ennemi-sur-plateau';
 import { ZoneJeu, type CarteEnJeuVue } from './zone-jeu/zone-jeu';
 
 /**
@@ -63,6 +65,7 @@ import { ZoneJeu, type CarteEnJeuVue } from './zone-jeu/zone-jeu';
     PileMonstres,
     PlateauAvancee,
     PortesChateau,
+    Repartition,
     ZoneJeu,
   ],
   templateUrl: './plateau.html',
@@ -73,6 +76,37 @@ export class Plateau {
   private readonly partie = inject(Partie);
 
   protected readonly etat = this.partie.etat;
+
+  /**
+   * Vrai quand le joueur a demandé à revenir choisir une difficulté.
+   *
+   * Le moteur, lui, garde sa partie finie : c'est un souhait d'affichage, pas
+   * un état de jeu. Il se lève tout seul dès qu'une nouvelle partie arrive.
+   */
+  private readonly choixDemande = signal(false);
+
+  /** La table, ou `undefined` quand c'est l'écran de mise en place qu'il faut montrer. */
+  protected readonly tableVisible = computed(() =>
+    this.choixDemande() ? undefined : this.etat(),
+  );
+
+  /** Rejouer au même niveau : la sortie la plus courante après une défaite. */
+  protected rejouer(): void {
+    const difficulte = this.etat()?.difficulte;
+    if (difficulte) {
+      this.partie.demarrer(difficulte);
+    }
+  }
+
+  protected revenirAuChoix(): void {
+    this.choixDemande.set(true);
+  }
+
+  protected readonly LIBELLES_DIFFICULTE: Readonly<Record<Difficulte, string>> = {
+    FACILE: 'Facile',
+    NORMAL: 'Normal',
+    DIFFICILE: 'Difficile',
+  };
   protected readonly refus = this.partie.refus;
 
   protected readonly roiReine = computed(() => {
@@ -117,12 +151,43 @@ export class Plateau {
               ...carte,
               id: vue.id,
               force: vue.force,
+              jetonBanniere: vue.jetonBanniere,
               pivotee: vue.pivotee,
               agitAuPivot: vue.agitAuPivot,
             },
           ]
         : [];
     }),
+  );
+
+  /**
+   * Un ennemi prêt à être montré, face cachée comprise.
+   *
+   * Le backend n'envoie pas l'identité d'une carte non révélée : il n'y a donc
+   * rien à résoudre dans le catalogue, et le dos de la famille suffit. C'est la
+   * règle du plateau Ennemi (§7) qui tient l'affichage, pas l'inverse.
+   */
+  private ennemiVisible(vue: EnnemiVue): EnnemiSurPlateau {
+    const carte = vue.carte ? this.cartes.ennemi(vue.carte) : undefined;
+    return {
+      id: vue.id,
+      nom: carte?.nom ?? 'Ennemi face cachée',
+      image: carte ? urlScan('ennemis-objets', carte.scan) : urlDos('ennemis-objets'),
+      revelee: vue.revelee,
+      force: vue.force,
+      jetonEnnemi: vue.jetonEnnemi,
+    };
+  }
+
+  /** Les trois cases de la piste, dans l'ordre d'approche — une case vide vaut `null`. */
+  protected readonly pisteVue = computed<readonly (EnnemiSurPlateau | null)[]>(() =>
+    (this.etat()?.piste ?? [null, null, null]).map((vue) =>
+      vue ? this.ennemiVisible(vue) : null,
+    ),
+  );
+
+  protected readonly portesVue = computed<readonly EnnemiSurPlateau[]>(() =>
+    (this.etat()?.portes ?? []).map((vue) => this.ennemiVisible(vue)),
   );
 
   protected readonly cartesHopital = computed<CarteAffichable[]>(() =>
@@ -174,11 +239,40 @@ export class Plateau {
   });
 
   protected demarrer(difficulte: Difficulte): void {
+    this.choixDemande.set(false);
     this.partie.demarrer(difficulte);
   }
 
+  /**
+   * Un combat perdu se répartit, il ne se subit pas.
+   *
+   * Tout ennemi dont on couvre la force tombe quand même (§8). Envoyer
+   * l'action sans cible reviendrait à n'abattre personne et à laisser chaque
+   * survivant empocher un jeton — une décision prise à la place du joueur, et
+   * la pire de toutes.
+   */
   protected commande(type: TypeAction): void {
+    if (type === 'RESOUDRE_COMBAT' && this.combatPerdu()) {
+      this.repartitionOuverte.set(true);
+      return;
+    }
     this.partie.jouerSimple(type);
+  }
+
+  protected readonly repartitionOuverte = signal(false);
+
+  protected readonly combatPerdu = computed(() => {
+    const etat = this.etat();
+    return !!etat && etat.portes.length > 0 && etat.forceAlliee < etat.forceEnnemie;
+  });
+
+  protected repartir(cibles: readonly number[]): void {
+    this.repartitionOuverte.set(false);
+    this.partie.jouer({ type: 'RESOUDRE_COMBAT', cibles });
+  }
+
+  protected annulerRepartition(): void {
+    this.repartitionOuverte.set(false);
   }
 
   protected choisirEntrainement(carte: CarteDoree): void {
@@ -195,6 +289,15 @@ export class Plateau {
   private readonly ciblageDemande = signal<Ciblee | null>(null);
 
   /**
+   * L'action que les réponses en cours serviront.
+   *
+   * Deux actions de carte réclament des désignations — pivoter, et échanger le
+   * Garde du corps. Sans retenir laquelle, les réponses de l'Oracle partiraient
+   * en Pivoter.
+   */
+  private readonly actionCiblee = signal<'PIVOTER' | 'ECHANGER_GARDE_DU_CORPS'>('PIVOTER');
+
+  /**
    * La question disparaît dès que la partie s'achève.
    *
    * Une victoire ou une défaite peut tomber pendant qu'on demande une
@@ -202,8 +305,23 @@ export class Plateau {
    * répondre n'aurait plus de sens : le moteur refuse toute action sur une
    * partie terminée, et l'écran de fin doit rester seul.
    */
-  protected readonly ciblageEnCours = computed<Ciblee | null>(() =>
-    this.etat()?.resultat === 'EN_COURS' ? this.ciblageDemande() : null,
+  protected readonly ciblageEnCours = computed<Ciblee | null>(() => {
+    const etat = this.etat();
+    if (etat?.resultat !== 'EN_COURS') return null;
+
+    // Une question du moteur passe avant tout : tant qu'elle est là, il refuse
+    // le reste, et le joueur n'a rien d'autre à faire que d'y répondre. Elle ne
+    // vient pas d'un clic, donc elle ne peut pas attendre son tour.
+    const attendue = etat.designationAttendue;
+    if (attendue) {
+      return { carteEnJeu: 0, nom: attendue.source, plan: attendue.plan };
+    }
+    return this.ciblageDemande();
+  });
+
+  /** Vrai si la question posée vient du moteur, et non d'une carte qu'on pivote. */
+  private readonly questionDuMoteur = computed(
+    () => this.etat()?.designationAttendue != null && this.etat()?.resultat === 'EN_COURS',
   );
 
   /**
@@ -232,9 +350,40 @@ export class Plateau {
         return affichable ? [{ id: vue.id, nom: affichable.nom, zone }] : [];
       };
 
+    /*
+      Les ennemis encore face cachée sont désignables aussi : la Vision demande
+      lequel retourner. On ne peut pas les nommer — le backend ne dit pas ce que
+      le joueur n'a pas le droit de voir — donc c'est leur **position** qui les
+      distingue, et c'est bien elle qui compte : celui des Portes arrive au
+      prochain combat, celui du fond de piste dans trois tours.
+    */
+    const auxPortes: Candidat[] = etat.portes.map((ennemi, index) => ({
+      id: ennemi.id,
+      nom: ennemi.revelee
+        ? (this.cartes.ennemi(ennemi.carte ?? '')?.nom ?? 'Ennemi')
+        : `Ennemi caché — Portes, place ${index + 1}`,
+      zone: ennemi.jetonEnnemi > 0 ? `aux Portes, jeton +${ennemi.jetonEnnemi}` : 'aux Portes',
+    }));
+
+    const caches: Candidat[] = [
+      ...etat.piste.flatMap((ennemi, index) =>
+        ennemi && !ennemi.revelee
+          ? [
+              {
+                id: ennemi.id,
+                nom: `Ennemi caché — piste, case ${index + 1}`,
+                zone: 'sur la piste',
+              },
+            ]
+          : [],
+      ),
+    ];
+
     return [
       ...etat.champDeBataille.flatMap((vue) => nommer(vue.famille, vue.carte, 'en jeu')(vue)),
       ...etat.hopital.flatMap((vue) => nommer(vue.famille, vue.carte, 'Hôpital')(vue)),
+      ...auxPortes,
+      ...caches,
     ];
   });
 
@@ -254,6 +403,31 @@ export class Plateau {
       return;
     }
 
+    this.actionCiblee.set('PIVOTER');
+    this.ouvrirCiblage(carteEnJeu, plan);
+  }
+
+  /**
+   * Échanger le Garde du corps peut réclamer, lui aussi.
+   *
+   * L'Oracle visionne en prenant l'emplacement, le Prêtre ramène un Humain de
+   * l'Hôpital. Envoyer l'échange sans leur réponse le faisait refuser en bloc :
+   * la carte devenait impossible à poser.
+   */
+  protected echanger(carteEnJeu: number): void {
+    const vue = this.etat()?.champDeBataille.find((carte) => carte.id === carteEnJeu);
+    const plan = vue?.planEchange;
+
+    if (!plan || (plan.designations.length === 0 && plan.options.length === 0)) {
+      this.partie.jouer({ type: 'ECHANGER_GARDE_DU_CORPS', carteEnJeu });
+      return;
+    }
+    this.actionCiblee.set('ECHANGER_GARDE_DU_CORPS');
+    this.ouvrirCiblage(carteEnJeu, plan);
+  }
+
+  private ouvrirCiblage(carteEnJeu: number, plan: PlanDeCiblage): void {
+    const vue = this.etat()?.champDeBataille.find((carte) => carte.id === carteEnJeu);
     const affichable = vue ? this.cartes.afficher(vue.famille, vue.carte) : undefined;
     this.ciblageDemande.set({
       carteEnJeu,
@@ -263,12 +437,24 @@ export class Plateau {
   }
 
   protected pivoterAvec(reponses: Reponses): void {
+    // Répondre au moteur n'est pas pivoter une carte : l'effet est déjà parti,
+    // il ne lui manquait que sa cible.
+    if (this.questionDuMoteur()) {
+      this.partie.jouer({
+        type: 'REPONDRE_DESIGNATION',
+        cibles: reponses.cibles,
+        options: reponses.options,
+        types: reponses.types,
+      });
+      return;
+    }
+
     const demande = this.ciblageEnCours();
     if (!demande) return;
 
     this.ciblageDemande.set(null);
     this.partie.jouer({
-      type: 'PIVOTER',
+      type: this.actionCiblee(),
       carteEnJeu: demande.carteEnJeu,
       cibles: reponses.cibles,
       options: reponses.options,
@@ -282,10 +468,6 @@ export class Plateau {
 
   protected sacrifier(carteEnJeu: number): void {
     this.partie.jouer({ type: 'CONCLURE_ENTRAINEMENT', carteEnJeu });
-  }
-
-  protected echanger(carteEnJeu: number): void {
-    this.partie.jouer({ type: 'ECHANGER_GARDE_DU_CORPS', carteEnJeu });
   }
 
   private permise(type: TypeAction): boolean {

@@ -38,3 +38,46 @@
   border: 1px dashed #52606d;
   border-radius: 0.3rem;
 }
+
+/*
+  La carte remplit sa case. `position: relative` n'est pas décoratif : une image
+  `ngSrc` en `fill` se positionne sur le premier ancêtre positionné, et sans lui
+  elle se cale sur la fenêtre — un dos de carte plein écran.
+*/
+.avancee__carte {
+  position: relative;
+  inline-size: 100%;
+  block-size: 100%;
+  border-radius: 0.3rem;
+  overflow: hidden;
+}
+
+.avancee__carte img {
+  object-fit: cover;
+}
+
+/* Une carte encore face cachée s'assombrit : elle est là, mais elle ne dit rien. */
+.avancee__carte--cachee img {
+  filter: brightness(0.85);
+}
+
+.avancee__case--occupee {
+  border-style: solid;
+}
+
+.avancee__force {
+  position: absolute;
+  inset-block-end: 0.15rem;
+  inset-inline-end: 0.15rem;
+  z-index: 1;
+
+  min-inline-size: 1.2rem;
+  padding: 0.05rem 0.25rem;
+
+  border-radius: 0.2rem;
+  background: #9b3b3b;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+}

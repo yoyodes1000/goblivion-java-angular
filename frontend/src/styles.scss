@@ -48,3 +48,17 @@ body {
   --fond-phase: #b91c1c; /* rouge — contraste 6.5:1 sur blanc */
   --texte-phase: #ffffff;
 }
+
+/*
+  Une carte Ennemi/Objet vaincue est pivotee a 180° et rejoint les zones du
+  joueur : sa moitie *objet* passe en haut (§4). Une seule carte physique, un
+  seul scan — c'est donc l'affichage qui tourne, comme la main du joueur le
+  ferait sur la table.
+
+  Regle globale plutot que dupliquee : trois zones montrent des cartes du
+  joueur — le champ de bataille, l'Hopital et le Garde du corps — et une carte
+  gagnee peut se trouver dans les trois.
+*/
+.carte--objet-en-haut {
+  rotate: 180deg;
+}

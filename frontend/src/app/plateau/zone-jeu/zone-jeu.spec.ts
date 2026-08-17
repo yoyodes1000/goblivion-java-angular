@@ -10,13 +10,20 @@ describe('ZoneJeu', () => {
     }).compileComponents();
   });
 
-  function carte(id: number, force: number, pivotee = false, agitAuPivot = true): CarteEnJeuVue {
+  function carte(
+    id: number,
+    force: number,
+    pivotee = false,
+    agitAuPivot = true,
+    jetonBanniere = 0,
+  ): CarteEnJeuVue {
     return {
       id,
       nom: `Carte ${id}`,
       scan: `c${id}.webp`,
       famille: 'bleues',
       force,
+      jetonBanniere,
       pivotee,
       agitAuPivot,
     };
@@ -25,6 +32,11 @@ describe('ZoneJeu', () => {
   /** Une carte sans action : rien à déclencher, donc pas de bouton Pivoter. */
   function carteSansAction(id: number, force: number): CarteEnJeuVue {
     return carte(id, force, false, false);
+  }
+
+  /** Une récompense gagnée sur un ennemi : même carte physique, autre moitié. */
+  function recompense(id: number, force: number): CarteEnJeuVue {
+    return { ...carte(id, force), famille: 'ennemis-objets' };
   }
 
   async function monter(
@@ -120,6 +132,26 @@ describe('ZoneJeu', () => {
     expect((fixture.nativeElement as HTMLElement).querySelectorAll('.jeu--pivotee')).toHaveLength(1);
   });
 
+  /**
+   * Retour de partie : « après avoir sacrifié une carte, on ne peut plus
+   * changer le garde du corps ». Ce n'était pas le sacrifice, c'était l'
+   * activation — et l'écran faisait disparaître le bouton sans rien dire, ce
+   * qui se lit comme une panne. La règle est juste, sa raison doit être visible.
+   */
+  it('dit pourquoi une carte activée n’offre plus rien', async () => {
+    const fixture = await monter('combat', [carte(1, 2, true)], { pivot: true, echange: true });
+
+    const mention = (fixture.nativeElement as HTMLElement).querySelector('.jeu__indisponible');
+    expect(mention?.textContent?.trim()).toBe('Activée pour cette phase');
+  });
+
+  /** Hors des phases qui offrent ces actions, il n'y a rien à expliquer. */
+  it('n’explique rien quand aucune action n’était proposée', async () => {
+    const fixture = await monter('avancee', [carte(1, 2, true)]);
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('.jeu__indisponible')).toBeNull();
+  });
+
   it('désigne l’exemplaire visé, pas son type', async () => {
     // Deux Fermiers portent le même nom : c'est l'identité qui les distingue,
     // et c'est elle qui doit partir au moteur.
@@ -134,5 +166,49 @@ describe('ZoneJeu', () => {
     await fixture.whenStable();
 
     expect(vises).toEqual([12]);
+  });
+
+  /**
+   * L'ennemi et l'objet sont les deux moitiés tête-bêche d'une seule carte
+   * physique (§4). Vaincu, l'ennemi est pivoté à 180° : c'est l'objet qui passe
+   * en haut. Sans cette rotation, le joueur verrait un gobelin dans son armée
+   * au lieu de la récompense qu'il a gagnée.
+   */
+  it('retourne la carte gagnée sur un ennemi', async () => {
+    const fixture = await monter('combat', [recompense(1, 2)]);
+    const image = (fixture.nativeElement as HTMLElement).querySelector('.jeu__scan img');
+
+    expect(image?.classList.contains('carte--objet-en-haut')).toBe(true);
+  });
+
+  /**
+   * Retour de partie : « j'ai l'impression que les bonus ne sont pas
+   * appliqués ». Ils l'étaient — la force les compte depuis le début — mais
+   * rien sur la carte ne disait où le jeton était tombé. Les ennemis portent
+   * le leur aux Portes ; les cartes du joueur ne portaient rien.
+   */
+  it('montre le jeton Bonus Allié posé sur une carte', async () => {
+    const fixture = await monter('combat', [carte(1, 4, false, true, 2)]);
+    const jeton = (fixture.nativeElement as HTMLElement).querySelector('.jeu__jeton');
+
+    expect(jeton?.textContent?.trim()).toBe('+2');
+    // La force affichée reste le total : le badge dit d'où viennent les points,
+    // il ne les ajoute pas une seconde fois.
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.jeu__force')?.textContent?.trim(),
+    ).toBe('4');
+  });
+
+  it('n’affiche aucun jeton sur une carte qui n’en porte pas', async () => {
+    const fixture = await monter('combat', [carte(1, 2)]);
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('.jeu__jeton')).toBeNull();
+  });
+
+  it('laisse les cartes du joueur dans leur sens', async () => {
+    const fixture = await monter('combat', [carte(1, 2)]);
+    const image = (fixture.nativeElement as HTMLElement).querySelector('.jeu__scan img');
+
+    expect(image?.classList.contains('carte--objet-en-haut')).toBe(false);
   });
 });

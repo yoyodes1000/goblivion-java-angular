@@ -82,6 +82,15 @@ public final class Partie {
 
     private final List<String> journal = new ArrayList<>();
 
+    /**
+     * Les effets du moteur qui attendent une désignation du joueur.
+     *
+     * <p>Une file, et non un seul : une avancée peut révéler plusieurs ennemis
+     * exigeants d'affilée. Ils se résolvent dans l'ordre d'apparition, sans
+     * quoi le joueur répondrait à une question en croyant répondre à l'autre.
+     */
+    private final Deque<EffetEnAttente> enAttente = new ArrayDeque<>();
+
     Partie(Catalogue catalogue, Random alea, Difficulte difficulte, RoiReine role) {
         this.catalogue = catalogue;
         this.alea = alea;
@@ -183,6 +192,31 @@ public final class Partie {
 
     public boolean gardeDuCorpsEchange() {
         return gardeDuCorpsEchange;
+    }
+
+    /** L'effet qui attend une réponse, s'il y en a un. */
+    public Optional<EffetEnAttente> attenteCourante() {
+        return Optional.ofNullable(enAttente.peekFirst());
+    }
+
+    void mettreEnAttente(EffetEnAttente effet) {
+        enAttente.addLast(effet);
+        noter("%s attend une designation avant de partir.".formatted(effet.source()));
+    }
+
+    void retirerAttente() {
+        enAttente.pollFirst();
+    }
+
+    /**
+     * Une partie perdue n'a plus de question à poser.
+     *
+     * <p>Sans ce nettoyage, une défaite prononcée au milieu d'une révélation
+     * laisserait une attente que plus rien ne pourrait résoudre — le moteur
+     * refuse toute action sur une partie terminée, y compris la réponse.
+     */
+    void viderLesAttentes() {
+        enAttente.clear();
     }
 
     public List<String> journal() {
@@ -411,6 +445,10 @@ public final class Partie {
         if (ressources <= 0 && resultat == Resultat.EN_COURS) {
             resultat = Resultat.DEFAITE;
             noter("Les ressources sont tombees a zero : partie perdue.");
+            // Plus rien a demander : le moteur refuse toute action sur une
+            // partie terminee, y compris la reponse a une question restee en
+            // suspens. La laisser bloquerait l'ecran de fin.
+            viderLesAttentes();
         }
     }
 
@@ -617,21 +655,140 @@ public final class Partie {
      *
      * @return la carte révélée, ou {@code null} s'il n'y avait rien à retourner
      */
-    CarteEnJeu revelerParVision() {
+    /**
+     * Les exemplaires qu'une cible accepte, ici et maintenant.
+     *
+     * <p>C'est le moteur qui répond, et c'est tout l'enjeu : l'interface qui
+     * déduirait la liste tiendrait une seconde version des règles de ciblage, et
+     * finirait par proposer une carte que l'interprète refuse — ou par en cacher
+     * une qu'il accepte. Le Champion, dont la cible est un ennemi aux Portes,
+     * n'était pas jouable pour cette raison exacte.
+     */
+    public List<Long> candidatsPour(fr.goblivion.effets.Cible cible) {
+        return switch (cible) {
+            case UNE_CARTE_EN_JEU -> identites(champDeBataille);
+            case UNE_CARTE_HOPITAL -> identites(hopital);
+
+            case UN_OBJET -> identites(champDeBataille.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.OBJET)
+                    .toList());
+            case UN_PAYSAN_HUMAIN -> identites(champDeBataille.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.HUMAIN)
+                    .toList());
+            case UNE_CARTE_DE_FORCE_1_ET_PLUS -> identites(champDeBataille.stream()
+                    .filter(carte -> forceEffective(carte) >= 1)
+                    .toList());
+
+            // Le Champion vise un ennemi aux Portes, pas une carte du joueur —
+            // et seulement un qui porte quelque chose a lui arracher.
+            case UN_JETON_ENNEMI -> identites(portes.stream()
+                    .filter(ennemi -> ennemi.jetonEnnemi() > 0)
+                    .toList());
+
+            case UN_ENNEMI_CACHE -> identites(ennemisCaches());
+
+            // Le Chapeau magique copie l'action d'une autre carte, jouee ou non.
+            case UNE_ACTION_PIVOTER -> identites(champDeBataille.stream()
+                    .filter(this::porteUneActionCopiable)
+                    .toList());
+
+            // Rien a designer : la regle choisit seule, ou la brique n'est pas
+            // encore jouable.
+            case SOI_MEME, HUMAIN_LE_PLUS_FORT, PROCHAINE_DU_CHATEAU,
+                    CHAQUE_OBJET, CHAQUE_PAYSAN_HUMAIN, CHAQUE_CARTE_BLEUE,
+                    UNE_CARTE_ROYALE -> List.of();
+        };
+    }
+
+    /**
+     * Les mêmes conditions, appliquées à l'Hôpital.
+     *
+     * <p>Le Forgeron ramène « un Objet » — de l'Hôpital, pas de la table. La
+     * cible ne dit pas où chercher, c'est l'effet qui le sait.
+     */
+    public List<Long> candidatsHopitalPour(fr.goblivion.effets.Cible cible) {
+        return switch (cible) {
+            case UNE_CARTE_HOPITAL -> identites(hopital);
+            case UN_OBJET -> identites(hopital.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.OBJET)
+                    .toList());
+            case UN_PAYSAN_HUMAIN -> identites(hopital.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.HUMAIN)
+                    .toList());
+            default -> List.of();
+        };
+    }
+
+    /** Ce que le plan de ciblage interroge pour savoir quoi proposer au joueur. */
+    public fr.goblivion.effets.PlanDeCiblage.Eligibles eligibles() {
+        return new fr.goblivion.effets.PlanDeCiblage.Eligibles() {
+            @Override
+            public List<Long> pour(fr.goblivion.effets.Cible cible) {
+                return candidatsPour(cible);
+            }
+
+            @Override
+            public List<Long> aLHopital(fr.goblivion.effets.Cible cible) {
+                return candidatsHopitalPour(cible);
+            }
+
+            @Override
+            public int combien(fr.goblivion.effets.Quantite quantite) {
+                return repetitions(quantite);
+            }
+        };
+    }
+
+    /**
+     * Une carte dont l'action Pivoter peut être copiée.
+     *
+     * <p>Une action de copie en est exclue : copier une copie n'aurait pas de
+     * fin, et deux Chapeaux magiques en jeu se renverraient l'un à l'autre.
+     */
+    public boolean porteUneActionCopiable(CarteEnJeu carte) {
+        return actionPivoterDe(carte).isPresent();
+    }
+
+    /** L'action Pivoter d'une carte, s'il y en a une à copier. */
+    public Optional<EffetCarte> actionPivoterDe(CarteEnJeu carte) {
+        return effetsDe(carte).stream()
+                .filter(effet -> effet.declencheur() == Declencheur.PIVOTER)
+                .filter(effet -> !(effet.effet() instanceof Effet.Copier))
+                .findFirst();
+    }
+
+    /** Combien de fois un « pour chaque » se répète, ici et maintenant. */
+    public int repetitions(fr.goblivion.effets.Quantite quantite) {
+        return switch (quantite) {
+            case OBJET_A_L_HOPITAL -> (int) hopital.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.OBJET)
+                    .count();
+            case PAYSAN_HUMAIN_EN_JEU -> (int) champDeBataille.stream()
+                    .filter(carte -> typeDe(carte).orElse(null) == TypeCarte.HUMAIN)
+                    .count();
+            case SOLDAT_EN_JEU -> nombreDeSoldats();
+            case PIVOTER_UTILISE -> (int) champDeBataille.stream()
+                    .filter(CarteEnJeu::pivotee)
+                    .count();
+        };
+    }
+
+    private static List<Long> identites(List<CarteEnJeu> cartes) {
+        return cartes.stream().map(CarteEnJeu::id).toList();
+    }
+
+    /** Les ennemis encore face cachée, des Portes vers le fond de la piste. */
+    public List<CarteEnJeu> ennemisCaches() {
         // piste() rend des cases, et une case vide vaut null.
         return java.util.stream.Stream.concat(portes.stream(), piste().stream())
                 .filter(java.util.Objects::nonNull)
                 .filter(ennemi -> !ennemi.revelee())
-                .findFirst()
-                .map(ennemi -> {
-                    ennemi.reveler(tour);
-                    noter("Vision : un ennemi est retourne — son action ne partira pas au combat.");
-                    return ennemi;
-                })
-                .orElseGet(() -> {
-                    noter("Vision sans effet : aucun ennemi face cachee.");
-                    return null;
-                });
+                .toList();
+    }
+
+    void revelerParVision(CarteEnJeu ennemi) {
+        ennemi.reveler(tour);
+        noter("Vision : un ennemi est retourne — son action ne partira pas au combat.");
     }
 
     /** Le Hochet royal remet la carte royale à l'endroit : le pouvoir redevient jouable. */

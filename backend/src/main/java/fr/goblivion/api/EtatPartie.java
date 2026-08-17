@@ -54,7 +54,18 @@ public record EtatPartie(
         boolean gardeDuCorpsEchange,
         boolean pouvoirRoiReineUtilise,
         int jetonsBonusAllie,
+        DesignationAttendue designationAttendue,
         List<String> journal) {
+
+    /**
+     * La question que le moteur pose au joueur, {@code null} s'il n'y en a pas.
+     *
+     * <p>Elle ne vient pas d'une action qu'il aurait demandée : un ennemi
+     * révélé exige de désigner une carte, et le joueur ne pouvait pas le
+     * prévoir. Tant qu'elle est là, le moteur refuse tout le reste.
+     */
+    public record DesignationAttendue(String source, PlanDeCiblage plan) {
+    }
 
     public static EtatPartie de(Partie partie) {
         return new EtatPartie(
@@ -86,6 +97,10 @@ public record EtatPartie(
                 partie.gardeDuCorpsEchange(),
                 partie.pouvoirRoiReineUtilise(),
                 partie.jetonsBonusAllie(),
+                partie.attenteCourante()
+                        .map(attente -> new DesignationAttendue(attente.source(),
+                                PlanDeCiblage.de(attente.porteur().effet(), partie.eligibles())))
+                        .orElse(null),
                 partie.journal());
     }
 
@@ -96,6 +111,11 @@ public record EtatPartie(
      * @param carte l'identifiant de <em>type</em>, qui renvoie au catalogue du frontend
      * @param force l'apport réel, jetons et forces variables compris — le
      *              frontend ne peut pas le déduire de la valeur imprimée
+     * @param jetonBanniere le jeton Bonus Allié posé sur l'exemplaire, 0 sinon.
+     *                      Il est <strong>déjà compté</strong> dans {@code force} et
+     *                      voyage pourtant à part : un total ne dit pas d'où il
+     *                      vient, et le joueur qui vient de choisir à qui donner
+     *                      le jeton a besoin de le voir arriver quelque part
      * @param copie le type que la carte joue pour cette phase, {@code null} si
      *              elle est elle-même — le Joker, et lui seul aujourd'hui
      * @param plan        ce que son action réclamera si on la pivote, calculé
@@ -107,13 +127,17 @@ public record EtatPartie(
      *                    deux ont un plan vide. Sans ce drapeau, l'interface
      *                    proposerait de pivoter une carte qui ne ferait rien.
      */
-    public record CarteVue(long id, String carte, Famille famille, int force, boolean pivotee,
-            String copie, PlanDeCiblage plan, boolean agitAuPivot) {
+    public record CarteVue(long id, String carte, Famille famille, int force, int jetonBanniere,
+            boolean pivotee, String copie, PlanDeCiblage plan, PlanDeCiblage planEchange,
+            boolean agitAuPivot) {
 
         static CarteVue de(Partie partie, CarteEnJeu carte) {
             return new CarteVue(carte.id(), carte.carteId(), carte.famille(),
-                    partie.forceEffective(carte), carte.pivotee(), carte.copie(),
-                    planDe(partie, carte), agitAuPivot(partie, carte));
+                    partie.forceEffective(carte), carte.jetonBanniere(),
+                    carte.pivotee(), carte.copie(),
+                    planDe(partie, carte, Declencheur.PIVOTER),
+                    planDe(partie, carte, Declencheur.GARDE_DU_CORPS),
+                    agitAuPivot(partie, carte));
         }
 
         private static boolean agitAuPivot(Partie partie, CarteEnJeu carte) {
@@ -122,18 +146,24 @@ public record EtatPartie(
         }
 
         /**
-         * Le plan de l'action que le joueur peut déclencher lui-même.
+         * Le plan d'une action que le joueur déclenche lui-même.
          *
-         * <p>Seul {@code PIVOTER} est concerné : c'est la seule action de carte
-         * dont l'effet réclame des désignations au moment du clic. Ce qu'un
-         * Testament ou une révélation demanderaient ne regarde pas l'interface,
-         * puisque le joueur n'a pas la main à ce moment-là.
+         * <p>Deux déclencheurs le sont : pivoter la carte, et l'échanger contre
+         * le Garde du corps. Les deux partent d'un clic, donc les désignations
+         * peuvent voyager avec la demande.
+         *
+         * <p>L'Oracle l'a montré : sa Vision part quand il <em>devient</em>
+         * Garde du corps, et tant que seul {@code PIVOTER} portait un plan,
+         * l'échange était refusé en bloc faute de réponse. Un Testament ou une
+         * révélation, eux, ne regardent pas l'interface — le joueur n'a pas la
+         * main à ce moment-là, et c'est l'attente du moteur qui prend le relais.
          */
-        private static PlanDeCiblage planDe(Partie partie, CarteEnJeu carte) {
+        private static PlanDeCiblage planDe(Partie partie, CarteEnJeu carte,
+                Declencheur declencheur) {
             return partie.effetsDe(carte).stream()
-                    .filter(effet -> effet.declencheur() == Declencheur.PIVOTER)
+                    .filter(effet -> effet.declencheur() == declencheur)
                     .findFirst()
-                    .map(effet -> PlanDeCiblage.de(effet.effet()))
+                    .map(effet -> PlanDeCiblage.de(effet.effet(), partie.eligibles()))
                     .orElseGet(PlanDeCiblage::vide);
         }
     }

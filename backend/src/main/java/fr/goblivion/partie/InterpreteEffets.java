@@ -9,6 +9,7 @@ import fr.goblivion.effets.Cible;
 import fr.goblivion.effets.Declencheur;
 import fr.goblivion.effets.Effet;
 import fr.goblivion.effets.EffetCarte;
+import fr.goblivion.effets.PlanDeCiblage;
 
 /**
  * Exécute la transcription d'une carte.
@@ -135,11 +136,25 @@ class InterpreteEffets {
      * un effet <em>non appliqué</em>, jamais un effet à moitié appliqué.
      */
     void declencherAutomatiquement(EffetCarte porte, CarteEnJeu source, String quoi) {
+        // Un effet qui réclame une désignation ne peut pas se resoudre seul, et
+        // choisir a la place du joueur quel paysan meurt ne serait pas la meme
+        // partie. Il se met en attente, et la partie ne repart qu'apres reponse.
+        if (!PlanDeCiblage.de(porte.effet()).neDemandeRien()) {
+            partie.mettreEnAttente(new EffetEnAttente(quoi, porte));
+            return;
+        }
         try {
             executer(porte, source, Choix.aucun());
         } catch (ActionInterdite refus) {
+            // Reste ce qui n'est pas encore jouable : la, il n'y a rien a
+            // demander, et bloquer le tour ne servirait personne.
             partie.noter("%s : effet non applique — %s".formatted(quoi, refus.getMessage()));
         }
+    }
+
+    /** Rejoue un effet mis en attente, avec les réponses que le joueur a fini par donner. */
+    void reprendre(EffetEnAttente attente, Choix choix) {
+        executer(attente.porteur(), null, choix);
     }
 
     /**
@@ -178,7 +193,7 @@ class InterpreteEffets {
             case Effet.Defausser e -> defausser(e.nombre(), passe);
 
             case Effet.JetonBanniere e -> ciblesDe(e.cible(), source, passe)
-                    .forEach(carte -> siApplique(passe, () -> carte.ajouterJetonBanniere(e.valeur())));
+                    .forEach(carte -> siApplique(passe, () -> poserJeton(carte, e.valeur())));
             case Effet.JetonEnnemi e -> siApplique(passe,
                     () -> exigerSource(source).attribuerJetonEnnemi(
                             exigerSource(source).jetonEnnemi() + e.valeur()));
@@ -204,17 +219,19 @@ class InterpreteEffets {
             // une interface, les copies et les durees demandent au moteur de
             // savoir defaire ce qu'il a fait. Refuser franchement vaut mieux
             // qu'executer a moitie.
-            case Effet.Visionner e -> siApplique(passe, partie::revelerParVision);
+            case Effet.Visionner e -> visionner(passe);
             case Effet.DoublerJetons e -> ciblesDe(e.cible(), source, passe)
-                    .forEach(carte -> siApplique(passe,
-                            () -> carte.ajouterJetonBanniere(carte.jetonBanniere())));
+                    .forEach(carte -> siApplique(passe, () -> poserJeton(carte, carte.jetonBanniere())));
             case Effet.PoserDepuisChateau e -> pasEncore("Poser une carte du Chateau");
             case Effet.ObtenirDuMarche e -> obtenirDuMarche(
                     doree -> doree.type() == e.typeCarte(),
-                    "un %s du Marche".formatted(e.typeCarte()), passe);
+                    "un %s du Marche".formatted(e.typeCarte()), passe, true);
+            // Le Chevalier « obtient » une carte : elle rejoint l'Hopital comme
+            // celle qu'on vient d'entrainer. Le Roi Brad, lui, dit « pose-le en
+            // jeu » — d'ou deux destinations pour un meme geste.
             case Effet.ObtenirNiveau e -> obtenirDuMarche(
                     doree -> doree.niveau() == e.niveau(),
-                    "une carte de niveau %d".formatted(e.niveau()), passe);
+                    "une carte de niveau %d".formatted(e.niveau()), passe, false);
             case Effet.Copier e -> copier(e, source, passe);
             case Effet.CompterCommeSoldat e -> siApplique(passe, () -> {
                 exigerSource(source).compterCommeSoldat();
@@ -230,6 +247,24 @@ class InterpreteEffets {
     }
 
     // ------------------------------------------------------------------ briques
+
+    /**
+     * Poser un jeton, et le <strong>dire</strong>.
+     *
+     * <p>Un jeton était le seul effet muet du jeu : ressources, pioches,
+     * défausses, destructions et visions s'inscrivent toutes au journal. Le
+     * joueur voyait donc son action « ne rien faire » — d'autant que la force
+     * gagnée se noie dans un total, là où une carte piochée saute aux yeux.
+     */
+    private void poserJeton(CarteEnJeu carte, int valeur) {
+        if (valeur == 0) {
+            partie.noter("%s n'a aucun jeton a doubler.".formatted(partie.nomDe(carte)));
+            return;
+        }
+        carte.ajouterJetonBanniere(valeur);
+        partie.noter("%s gagne un jeton Banniere +%d — force %d."
+                .formatted(partie.nomDe(carte), valeur, partie.forceEffective(carte)));
+    }
 
     /** N'agit qu'à la passe d'application ; la vérification ne fait que passer. */
     private void siApplique(Passe passe, Runnable action) {
@@ -312,9 +347,15 @@ class InterpreteEffets {
      * de bon — sans quoi l'Alchimiste, qui défausse, en ferait une rente.
      *
      * <p>Le legs est un effet du moteur, pas une demande du joueur : il ne peut
-     * rien désigner au moment où sa carte tombe.
+     * rien désigner au moment où sa carte tombe. S'il en faut une — le Pyromane
+     * fou lègue une Vision, qui demande quel ennemi retourner — l'effet se met
+     * en attente et la question lui est posée.
+     *
+     * <p>Appelé depuis {@code detruire} et depuis le sacrifice d'entraînement :
+     * ce sont les deux façons dont une carte du joueur quitte la partie pour de
+     * bon. Le sacrifice l'oubliait, et un Pyromane sacrifié ne léguait rien.
      */
-    private void testament(CarteEnJeu detruite) {
+    void testament(CarteEnJeu detruite) {
         partie.effetsDe(detruite).stream()
                 .filter(effet -> effet.declencheur() == Declencheur.TESTAMENT)
                 .forEach(effet -> declencherAutomatiquement(effet, detruite,
@@ -355,7 +396,7 @@ class InterpreteEffets {
      */
     private void copier(Effet.Copier effet, CarteEnJeu source, Passe passe) {
         if (effet.cible() == Cible.UNE_ACTION_PIVOTER) {
-            pasEncore("Copier une action Pivoter");
+            copierUneAction(passe);
             return;
         }
         CarteEnJeu modele = enJeu(passe.choix().carteSuivante(descriptionDe(effet.cible())), passe);
@@ -370,6 +411,33 @@ class InterpreteEffets {
             source.copier(modele.familleEffective(), modele.carteIdEffectif());
             partie.noter("%s copie %s pour cette phase."
                     .formatted(avant, partie.nomDe(modele)));
+        });
+    }
+
+    /**
+     * Le Chapeau magique rejoue l'action d'une autre carte en jeu.
+     *
+     * <p>Copier n'est pas déclencher : la carte copiée garde son propre Pivoter
+     * intact et pourra le jouer, et elle n'a pas besoin de l'avoir déjà utilisé.
+     * Deux exemplaires de l'effet partent, pas un seul déplacé.
+     *
+     * <p>L'action copiée peut à son tour réclamer une désignation — « détruis
+     * une carte en jeu » — que le joueur ne pouvait pas prévoir en choisissant
+     * la carte. Elle passe donc par la file d'attente, comme une révélation :
+     * une question à la fois, dans l'ordre.
+     */
+    private void copierUneAction(Passe passe) {
+        CarteEnJeu modele = enJeu(
+                passe.choix().carteSuivante(Cible.UNE_ACTION_PIVOTER.libelle()), passe);
+
+        EffetCarte copiee = partie.actionPivoterDe(modele)
+                .orElseThrow(() -> new ActionInterdite(
+                        "%s n'a pas d'action Pivoter a copier.".formatted(partie.nomDe(modele))));
+
+        siApplique(passe, () -> {
+            partie.noter("L'action de %s est copiee.".formatted(partie.nomDe(modele)));
+            declencherAutomatiquement(copiee, modele,
+                    "Action copiee de %s".formatted(partie.nomDe(modele)));
         });
     }
 
@@ -409,7 +477,7 @@ class InterpreteEffets {
      * @param convient ce que la carte doit être — un Objet, un niveau donné
      */
     private void obtenirDuMarche(java.util.function.Predicate<fr.goblivion.cartes.CarteDoree> convient,
-            String description, Passe passe) {
+            String description, Passe passe, boolean directementEnJeu) {
         String choisi = passe.choix().typeSuivant(description);
 
         fr.goblivion.cartes.CarteDoree doree = partie.catalogue().doree(choisi)
@@ -425,10 +493,43 @@ class InterpreteEffets {
 
         siApplique(passe, () -> {
             partie.consommerAuMarche(choisi);
-            partie.poserAuChampDeBataille(
-                    CarteEnJeu.paysan(fr.goblivion.cartes.Famille.DOREES, choisi));
-            partie.noter("%s est obtenue du Marche et entre en jeu.".formatted(doree.nom()));
+            CarteEnJeu obtenue = CarteEnJeu.paysan(fr.goblivion.cartes.Famille.DOREES, choisi);
+            if (directementEnJeu) {
+                partie.poserAuChampDeBataille(obtenue);
+                partie.noter("%s est obtenue du Marche et entre en jeu.".formatted(doree.nom()));
+            } else {
+                partie.poserAlHopital(obtenue);
+                partie.noter("%s est obtenue du Marche et rejoint l'Hopital."
+                        .formatted(doree.nom()));
+            }
         });
+    }
+
+    /**
+     * Retourner un ennemi, celui que le joueur désigne.
+     *
+     * <p>Le choix est tout l'intérêt : retourner celui qui arrive au prochain
+     * tour le prive de son action, retourner celui du fond ne coûte rien. Le
+     * moteur choisissait à sa place — c'était en faire un automatisme.
+     *
+     * <p>Aucun ennemi caché n'est pas une faute du joueur : la Vision tombe
+     * dans le vide, comme détruire la carte d'un Château vide.
+     */
+    private void visionner(Passe passe) {
+        List<CarteEnJeu> caches = partie.ennemisCaches();
+        if (caches.isEmpty()) {
+            siApplique(passe, () -> partie.noter("Vision sans effet : aucun ennemi face cachee."));
+            return;
+        }
+
+        long id = passe.choix().carteSuivante(Cible.UN_ENNEMI_CACHE.libelle());
+        CarteEnJeu ennemi = caches.stream()
+                .filter(carte -> carte.id() == id)
+                .findFirst()
+                .orElseThrow(() -> new ActionInterdite(
+                        "Cette carte n'est pas un ennemi face cachee."));
+
+        siApplique(passe, () -> partie.revelerParVision(ennemi));
     }
 
     private void ajouterUnBoss() {
@@ -443,17 +544,15 @@ class InterpreteEffets {
                         () -> partie.noter("Aucun Boss disponible a ajouter."));
     }
 
+    /**
+     * Le compte vient du moteur, comme celui que le plan annonce.
+     *
+     * <p>Deux implémentations du même décompte finiraient par diverger, et le
+     * plan promettrait alors un nombre de questions que l'exécution ne
+     * consommerait pas — ou l'inverse.
+     */
     private void repeter(Effet.PourChaque effet, CarteEnJeu source, Passe passe) {
-        int fois = switch (effet.quantite()) {
-            case OBJET_A_L_HOPITAL -> (int) partie.hopital().stream()
-                    .filter(carte -> partie.typeDe(carte).orElse(null) == TypeCarte.OBJET)
-                    .count();
-            case PAYSAN_HUMAIN_EN_JEU -> (int) humainsEnJeu().count();
-            case SOLDAT_EN_JEU -> partie.nombreDeSoldats();
-            case PIVOTER_UTILISE -> (int) partie.champDeBataille().stream()
-                    .filter(CarteEnJeu::pivotee)
-                    .count();
-        };
+        int fois = partie.repetitions(effet.quantite());
         for (int i = 0; i < fois; i++) {
             parcourir(effet.effet(), source, passe);
         }
@@ -497,6 +596,11 @@ class InterpreteEffets {
             }
 
             case PROCHAINE_DU_CHATEAU -> List.of();
+
+            // La Vision se resout dans visionner() : l'ennemi vise n'est ni au
+            // Champ de bataille ni a l'Hopital, mais sur le plateau Ennemi.
+            case UN_ENNEMI_CACHE -> List.of();
+
             case UN_JETON_ENNEMI, UNE_CARTE_ROYALE, UNE_ACTION_PIVOTER -> {
                 pasEncore("Designer " + descriptionDe(cible));
                 yield List.of();

@@ -84,7 +84,13 @@ import type { CarteAffichable } from '../../cartes/modele';
                      Fermiers portent le même id. -->
                 @for (carte of cartes(); track $index) {
                   <li class="hopital__carte">
-                    <img [ngSrc]="url(carte)" fill sizes="7vw" [alt]="carte.nom" />
+                    <img
+                      [ngSrc]="url(carte)"
+                      fill
+                      sizes="7vw"
+                      [alt]="carte.nom"
+                      [class.carte--objet-en-haut]="carte.famille === 'ennemis-objets'"
+                    />
                   </li>
                 }
               </ul>
