@@ -64,7 +64,7 @@ class TypeActionTest {
     @Test
     void resoudre_un_combat_et_affronter_un_boss_ne_se_melangent_pas() {
         assertThat(TypeAction.RESOUDRE_COMBAT.phases()).containsExactly(Phase.COMBAT);
-        assertThat(TypeAction.COMBATTRE_BOSS.phases()).containsExactly(Phase.BOSS);
+        assertThat(TypeAction.ENGAGER_BOSS.phases()).containsExactly(Phase.BOSS);
     }
 
     /** Le cycle ordinaire tourne ; le Combat de Boss, lui, ne se quitte plus (§10). */

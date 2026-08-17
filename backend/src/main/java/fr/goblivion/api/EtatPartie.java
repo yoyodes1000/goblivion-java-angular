@@ -43,6 +43,12 @@ public record EtatPartie(
         List<EnnemiVue> piste,
         List<EnnemiVue> portes,
         List<String> bossRestants,
+        /**
+         * Vrai entre l'assaut et sa résolution : le Boss a donné ses cartes, le
+         * joueur prépare son armée. C'est ce drapeau qui décide lequel des deux
+         * boutons l'écran propose — engager, ou conclure.
+         */
+        boolean assautEngage,
         List<TypeAction> actionsPossibles,
         int forceAlliee,
         int forceEnnemie,
@@ -86,6 +92,7 @@ public record EtatPartie(
                 partie.piste().stream().map(carte -> EnnemiVue.de(partie, carte)).toList(),
                 partie.portes().stream().map(carte -> EnnemiVue.de(partie, carte)).toList(),
                 partie.bossRestants().stream().map(CarteBoss::id).toList(),
+                partie.assautEngage().isPresent(),
                 TypeAction.permisesEn(partie.phase()),
                 partie.forceAlliee(),
                 partie.forceEnnemie(),

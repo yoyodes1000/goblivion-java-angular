@@ -165,9 +165,9 @@ class MoteurEntrainementTest {
     /** Une action peut être la bonne et la phase la mauvaise : le refus le dit. */
     @Test
     void une_action_hors_phase_est_refusee_avec_son_motif() {
-        assertThatThrownBy(() -> moteur.appliquer(Action.de(TypeAction.COMBATTRE_BOSS)))
+        assertThatThrownBy(() -> moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS)))
                 .isInstanceOf(ActionInterdite.class)
-                .hasMessageContaining("COMBATTRE_BOSS")
+                .hasMessageContaining("ENGAGER_BOSS")
                 .hasMessageContaining("ENTRAINEMENT");
     }
 }

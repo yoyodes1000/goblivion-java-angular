@@ -80,6 +80,16 @@ public final class Partie {
     private boolean combatResolu;
     private final List<Long> ennemisEngages = new ArrayList<>();
 
+    /**
+     * Le Boss dont la tentative est lancée mais pas encore mesurée, {@code null}
+     * sinon (§10.3).
+     *
+     * <p>C'est le Boss <em>engagé</em>, et non celui en tête de liste : une carte
+     * jouée entre l'assaut et sa résolution peut ajouter un Boss au paquet, et
+     * la tentative doit se conclure contre celui qu'on a réellement affronté.
+     */
+    private CarteBoss assautEngage;
+
     private final List<String> journal = new ArrayList<>();
 
     /**
@@ -168,6 +178,19 @@ public final class Partie {
 
     public List<CarteBoss> bossRestants() {
         return List.copyOf(boss);
+    }
+
+    /** Le Boss engagé dont l'assaut attend sa résolution, vide sinon. */
+    public Optional<CarteBoss> assautEngage() {
+        return Optional.ofNullable(assautEngage);
+    }
+
+    void engagerAssaut(CarteBoss cible) {
+        this.assautEngage = cible;
+    }
+
+    void terminerAssaut() {
+        this.assautEngage = null;
     }
 
     public Map<String, Integer> marche() {
@@ -569,6 +592,7 @@ public final class Partie {
         gardeDuCorpsEchange = false;
         combatResolu = false;
         ennemisEngages.clear();
+        assautEngage = null;
     }
 
     // ------------------------------------------------------------------

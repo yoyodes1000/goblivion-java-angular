@@ -110,6 +110,7 @@ describe('Plateau', () => {
     piste: [null, null, null],
     portes: [],
     bossRestants: ['b1', 'b2', 'b3', 'b4'],
+    assautEngage: false,
     actionsPossibles: [
       'CHOISIR_ENTRAINEMENT',
       'PAYER_DIFFERENCE',

@@ -90,7 +90,8 @@ public final class MoteurPartie {
             case POUVOIR_ROI_REINE -> utiliserPouvoirRoiReine(action);
             case PIVOTER -> pivoter(action.exigeCarteEnJeu(), action);
             case RESOUDRE_COMBAT -> resoudreCombat(action.cibles());
-            case COMBATTRE_BOSS -> combattreBoss(action);
+            case ENGAGER_BOSS -> engagerBoss(action);
+            case RESOUDRE_ASSAUT -> resoudreAssaut();
             case REPONDRE_DESIGNATION -> repondreDesignation(action);
             case PHASE_SUIVANTE -> phaseSuivante();
         }
@@ -455,18 +456,30 @@ public final class MoteurPartie {
     // ------------------------------------------------------------------
 
     /**
-     * Une tentative contre le Boss en tête.
+     * Engager une tentative contre le Boss en tête : sa pioche, puis son action.
      *
      * <p>« En cas d'échec, on réessaie — et le Boss relance son action à chaque
      * tentative » : contrairement aux ennemis ordinaires, dont l'action ne part
      * qu'une fois dans la partie, celle du Boss repart à chaque assaut.
+     *
+     * <p><strong>La mesure n'a pas lieu ici</strong>, et c'est un retour de
+     * partie qui l'a imposé. La tentative pose des cartes fraîches sur le Champ
+     * de bataille ; les compter dans la foulée revenait à comparer une armée que
+     * le joueur n'avait pas eu le droit de préparer — il perdait avant d'avoir
+     * pu activer quoi que ce soit. Le Combat ordinaire séparait déjà l'ouverture
+     * de la résolution ; le Boss suit la même coupe.
      */
-    private void combattreBoss(Action action) {
+    private void engagerBoss(Action action) {
         List<CarteBoss> restants = partie.bossRestants();
         if (restants.isEmpty()) {
             throw new ActionInterdite("Plus aucun Boss a affronter.");
         }
+        if (partie.assautEngage().isPresent()) {
+            throw new ActionInterdite("L'assaut contre %s est deja engage : il faut le resoudre."
+                    .formatted(partie.assautEngage().get().nom()));
+        }
         CarteBoss cible = restants.get(0);
+        partie.engagerAssaut(cible);
 
         partie.noter("Assaut contre %s — force %d, %d carte(s) a piocher."
                 .formatted(cible.nom(), cible.force(), cible.pioche()));
@@ -478,6 +491,19 @@ public final class MoteurPartie {
         cible.effets().stream()
                 .filter(effet -> effet.declencheur() == Declencheur.ASSAUT_BOSS)
                 .forEach(effet -> interprete.executer(effet, null, choixDe(action)));
+    }
+
+    /**
+     * Conclure la tentative engagée : comparer, puis vaincre ou payer l'écart.
+     *
+     * <p>Le seuil est inclusif, comme au Combat : égaler la force du Boss suffit
+     * à l'abattre. Un échec coûte la différence en ressources et laisse le Boss
+     * en place — le joueur peut réengager, et le Boss relancera son action.
+     */
+    private void resoudreAssaut() {
+        CarteBoss cible = partie.assautEngage()
+                .orElseThrow(() -> new ActionInterdite(
+                        "Aucun assaut engage : il faut d'abord affronter le Boss."));
 
         int alliee = partie.forceAlliee();
         if (alliee >= cible.force()) {
@@ -487,6 +513,7 @@ public final class MoteurPartie {
             partie.noter("%s resiste : %d de force contre %d.".formatted(cible.nom(), alliee, cible.force()));
             partie.perdreRessources(cible.force() - alliee);
         }
+        partie.terminerAssaut();
     }
 
     // ------------------------------------------------------------------
@@ -504,6 +531,12 @@ public final class MoteurPartie {
     private void phaseSuivante() {
         if (partie.phase() == Phase.COMBAT && !partie.portes().isEmpty() && !partie.combatResolu()) {
             throw new ActionInterdite("Il faut resoudre le combat avant de quitter la phase.");
+        }
+        // Même garde côté Boss : la tentative a déjà donné ses cartes au joueur.
+        // Partir sans la conclure ferait de la pioche un cadeau gratuit.
+        if (partie.assautEngage().isPresent()) {
+            throw new ActionInterdite("Il faut resoudre l'assaut contre %s avant de quitter la phase."
+                    .formatted(partie.assautEngage().get().nom()));
         }
 
         Phase quittee = partie.phase();

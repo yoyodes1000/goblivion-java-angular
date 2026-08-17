@@ -166,6 +166,35 @@ plus, presque tous partis d'un retour de partie :
 Le Chapeau magique s'est ajouté au passage, sans venir d'un retour : copier une
 action Pivoter était l'une des deux briques que le ticket 11 laissait refuser.
 
+## La troisième série : la partie est allée jusqu'aux Boss
+
+- **Le jeton Bonus Allié ne se voyait nulle part.** « J'ai l'impression que les
+  bonus ne sont pas appliqués » — ils l'étaient, `forceEffective` les compte
+  depuis le début et le journal les annonce, mais la carte qui venait de le
+  recevoir n'affichait rien. Un total ne dit pas d'où il vient. Les ennemis
+  portaient déjà leur jeton aux Portes ; les cartes du joueur ont maintenant le
+  même badge, et `CarteVue` transporte le jeton **en plus** de la force pour que
+  l'écran n'ait rien à recalculer.
+- **Le Boss battait le joueur avant qu'il ait pu jouer.** À l'entrée de la phase,
+  le Champ de bataille est vide — la fin de phase précédente l'a envoyé à
+  l'Hôpital. `COMBATTRE_BOSS` piochait alors les cartes du Boss, lançait son
+  action **et comparait les forces** d'un seul geste : la mesure tombait sur la
+  force imprimée de cartes que le joueur n'avait pas eu le droit d'activer.
+  Reproduit sur les vraies données : défaite au tour 1, −26 ressources, et les
+  sept cartes piochées encore debout, aucune pivotée.
+
+L'assaut se joue donc en deux temps, `ENGAGER_BOSS` puis `RESOUDRE_ASSAUT`. La
+coupe n'est pas inventée pour l'occasion : le Combat ordinaire l'avait déjà,
+entre son ouverture et `RESOUDRE_COMBAT`. Trois garde-fous l'entourent — on
+n'engage pas deux fois le même assaut, on ne résout pas ce qu'on n'a pas engagé,
+et on ne quitte pas la phase en laissant une tentative ouverte, sinon la pioche
+du Boss deviendrait un cadeau.
+
+Le test qui compte rejoue **deux fois la même partie à la même graine** : sans
+rien activer entre les deux temps, le Boss résiste ; en pivotant une seule
+carte, il tombe. C'est exactement l'écart que le joueur n'avait pas le droit de
+produire.
+
 ## Un test qui a corrigé une conception
 
 Ma première version rendait `REPONDRE_DESIGNATION` permise dans toutes les
@@ -196,6 +225,11 @@ tentative.
 
 ## Reste à faire
 
+- [ ] **La phase de Boss n'a toujours aucun affichage.** Le Boss affronté n'est
+      ni montré ni nommé, et sa force n'arrive pas au frontend — le catalogue ne
+      charge pas les Boss, faute d'écran pour eux. Depuis que l'assaut se joue en
+      deux temps, le manque se voit : le joueur prépare son armée, puis résout
+      sans savoir de combien il avait besoin.
 - [ ] **Poser une carte du Château refuse encore** (Roi Yolo, ticket 11) :
       désigner parmi des faces cachées demande d'exposer autre chose que
       `tailleChateau`, et c'est une décision de règle autant que d'API.
