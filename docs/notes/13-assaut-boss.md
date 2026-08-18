@@ -78,9 +78,11 @@ soit gagné ou qu'une répartition l'ait abattu dans une défaite. Le placer là
 plutôt qu'aux deux endroits qui appellent cette méthode évite qu'un troisième
 chemin, un jour, oublie d'ouvrir la porte.
 
-`docs/regles/regles-goblivion.md` garde la phrase d'origine et porte la précision
-en dessous : la transcription reste ce qu'elle était, la lecture corrigée est
-datée et motivée.
+`docs/regles/regles-goblivion.md` porte désormais la règle juste dans la phrase
+elle-même — « après avoir abattu un premier ennemi » — avec une ligne datée
+dessous qui rappelle ce qu'elle disait avant. Corriger la transcription plutôt
+que l'annoter évite qu'un futur lecteur applique la première lecture sans voir
+la seconde.
 
 ## Ce que j'ai écarté
 
@@ -89,7 +91,7 @@ datée et motivée.
 | Laisser la comparaison dans l'action d'assaut | le joueur perdait avant d'avoir pu activer une carte |
 | Un composant Boss séparé des Portes | c'est le même endroit du plateau, qui dit la même chose |
 | Envoyer la force du Boss dans l'état | valeur imprimée, jamais modifiée par un jeton : le catalogue suffit |
-| Réécrire la phrase du livret transcrite au ticket 1 | la garder et dater la correction en dessous se relit mieux |
+| Laisser la phrase fautive avec un correctif en dessous | un lecteur pressé appliquerait la première lecture ; la phrase est corrigée, l'ancienne rappelée en note |
 | Marquer la porte des 2 épées aux deux appelants | un troisième chemin l'oublierait ; `vaincreEnnemi` est le passage obligé |
 
 ## Reste à faire

@@ -149,15 +149,13 @@ Pendant le combat des Boss, la conséquence devient : **perdre 2 ressources**.
 ## 6. Phase 1 — Entraînement
 
 Poser le jeton d'entraînement sur une carte du marché. Les cartes **1 épée**
-sont disponibles dès le départ ; les **2 épées** seulement après avoir gagné un
-premier combat.
+sont disponibles dès le départ ; les **2 épées** seulement après avoir **abattu
+un premier ennemi** — y compris par la répartition d'un combat perdu, où faire
+tomber un monstre sur deux suffit à ouvrir la porte.
 
-> **Précision du 2026-08-18**, venue d'une partie jouée : la porte s'ouvre dès
-> qu'un **premier ennemi est abattu**, y compris par la répartition d'un combat
-> perdu — abattre un monstre sur deux suffit. La phrase ci-dessus, transcrite au
-> ticket 1, se lisait « un combat gagné » et fermait le marché à un joueur qui
-> avait pourtant vaincu quelque chose. C'est cette lecture-ci que le moteur
-> applique.
+> Corrigé le 2026-08-18, sur une partie jouée : cette phrase disait « après
+> avoir gagné un premier combat », ce qui fermait le marché à un joueur ayant
+> pourtant vaincu quelque chose.
 
 Le processus d'entraînement se lit de gauche à droite :
 
