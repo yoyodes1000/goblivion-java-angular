@@ -114,3 +114,59 @@
   font-size: 0.7rem;
   font-weight: 700;
 }
+
+/* ------------------------------------------------------------------
+   Le Boss, qui prend la place des trois cases (§10)
+   ------------------------------------------------------------------ */
+
+.portes__boss {
+  display: flex;
+  gap: 0.6rem;
+  align-items: stretch;
+  min-block-size: 0;
+}
+
+/* La carte garde le ratio d'un scan ; la fiche prend ce qui reste. */
+.portes__carte--boss {
+  flex: none;
+  aspect-ratio: 63 / 88;
+  block-size: 100%;
+  max-block-size: 9rem;
+}
+
+.portes__fiche {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  justify-content: center;
+  min-inline-size: 0;
+}
+
+/* Hors du scan, celui-ci : il a la place de s'ecrire en clair. */
+.portes__nom--boss {
+  position: static;
+  padding: 0;
+  background: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.portes__action {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: #c9d3dd;
+}
+
+.portes__compte {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #8fa0b0;
+}
+
+.portes__assaut {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #e0b341;
+}

@@ -116,3 +116,22 @@ export interface CarteEnnemiObjet {
     readonly action: string | null;
   };
 }
+
+/**
+ * Un Boss, tel que `boss.json` le porte.
+ *
+ * Les valeurs vont par paires — solo et deux joueurs. Ce portage est solo : la
+ * force à égaler est `ressourcesSolo`, les cartes à piocher au moment de
+ * l'affronter `cartesAPiocherSolo`. Le backend fait la même lecture dans
+ * `CarteBoss.force()` et `CarteBoss.pioche()`.
+ */
+export interface CarteBoss {
+  readonly id: string;
+  readonly nom: string;
+  readonly scan: string;
+  readonly action: string | null;
+  readonly ressourcesSolo: number;
+  readonly cartesAPiocherSolo: number;
+  readonly ressourcesDeuxJoueurs: number;
+  readonly cartesAPiocherDeuxJoueurs: number;
+}

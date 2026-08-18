@@ -2,7 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 
-import type { CarteBleue, CarteDoree, CarteEnnemiObjet, RoiReine } from '../cartes/modele';
+import type {
+  CarteBleue,
+  CarteBoss,
+  CarteDoree,
+  CarteEnnemiObjet,
+  RoiReine,
+} from '../cartes/modele';
 import type { EtatPartie } from '../partie/modele';
 import { LIBELLES } from './phase';
 import { Plateau } from './plateau';
@@ -49,6 +55,20 @@ describe('Plateau', () => {
   ];
 
   const ENNEMIS: CarteEnnemiObjet[] = [];
+
+  /** Le Boss que la phase de Boss montre aux Portes, force et pioche comprises. */
+  const BOSS: CarteBoss[] = [
+    {
+      id: 'dragon-rouge',
+      nom: 'Dragon Rouge',
+      scan: 'dragon-rouge.webp',
+      action: 'Détruis une carte de Bannière 1 et plus',
+      ressourcesSolo: 22,
+      cartesAPiocherSolo: 7,
+      ressourcesDeuxJoueurs: 11,
+      cartesAPiocherDeuxJoueurs: 4,
+    },
+  ];
 
   /**
    * L'état que le moteur enverrait au début d'une partie Normale.
@@ -147,7 +167,7 @@ describe('Plateau', () => {
   }
 
   /**
-   * Monte la table et répond aux quatre requêtes de catalogue.
+   * Monte la table et répond aux cinq requêtes de catalogue.
    *
    * Sans y répondre, l'application ne se stabilise jamais : `httpResource`
    * laisse les requêtes en attente et `whenStable()` ne rend jamais la main.
@@ -160,6 +180,7 @@ describe('Plateau', () => {
     http().expectOne('/cartes/donnees/dorees.json').flush(DOREES);
     http().expectOne('/cartes/donnees/roi-reines.json').flush(ROI_REINES);
     http().expectOne('/cartes/donnees/ennemis-objets.json').flush(ENNEMIS);
+    http().expectOne('/cartes/donnees/boss.json').flush(BOSS);
 
     await fixture.whenStable();
     return fixture;
