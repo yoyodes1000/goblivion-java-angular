@@ -83,7 +83,7 @@ class MoteurEntrainementTest {
                 .isInstanceOf(ActionInterdite.class)
                 .hasMessageContaining("2 epees");
 
-        partie.marquerPremierCombatGagne();
+        partie.marquerPremierEnnemiVaincu();
         moteur.appliquer(Action.surMarche(TypeAction.CHOISIR_ENTRAINEMENT, CataloguesFictifs.DORE_VERROUILLE));
 
         assertThat(partie.entrainementChoisi()).isPresent();

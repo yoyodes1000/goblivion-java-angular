@@ -147,7 +147,7 @@ describe('Plateau', () => {
     deficitEntrainement: 0,
     entrainementTente: false,
     combatResolu: false,
-    premierCombatGagne: false,
+    premierEnnemiVaincu: false,
     gardeDuCorpsEchange: false,
     pouvoirRoiReineUtilise: false,
     jetonsBonusAllie: 0,

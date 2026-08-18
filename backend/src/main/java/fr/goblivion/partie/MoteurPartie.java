@@ -127,9 +127,9 @@ public final class MoteurPartie {
         if (partie.stockMarche(carteId) <= 0) {
             throw new ActionInterdite("Il ne reste plus d'exemplaire de %s au marche.".formatted(carte.nom()));
         }
-        if (carte.niveau() >= 2 && !partie.premierCombatGagne()) {
+        if (carte.niveau() >= 2 && !partie.premierEnnemiVaincu()) {
             throw new ActionInterdite(
-                    "Les cartes a 2 epees ne s'ouvrent qu'apres un premier combat gagne : %s reste indisponible."
+                    "Les cartes a 2 epees ne s'ouvrent qu'apres un premier ennemi vaincu : %s reste indisponible."
                             .formatted(carte.nom()));
         }
 
@@ -387,7 +387,6 @@ public final class MoteurPartie {
             partie.marquerCombatResolu();
             partie.noter("Combat gagne : %d de force contre %d.".formatted(alliee, ennemie));
             partie.portes().forEach(partie::vaincreEnnemi);
-            partie.marquerPremierCombatGagne();
             return;
         }
 

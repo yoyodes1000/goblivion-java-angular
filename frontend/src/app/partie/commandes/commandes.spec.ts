@@ -46,7 +46,7 @@ describe('Commandes — la phase de Boss', () => {
     deficitEntrainement: 0,
     entrainementTente: false,
     combatResolu: false,
-    premierCombatGagne: true,
+    premierEnnemiVaincu: true,
     gardeDuCorpsEchange: false,
     pouvoirRoiReineUtilise: true,
     jetonsBonusAllie: 0,

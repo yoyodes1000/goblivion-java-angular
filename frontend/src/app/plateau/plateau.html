@@ -68,7 +68,7 @@
   @if (marcheOuvert()) {
     <app-cartes-dorees
       [offres]="offres()"
-      [combatGagne]="partie.premierCombatGagne"
+      [ennemiVaincu]="partie.premierEnnemiVaincu"
       [choixPossible]="choixPossible()"
       (entrainementDemande)="choisirEntrainement($event)"
       (fermeture)="marcheOuvert.set(false)"

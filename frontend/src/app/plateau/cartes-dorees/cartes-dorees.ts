@@ -87,7 +87,7 @@ export class CartesDorees {
    * combat a été gagné. La case « simuler » qui tenait cette place a disparu
    * avec lui.
    */
-  readonly combatGagne = input.required<boolean>();
+  readonly ennemiVaincu = input.required<boolean>();
 
   /**
    * Faux une fois le jeton d'entraînement posé : il n'y en a qu'un dans la
@@ -101,14 +101,14 @@ export class CartesDorees {
 
   /** Les 2 épées ne s'ouvrent qu'après un premier combat gagné (§6). */
   protected disponible(offre: OffreMarche): boolean {
-    return this.choixPossible() && offre.restant > 0 && (offre.carte.niveau === 1 || this.combatGagne());
+    return this.choixPossible() && offre.restant > 0 && (offre.carte.niveau === 1 || this.ennemiVaincu());
   }
 
   /** La raison est écrite : un grisé seul ne dit rien à qui ne le distingue pas. */
   protected raisonIndisponible(offre: OffreMarche): string {
     if (!this.choixPossible()) return 'Jeton d’entraînement déjà posé';
     if (offre.restant === 0) return 'Plus aucun exemplaire';
-    return 'Après un premier combat gagné';
+    return 'Après un premier ennemi vaincu';
   }
 
   protected url(carte: CarteDoree): string {

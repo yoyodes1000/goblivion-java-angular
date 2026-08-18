@@ -203,7 +203,14 @@ export interface EtatPartie {
   readonly deficitEntrainement: number;
   readonly entrainementTente: boolean;
   readonly combatResolu: boolean;
-  readonly premierCombatGagne: boolean;
+  /**
+   * Vrai dès qu'un premier ennemi est tombé — ce qui ouvre les cartes 2 épées
+   * (§6).
+   *
+   * Un ennemi abattu, et non un combat gagné : sur un combat perdu, la
+   * répartition peut faire tomber un monstre sur deux, et cela compte.
+   */
+  readonly premierEnnemiVaincu: boolean;
   readonly gardeDuCorpsEchange: boolean;
   readonly pouvoirRoiReineUtilise: boolean;
   readonly jetonsBonusAllie: number;

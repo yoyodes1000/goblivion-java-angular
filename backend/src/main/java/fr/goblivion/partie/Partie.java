@@ -68,7 +68,7 @@ public final class Partie {
     private final List<CarteBoss> boss = new ArrayList<>();
     private final Map<String, Integer> marche = new LinkedHashMap<>();
 
-    private boolean premierCombatGagne;
+    private boolean premierEnnemiVaincu;
     private int jetonsBonusAllie;
     private boolean pouvoirRoiReineUtilise;
 
@@ -197,8 +197,8 @@ public final class Partie {
         return Map.copyOf(marche);
     }
 
-    public boolean premierCombatGagne() {
-        return premierCombatGagne;
+    public boolean premierEnnemiVaincu() {
+        return premierEnnemiVaincu;
     }
 
     public int jetonsBonusAllie() {
@@ -863,6 +863,10 @@ public final class Partie {
     void vaincreEnnemi(CarteEnJeu ennemi) {
         portes.remove(ennemi);
         hopital.add(ennemi);
+        // La porte des 2 epees s'ouvre ici, et nulle part ailleurs : c'est le
+        // seul passage par lequel un ennemi tombe, que le combat soit gagne ou
+        // qu'une repartition l'ait abattu dans une defaite.
+        marquerPremierEnnemiVaincu();
         noter("Ennemi vaincu : sa recompense rejoint l'Hopital.");
     }
 
@@ -940,20 +944,24 @@ public final class Partie {
     }
 
     /**
-     * Les cartes 2 épées ne sont disponibles qu'après un premier combat gagné
-     * (§6) : c'est la seule porte que le joueur ouvre en jouant, et non par un
-     * choix de mise en place.
+     * Les cartes 2 épées ne s'ouvrent qu'une fois un <strong>premier ennemi
+     * abattu</strong> (§6) : c'est la seule porte que le joueur ouvre en jouant,
+     * et non par un choix de mise en place.
+     *
+     * <p>Un ennemi abattu, et non un combat gagné. La distinction se voit sur un
+     * combat perdu où la répartition fait tomber un monstre sur deux : le
+     * joueur a bien vaincu quelque chose, et c'est ce qui ouvre le marché.
      */
     public boolean disponibleAlEntrainement(CarteDoree carte) {
-        return stockMarche(carte.id()) > 0 && (carte.niveau() < 2 || premierCombatGagne);
+        return stockMarche(carte.id()) > 0 && (carte.niveau() < 2 || premierEnnemiVaincu);
     }
 
     // ------------------------------------------------------------------
     // Combat (§8) et Boss (§10)
     // ------------------------------------------------------------------
 
-    void marquerPremierCombatGagne() {
-        this.premierCombatGagne = true;
+    void marquerPremierEnnemiVaincu() {
+        this.premierEnnemiVaincu = true;
     }
 
     boolean ennemiDejaEngage(CarteEnJeu ennemi) {
