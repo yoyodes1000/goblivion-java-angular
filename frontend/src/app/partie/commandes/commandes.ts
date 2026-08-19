@@ -96,8 +96,15 @@ export class Commandes {
     if (permise('RESOUDRE_COMBAT') && etat.portes.length > 0 && !etat.combatResolu) {
       commandes.push({ type: 'RESOUDRE_COMBAT', libelle: 'Résoudre le combat', principale: true });
     }
-    if (permise('COMBATTRE_BOSS') && etat.bossRestants.length > 0) {
-      commandes.push({ type: 'COMBATTRE_BOSS', libelle: 'Affronter le Boss', principale: true });
+    // L'assaut se joue en deux temps : le Boss donne ses cartes, le joueur
+    // prépare son armée, puis on mesure. Un seul des deux boutons a un sens à
+    // la fois — proposer les deux laisserait croire qu'on peut mesurer avant
+    // d'avoir engagé, ou repiocher au milieu d'une tentative.
+    if (permise('ENGAGER_BOSS') && etat.bossRestants.length > 0 && !etat.assautEngage) {
+      commandes.push({ type: 'ENGAGER_BOSS', libelle: 'Affronter le Boss', principale: true });
+    }
+    if (permise('RESOUDRE_ASSAUT') && etat.assautEngage) {
+      commandes.push({ type: 'RESOUDRE_ASSAUT', libelle: 'Résoudre l’assaut', principale: true });
     }
     if (permise('POUVOIR_ROI_REINE') && !etat.pouvoirRoiReineUtilise) {
       commandes.push({ type: 'POUVOIR_ROI_REINE', libelle: 'Pouvoir royal (1× par partie)' });

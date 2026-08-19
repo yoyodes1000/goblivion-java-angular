@@ -68,7 +68,7 @@ public final class Partie {
     private final List<CarteBoss> boss = new ArrayList<>();
     private final Map<String, Integer> marche = new LinkedHashMap<>();
 
-    private boolean premierCombatGagne;
+    private boolean premierEnnemiVaincu;
     private int jetonsBonusAllie;
     private boolean pouvoirRoiReineUtilise;
 
@@ -79,6 +79,16 @@ public final class Partie {
     private boolean gardeDuCorpsEchange;
     private boolean combatResolu;
     private final List<Long> ennemisEngages = new ArrayList<>();
+
+    /**
+     * Le Boss dont la tentative est lancée mais pas encore mesurée, {@code null}
+     * sinon (§10.3).
+     *
+     * <p>C'est le Boss <em>engagé</em>, et non celui en tête de liste : une carte
+     * jouée entre l'assaut et sa résolution peut ajouter un Boss au paquet, et
+     * la tentative doit se conclure contre celui qu'on a réellement affronté.
+     */
+    private CarteBoss assautEngage;
 
     private final List<String> journal = new ArrayList<>();
 
@@ -170,12 +180,25 @@ public final class Partie {
         return List.copyOf(boss);
     }
 
+    /** Le Boss engagé dont l'assaut attend sa résolution, vide sinon. */
+    public Optional<CarteBoss> assautEngage() {
+        return Optional.ofNullable(assautEngage);
+    }
+
+    void engagerAssaut(CarteBoss cible) {
+        this.assautEngage = cible;
+    }
+
+    void terminerAssaut() {
+        this.assautEngage = null;
+    }
+
     public Map<String, Integer> marche() {
         return Map.copyOf(marche);
     }
 
-    public boolean premierCombatGagne() {
-        return premierCombatGagne;
+    public boolean premierEnnemiVaincu() {
+        return premierEnnemiVaincu;
     }
 
     public int jetonsBonusAllie() {
@@ -559,9 +582,7 @@ public final class Partie {
      * précisément l'emplacement qui traverse les phases (§9).
      */
     void terminerPhase() {
-        champDeBataille.forEach(CarteEnJeu::nettoyerFinDePhase);
-        hopital.addAll(champDeBataille);
-        champDeBataille.clear();
+        viderChampDeBataille();
 
         entrainementChoisi = null;
         ressourcesVerseesEntrainement = 0;
@@ -569,6 +590,25 @@ public final class Partie {
         gardeDuCorpsEchange = false;
         combatResolu = false;
         ennemisEngages.clear();
+        assautEngage = null;
+    }
+
+    /**
+     * L'armée quitte la table et rejoint l'Hôpital.
+     *
+     * <p>Deux moments l'appellent : la fin de phase (§5), et la résolution d'un
+     * assaut de Boss — une tentative <strong>consomme</strong> ce qu'on a engagé,
+     * réussie ou non. Sans ça, les assauts s'empilaient : chaque tentative
+     * ajoutait sa pioche à la précédente et la force ne pouvait que monter.
+     *
+     * <p>Les cartes passent par {@code nettoyerFinDePhase} au passage : un jeton
+     * Bannière, un pivot ou une copie ne survivent pas à leur sortie du Champ de
+     * bataille, sinon une carte repiochée plus tard les traînerait avec elle.
+     */
+    void viderChampDeBataille() {
+        champDeBataille.forEach(CarteEnJeu::nettoyerFinDePhase);
+        hopital.addAll(champDeBataille);
+        champDeBataille.clear();
     }
 
     // ------------------------------------------------------------------
@@ -839,6 +879,10 @@ public final class Partie {
     void vaincreEnnemi(CarteEnJeu ennemi) {
         portes.remove(ennemi);
         hopital.add(ennemi);
+        // La porte des 2 epees s'ouvre ici, et nulle part ailleurs : c'est le
+        // seul passage par lequel un ennemi tombe, que le combat soit gagne ou
+        // qu'une repartition l'ait abattu dans une defaite.
+        marquerPremierEnnemiVaincu();
         noter("Ennemi vaincu : sa recompense rejoint l'Hopital.");
     }
 
@@ -916,20 +960,24 @@ public final class Partie {
     }
 
     /**
-     * Les cartes 2 épées ne sont disponibles qu'après un premier combat gagné
-     * (§6) : c'est la seule porte que le joueur ouvre en jouant, et non par un
-     * choix de mise en place.
+     * Les cartes 2 épées ne s'ouvrent qu'une fois un <strong>premier ennemi
+     * abattu</strong> (§6) : c'est la seule porte que le joueur ouvre en jouant,
+     * et non par un choix de mise en place.
+     *
+     * <p>Un ennemi abattu, et non un combat gagné. La distinction se voit sur un
+     * combat perdu où la répartition fait tomber un monstre sur deux : le
+     * joueur a bien vaincu quelque chose, et c'est ce qui ouvre le marché.
      */
     public boolean disponibleAlEntrainement(CarteDoree carte) {
-        return stockMarche(carte.id()) > 0 && (carte.niveau() < 2 || premierCombatGagne);
+        return stockMarche(carte.id()) > 0 && (carte.niveau() < 2 || premierEnnemiVaincu);
     }
 
     // ------------------------------------------------------------------
     // Combat (§8) et Boss (§10)
     // ------------------------------------------------------------------
 
-    void marquerPremierCombatGagne() {
-        this.premierCombatGagne = true;
+    void marquerPremierEnnemiVaincu() {
+        this.premierEnnemiVaincu = true;
     }
 
     boolean ennemiDejaEngage(CarteEnJeu ennemi) {

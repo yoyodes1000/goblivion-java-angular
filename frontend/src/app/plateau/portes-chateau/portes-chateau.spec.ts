@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
+import type { BossAuxPortes } from '../boss-aux-portes';
 import type { EnnemiSurPlateau } from '../ennemi-sur-plateau';
 import { PortesChateau } from './portes-chateau';
 
@@ -63,5 +64,59 @@ describe('PortesChateau', () => {
     const jetons = rendu.querySelectorAll('.portes__jeton');
     expect(jetons).toHaveLength(1);
     expect(jetons[0].textContent?.trim()).toBe('+2');
+  });
+
+  // ------------------------------------------------------------------
+  // Le Boss aux Portes (§10)
+  // ------------------------------------------------------------------
+
+  const boss = (assautEngage = false): BossAuxPortes => ({
+    nom: 'Dragon Rouge',
+    image: 'dragon-rouge.webp',
+    force: 22,
+    pioche: 7,
+    action: 'Détruis une carte de Bannière 1 et plus',
+    assautEngage,
+    restants: 4,
+  });
+
+  async function monterBoss(adversaire: BossAuxPortes) {
+    const fixture = TestBed.createComponent(PortesChateau);
+    fixture.componentRef.setInput('boss', adversaire);
+    await fixture.whenStable();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  /**
+   * Retour de partie : « je ne vois pas la carte du Boss ». Le château brûle
+   * quand la phase s'ouvre et les ennemis aux Portes sont détruits (§10) :
+   * l'endroit est libre, et c'est le même — ce qui se dresse devant les Portes
+   * est ce qu'on affronte.
+   */
+  it('montre le Boss à la place des trois cases', async () => {
+    const rendu = await monterBoss(boss());
+
+    expect(rendu.querySelectorAll('.portes__case')).toHaveLength(0);
+    expect(rendu.querySelector('.portes__nom--boss')?.textContent?.trim()).toBe('Dragon Rouge');
+    expect(rendu.querySelector('.portes__titre')?.textContent).toContain('Boss aux Portes');
+  });
+
+  /** Sa force est imprimée sur la carte : aucun jeton ne la modifie (§10.4). */
+  it('affiche la force à égaler et ce que l’assaut fera piocher', async () => {
+    const rendu = await monterBoss(boss());
+
+    expect(rendu.querySelector('.portes__valeur')?.textContent?.trim()).toBe('22');
+    expect(rendu.querySelector('.portes__compte')?.textContent).toContain('7 cartes à piocher');
+    expect(rendu.querySelector('.portes__compte')?.textContent).toContain('4 Boss restants');
+  });
+
+  /** L'assaut se joue en deux temps : l'écran doit dire lequel est en cours. */
+  it('dit où en est l’assaut', async () => {
+    expect((await monterBoss(boss(false))).querySelector('.portes__assaut')?.textContent).toContain(
+      'Assaut à engager',
+    );
+    expect((await monterBoss(boss(true))).querySelector('.portes__assaut')?.textContent).toContain(
+      'active tes cartes',
+    );
   });
 });

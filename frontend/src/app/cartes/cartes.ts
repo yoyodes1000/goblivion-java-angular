@@ -4,6 +4,7 @@ import { Injectable, computed } from '@angular/core';
 import type {
   CarteAffichable,
   CarteBleue,
+  CarteBoss,
   CarteDoree,
   CarteEnnemiObjet,
   Famille,
@@ -111,8 +112,10 @@ function depuis(
  * logique vit dans les fonctions pures ci-dessus, que le service se contente
  * d'appliquer aux données chargées.
  *
- * Les Boss ne sont pas chargés : ils n'ont pas de scan à montrer tant que la
- * phase de Boss n'a pas d'affichage propre.
+ * Les Boss sont chargés comme les autres depuis que la phase de Boss les montre
+ * aux Portes. Ils restent hors de {@link CatalogueCartes} : celui-ci sert à
+ * résoudre les cartes que le joueur possède, et un Boss ne rejoint jamais ses
+ * zones (§10) — il s'affronte, il ne se collectionne pas.
  */
 @Injectable({ providedIn: 'root' })
 export class Cartes {
@@ -122,6 +125,7 @@ export class Cartes {
   readonly ennemisObjets = httpResource<CarteEnnemiObjet[]>(() => `${DONNEES}/ennemis-objets.json`, {
     defaultValue: [],
   });
+  readonly boss = httpResource<CarteBoss[]>(() => `${DONNEES}/boss.json`, { defaultValue: [] });
 
   readonly catalogue = computed<CatalogueCartes>(() => ({
     bleues: this.bleues.value(),
@@ -156,5 +160,15 @@ export class Cartes {
 
   roiReine(id: string): RoiReine | undefined {
     return this.roiReines.value().find((carte) => carte.id === id);
+  }
+
+  /**
+   * Le Boss affronté, résolu par l'identifiant que l'état envoie.
+   *
+   * À part des autres accès : un Boss n'est pas une `CarteAffichable`, parce que
+   * sa force et sa pioche font partie de ce qu'on doit lire avant de s'y jeter.
+   */
+  bossParId(id: string): CarteBoss | undefined {
+    return this.boss.value().find((carte) => carte.id === id);
   }
 }

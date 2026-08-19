@@ -25,7 +25,8 @@ import java.util.Set;
  *   <tr><td>POUVOIR_ROI_REINE</td><td>Entraînement, Combat, Boss</td><td>§6.3 — une fois par partie</td></tr>
  *   <tr><td>PIVOTER</td><td>Entraînement, Combat, Boss</td><td>§11 — activer l'action d'une carte</td></tr>
  *   <tr><td>RESOUDRE_COMBAT</td><td>Combat</td><td>§8.4 — comparer les forces</td></tr>
- *   <tr><td>COMBATTRE_BOSS</td><td>Boss</td><td>§10.3 — un Boss à la fois</td></tr>
+ *   <tr><td>ENGAGER_BOSS</td><td>Boss</td><td>§10.3 — la tentative : pioche et action du Boss</td></tr>
+ *   <tr><td>RESOUDRE_ASSAUT</td><td>Boss</td><td>§10.3 — comparer les forces, une fois la tentative jouée</td></tr>
  *   <tr><td>PHASE_SUIVANTE</td><td>toutes</td><td>§5 — clôt la phase, vide le Champ de bataille</td></tr>
  * </table>
  *
@@ -52,7 +53,20 @@ public enum TypeAction {
     PIVOTER(Phase.ENTRAINEMENT, Phase.COMBAT, Phase.BOSS),
 
     RESOUDRE_COMBAT(Phase.COMBAT),
-    COMBATTRE_BOSS(Phase.BOSS),
+
+    /**
+     * Se jeter sur le Boss en tête : piocher ses cartes, subir son action.
+     *
+     * <p>Séparée de {@link #RESOUDRE_ASSAUT} pour une raison de règle. La
+     * tentative <em>donne</em> des cartes au joueur (§10.3) ; les compter sans
+     * lui laisser la main reviendrait à mesurer une armée qu'il n'a pas eu le
+     * droit de préparer. Entre les deux, il pivote, échange son Garde du corps,
+     * dépense son pouvoir royal — tout ce que la phase Boss autorise déjà.
+     */
+    ENGAGER_BOSS(Phase.BOSS),
+
+    /** Comparer les forces et conclure la tentative — vaincre, ou payer l'écart. */
+    RESOUDRE_ASSAUT(Phase.BOSS),
 
     /**
      * Répondre à une désignation qu'un effet du moteur réclame.

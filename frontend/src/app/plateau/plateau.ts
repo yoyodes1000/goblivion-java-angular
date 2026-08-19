@@ -30,6 +30,7 @@ import { EntrainementEnCours } from './entrainement-en-cours/entrainement-en-cou
 import { PileMonstres } from './pile-monstres/pile-monstres';
 import { PlateauAvancee } from './plateau-avancee/plateau-avancee';
 import { PortesChateau } from './portes-chateau/portes-chateau';
+import type { BossAuxPortes } from './boss-aux-portes';
 import type { EnnemiSurPlateau } from './ennemi-sur-plateau';
 import { ZoneJeu, type CarteEnJeuVue } from './zone-jeu/zone-jeu';
 
@@ -189,6 +190,40 @@ export class Plateau {
   protected readonly portesVue = computed<readonly EnnemiSurPlateau[]>(() =>
     (this.etat()?.portes ?? []).map((vue) => this.ennemiVisible(vue)),
   );
+
+  /**
+   * Le Boss affronté, ou `undefined` hors de sa phase.
+   *
+   * Il prend la place des trois cases des Portes : le château brûle quand la
+   * phase s'ouvre, les ennemis qui s'y tenaient sont détruits (§10), et
+   * l'endroit dit toujours la même chose — ce qui se dresse devant les Portes
+   * est ce qu'on affronte.
+   *
+   * La force et la pioche viennent du catalogue et non de l'API : ce sont des
+   * valeurs imprimées, qu'aucun jeton ne modifie (§10.4). C'est le seul endroit
+   * où le frontend lit un chiffre de combat sans le tenir du moteur, et il le
+   * peut parce que la règle est fixe.
+   */
+  protected readonly bossEnCours = computed<BossAuxPortes | undefined>(() => {
+    const etat = this.etat();
+    if (!etat || etat.phase !== 'boss') return undefined;
+
+    const id = etat.bossRestants[0];
+    if (!id) return undefined;
+
+    const carte = this.cartes.bossParId(id);
+    if (!carte) return undefined;
+
+    return {
+      nom: carte.nom,
+      image: urlScan('boss', carte.scan),
+      force: carte.ressourcesSolo,
+      pioche: carte.cartesAPiocherSolo,
+      action: carte.action,
+      assautEngage: etat.assautEngage,
+      restants: etat.bossRestants.length,
+    };
+  });
 
   protected readonly cartesHopital = computed<CarteAffichable[]>(() =>
     (this.etat()?.hopital ?? []).flatMap((vue) => {

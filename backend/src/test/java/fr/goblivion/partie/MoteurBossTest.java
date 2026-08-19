@@ -9,6 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import fr.goblivion.cartes.Famille;
+import fr.goblivion.effets.Cible;
+import fr.goblivion.effets.Declencheur;
+import fr.goblivion.effets.Effet;
+import fr.goblivion.effets.EffetCarte;
 
 /** Le §10 : le château brûle, le marché ferme, les Boss tombent un par un. */
 class MoteurBossTest {
@@ -78,25 +82,199 @@ class MoteurBossTest {
         int bossAuDepart = partie.bossRestants().size();
         poserEnJeu(CataloguesFictifs.BLEUE_NULLE, 1);
 
-        moteur.appliquer(Action.de(TypeAction.COMBATTRE_BOSS));
+        assaut();
 
         assertThat(partie.bossRestants()).hasSize(bossAuDepart);
         assertThat(partie.ressources()).isLessThan(18);
     }
 
-    /** Vaincre les quatre Boss d'une partie Normale, c'est gagner (§10). */
+    /**
+     * Vaincre les quatre Boss d'une partie Normale, c'est gagner (§10).
+     *
+     * <p>L'armée est reposée avant chaque tentative : une résolution vide le
+     * Champ de bataille, donc un assaut ne profite jamais du précédent.
+     */
     @Test
     void vaincre_tous_les_boss_gagne_la_partie() {
-        poserEnJeu(CataloguesFictifs.BLEUE_OBJET, 12);
-
         while (!partie.bossRestants().isEmpty()) {
-            moteur.appliquer(Action.de(TypeAction.COMBATTRE_BOSS));
+            poserEnJeu(CataloguesFictifs.BLEUE_OBJET, 12);
+            assaut();
         }
 
         assertThat(partie.resultat()).isEqualTo(Resultat.VICTOIRE);
-        assertThatThrownBy(() -> moteur.appliquer(Action.de(TypeAction.COMBATTRE_BOSS)))
+        assertThatThrownBy(() -> moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS)))
                 .isInstanceOf(ActionInterdite.class)
                 .hasMessageContaining("terminee");
+    }
+
+    // ------------------------------------------------------------------
+    // L'assaut en deux temps (§10.3)
+    // ------------------------------------------------------------------
+
+    /**
+     * Retour de partie : « avant que j'aie pu faire les actions des cartes, le
+     * Boss me bat ».
+     *
+     * <p>La tentative <em>donne</em> des cartes au joueur. Les compter dans la
+     * foulée, c'était mesurer une armée qu'il n'avait pas eu le droit de
+     * préparer : à l'entrée de la phase le Champ de bataille est vide, et tout
+     * arrivait puis se jugeait en un seul geste.
+     */
+    @Test
+    void l_assaut_pose_les_cartes_sans_encore_comparer_les_forces() {
+        int bossAuDepart = partie.bossRestants().size();
+        int ressourcesAuDepart = partie.ressources();
+
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+
+        assertThat(partie.champDeBataille()).as("la pioche du Boss est arrivee").isNotEmpty();
+        assertThat(partie.assautEngage()).as("l'assaut attend sa resolution").isPresent();
+        assertThat(partie.bossRestants()).hasSize(bossAuDepart);
+        assertThat(partie.ressources()).as("rien n'est encore paye").isEqualTo(ressourcesAuDepart);
+        assertThat(partie.journal()).noneMatch(ligne -> ligne.contains("resiste"));
+    }
+
+    /**
+     * Le cœur du correctif : la même partie, à la même graine, bascule selon ce
+     * que le joueur fait entre l'assaut et sa résolution.
+     */
+    @Test
+    void ce_que_le_joueur_joue_entre_les_deux_change_l_issue() {
+        assertThat(sansPivoter()).as("sans rien activer, le Boss resiste").isFalse();
+        assertThat(enPivotant()).as("en activant sa carte, le joueur l'emporte").isTrue();
+    }
+
+    /** Un assaut déjà engagé ne se relance pas : ce serait piocher deux fois. */
+    @Test
+    void engager_deux_fois_le_meme_assaut_est_refuse() {
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+
+        assertThatThrownBy(() -> moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS)))
+                .isInstanceOf(ActionInterdite.class)
+                .hasMessageContaining("deja engage");
+    }
+
+    @Test
+    void resoudre_sans_avoir_engage_est_refuse() {
+        assertThatThrownBy(() -> moteur.appliquer(Action.de(TypeAction.RESOUDRE_ASSAUT)))
+                .isInstanceOf(ActionInterdite.class)
+                .hasMessageContaining("Aucun assaut engage");
+    }
+
+    /** Sinon la pioche du Boss deviendrait un cadeau : on prend et on s'en va. */
+    @Test
+    void quitter_la_phase_avec_un_assaut_engage_est_refuse() {
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+
+        assertThatThrownBy(() -> moteur.appliquer(Action.de(TypeAction.PHASE_SUIVANTE)))
+                .isInstanceOf(ActionInterdite.class)
+                .hasMessageContaining("resoudre l'assaut");
+    }
+
+    /** « En cas d'échec, on réessaie » (§10.3) : l'assaut résolu libère la place. */
+    @Test
+    void un_assaut_rate_peut_etre_relance() {
+        poserEnJeu(CataloguesFictifs.BLEUE_NULLE, 1);
+        int bossAuDepart = partie.bossRestants().size();
+
+        assaut();
+        int apresLePremier = partie.ressources();
+        assaut();
+
+        assertThat(partie.bossRestants()).hasSize(bossAuDepart);
+        assertThat(partie.ressources()).as("la seconde tentative coute a son tour")
+                .isLessThan(apresLePremier);
+        assertThat(partie.journal().stream().filter(l -> l.contains("lance son action")).count())
+                .isEqualTo(2);
+    }
+
+    /**
+     * Retour de partie : « à chaque résolution, il faut retirer tous les soldats
+     * du Champ de bataille ».
+     *
+     * <p>Une tentative <strong>consomme</strong> l'armée engagée, réussie ou
+     * non. Sans ce balayage les assauts s'empilaient : chaque pioche s'ajoutait
+     * à la précédente, et réessayer assez souvent suffisait à dépasser
+     * n'importe quel Boss.
+     */
+    @Test
+    void une_resolution_ratee_vide_le_champ_de_bataille_vers_l_hopital() {
+        poserEnJeu(CataloguesFictifs.BLEUE_NULLE, 1);
+
+        assaut();
+
+        assertThat(partie.champDeBataille()).isEmpty();
+        assertThat(partie.hopital()).isNotEmpty();
+        assertThat(partie.bossRestants()).as("le Boss a resiste").isNotEmpty();
+    }
+
+    @Test
+    void une_resolution_gagnee_vide_aussi_le_champ_de_bataille() {
+        poserEnJeu(CataloguesFictifs.BLEUE_OBJET, 12);
+        int bossAuDepart = partie.bossRestants().size();
+
+        assaut();
+
+        assertThat(partie.bossRestants()).as("le Boss est tombe").hasSize(bossAuDepart - 1);
+        assertThat(partie.champDeBataille()).isEmpty();
+    }
+
+    /** Deux tentatives d'affilée : la seconde ne part pas avec l'armée de la première. */
+    @Test
+    void un_second_assaut_repart_de_sa_seule_pioche() {
+        poserEnJeu(CataloguesFictifs.BLEUE_OBJET, 6);
+
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+        int premiere = partie.forceAlliee();
+        moteur.appliquer(Action.de(TypeAction.RESOUDRE_ASSAUT));
+
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+        int seconde = partie.forceAlliee();
+
+        assertThat(seconde).as("la seconde tentative n'herite pas de la premiere")
+                .isLessThan(premiere);
+    }
+
+    /** Une tentative complète : engager, puis résoudre. */
+    private void assaut() {
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+        moteur.appliquer(Action.de(TypeAction.RESOUDRE_ASSAUT));
+    }
+
+    /** Vrai si le premier Boss tombe. Le joueur subit l'assaut sans rien activer. */
+    private boolean sansPivoter() {
+        preparerDuel();
+        int avant = partie.bossRestants().size();
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+        moteur.appliquer(Action.de(TypeAction.RESOUDRE_ASSAUT));
+        return partie.bossRestants().size() < avant;
+    }
+
+    /** La même chose, mais la carte est activée pendant que l'assaut attend. */
+    private boolean enPivotant() {
+        CarteEnJeu renfort = preparerDuel();
+        int avant = partie.bossRestants().size();
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+        moteur.appliquer(Action.surCarte(TypeAction.PIVOTER, renfort.id()));
+        moteur.appliquer(Action.de(TypeAction.RESOUDRE_ASSAUT));
+        return partie.bossRestants().size() < avant;
+    }
+
+    /**
+     * Une partie neuve où une seule carte en jeu peut, en s'activant, faire
+     * basculer la mesure — le reste vient de la pioche du Boss, identique d'une
+     * graine à l'autre.
+     */
+    private CarteEnJeu preparerDuel() {
+        partie = new MiseEnPlace(CataloguesFictifs.avecEffetSurHumain(
+                new EffetCarte(Declencheur.PIVOTER, new Effet.JetonBanniere(50, Cible.SOI_MEME))),
+                new Random(9)).creer(Difficulte.NORMAL, null);
+        moteur = new MoteurPartie(partie);
+        partie.allerEn(Phase.BOSS);
+
+        CarteEnJeu renfort = CarteEnJeu.paysan(Famille.BLEUES, CataloguesFictifs.BLEUE_HUMAIN);
+        partie.poserAuChampDeBataille(renfort);
+        return renfort;
     }
 
     private void viderLeChateauVersLHopital() {

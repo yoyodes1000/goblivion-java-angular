@@ -97,7 +97,7 @@ class PartieControleurTest {
         assertThat(etatCourant()).bodyJson()
                 .extractingPath("$.actionsPossibles").asArray()
                 .contains("CHOISIR_ENTRAINEMENT", "PHASE_SUIVANTE")
-                .doesNotContain("COMBATTRE_BOSS");
+                .doesNotContain("ENGAGER_BOSS");
     }
 
     /** La famille voyage sous la forme que le frontend utilise déjà pour ses scans. */
@@ -124,11 +124,11 @@ class PartieControleurTest {
     void une_action_hors_phase_rend_409_avec_son_motif() {
         demarrer("{\"difficulte\":\"NORMAL\"}");
 
-        MvcTestResult reponse = jouer("{\"type\":\"COMBATTRE_BOSS\"}");
+        MvcTestResult reponse = jouer("{\"type\":\"ENGAGER_BOSS\"}");
 
         assertThat(reponse).hasStatus(HttpStatus.CONFLICT);
         assertThat(reponse).bodyJson().extractingPath("$.motif").asString()
-                .contains("COMBATTRE_BOSS")
+                .contains("ENGAGER_BOSS")
                 .contains("ENTRAINEMENT");
     }
 

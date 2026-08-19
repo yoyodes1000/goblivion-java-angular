@@ -30,10 +30,10 @@ describe('CartesDorees', () => {
     { carte: doree('chevalier', 2), restant: 2 },
   ];
 
-  async function monter(combatGagne = false, offres: OffreMarche[] = MARCHE) {
+  async function monter(ennemiVaincu = false, offres: OffreMarche[] = MARCHE) {
     const fixture = TestBed.createComponent(CartesDorees);
     fixture.componentRef.setInput('offres', offres);
-    fixture.componentRef.setInput('combatGagne', combatGagne);
+    fixture.componentRef.setInput('ennemiVaincu', ennemiVaincu);
     await fixture.whenStable();
     return fixture;
   }
@@ -68,7 +68,7 @@ describe('CartesDorees', () => {
     expect(rendu.querySelector('.carte__verrou')?.textContent?.trim()).toBe('Plus aucun exemplaire');
   });
 
-  it('verrouille les 2 épées tant qu’aucun combat n’est gagné', async () => {
+  it('verrouille les 2 épées tant qu’aucun ennemi n’est abattu', async () => {
     const fixture = await monter(false);
     const rendu = fixture.nativeElement as HTMLElement;
 
@@ -78,10 +78,10 @@ describe('CartesDorees', () => {
     // Un seul bouton Entraîner : celui de la 1 épée.
     expect(rendu.querySelectorAll('.carte__choisir')).toHaveLength(1);
     // Et la raison est écrite, pas seulement suggérée par un grisé.
-    expect(rendu.querySelector('.carte__verrou')?.textContent).toContain('combat gagné');
+    expect(rendu.querySelector('.carte__verrou')?.textContent).toContain('ennemi vaincu');
   });
 
-  it('ouvre les 2 épées une fois un combat gagné', async () => {
+  it('ouvre les 2 épées dès qu’un ennemi est abattu', async () => {
     const fixture = await monter(true);
     const rendu = fixture.nativeElement as HTMLElement;
 

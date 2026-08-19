@@ -32,7 +32,8 @@ export type TypeAction =
   | 'PIVOTER'
   | 'REPONDRE_DESIGNATION'
   | 'RESOUDRE_COMBAT'
-  | 'COMBATTRE_BOSS'
+  | 'ENGAGER_BOSS'
+  | 'RESOUDRE_ASSAUT'
   | 'PHASE_SUIVANTE';
 
 /**
@@ -184,6 +185,14 @@ export interface EtatPartie {
   readonly portes: readonly EnnemiVue[];
   readonly bossRestants: readonly string[];
   /**
+   * Vrai entre l'assaut et sa résolution.
+   *
+   * Le Boss a donné ses cartes et attend d'être mesuré ; le joueur prépare son
+   * armée. C'est ce drapeau qui décide lequel des deux boutons est offert —
+   * `actionsPossibles` dit seulement que les deux ont leur place dans la phase.
+   */
+  readonly assautEngage: boolean;
+  /**
    * Ce que la phase en cours autorise. Le frontend n'a pas à rejouer le tableau
    * des règles pour savoir quels boutons proposer — il lit cette liste.
    */
@@ -194,7 +203,14 @@ export interface EtatPartie {
   readonly deficitEntrainement: number;
   readonly entrainementTente: boolean;
   readonly combatResolu: boolean;
-  readonly premierCombatGagne: boolean;
+  /**
+   * Vrai dès qu'un premier ennemi est tombé — ce qui ouvre les cartes 2 épées
+   * (§6).
+   *
+   * Un ennemi abattu, et non un combat gagné : sur un combat perdu, la
+   * répartition peut faire tomber un monstre sur deux, et cela compte.
+   */
+  readonly premierEnnemiVaincu: boolean;
   readonly gardeDuCorpsEchange: boolean;
   readonly pouvoirRoiReineUtilise: boolean;
   readonly jetonsBonusAllie: number;

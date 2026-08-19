@@ -69,7 +69,7 @@ class MoteurCombatTest {
         assertThat(partie.hopital()).extracting(CarteEnJeu::carteId)
                 .contains(CataloguesFictifs.ENNEMI_FAIBLE);
         assertThat(partie.ressources()).isEqualTo(18);
-        assertThat(partie.premierCombatGagne()).isTrue();
+        assertThat(partie.premierEnnemiVaincu()).isTrue();
     }
 
     @Test
@@ -84,7 +84,7 @@ class MoteurCombatTest {
         assertThat(partie.portes().get(0).jetonEnnemi()).isEqualTo(1);
         // Le jeton est définitivement acquis : l'ennemi est plus dur au tour suivant.
         assertThat(partie.forceEnnemie()).isEqualTo(CataloguesFictifs.FORCE_ENNEMI_FAIBLE + 1);
-        assertThat(partie.premierCombatGagne()).isFalse();
+        assertThat(partie.premierEnnemiVaincu()).isFalse();
     }
 
     /**
@@ -104,6 +104,9 @@ class MoteurCombatTest {
         assertThat(partie.hopital()).extracting(CarteEnJeu::carteId)
                 .contains(CataloguesFictifs.ENNEMI_FAIBLE);
         assertThat(partie.portes().get(0).jetonEnnemi()).isEqualTo(1);
+        // Retour de partie : un ennemi abattu ouvre les 2 epees, meme au sein
+        // d'un combat perdu. Ce qui compte est d'avoir vaincu quelque chose.
+        assertThat(partie.premierEnnemiVaincu()).isTrue();
     }
 
     /**
