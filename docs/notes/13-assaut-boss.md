@@ -84,6 +84,25 @@ dessous qui rappelle ce qu'elle disait avant. Corriger la transcription plutôt
 que l'annoter évite qu'un futur lecteur applique la première lecture sans voir
 la seconde.
 
+## Une tentative consomme l'armée
+
+Quatrième retour, et il achève le premier : le Champ de bataille n'était vidé
+qu'à la **fin de phase**, jamais entre deux assauts. Chaque tentative ajoutait
+donc sa pioche à la précédente. La force ne pouvait que monter, et réessayer
+assez souvent suffisait à dépasser n'importe quel Boss — la seule limite étant
+le Château qui s'assèche, à 2 ressources la pioche à vide.
+
+Une résolution vide donc le Champ de bataille vers l'Hôpital, **gagnée ou
+perdue**. Les cartes passent par le même nettoyage qu'à une fin de phase : un
+jeton Bannière, un pivot ou une copie ne survivent pas à leur sortie de la
+table, sinon une carte repiochée plus tard les traînerait avec elle.
+
+Le balayage vit dans `Partie.viderChampDeBataille()`, que `terminerPhase()`
+appelle aussi — une seule implémentation pour les deux moments, plutôt que deux
+qui divergeraient. Et une ligne au journal le dit, parce qu'une armée qui
+disparaît sans explication se lit comme une panne : c'est la leçon du ticket 10,
+« la carte annonce son état ».
+
 ## Ce que j'ai écarté
 
 | Écarté | Pourquoi |
@@ -93,6 +112,8 @@ la seconde.
 | Envoyer la force du Boss dans l'état | valeur imprimée, jamais modifiée par un jeton : le catalogue suffit |
 | Laisser la phrase fautive avec un correctif en dessous | un lecteur pressé appliquerait la première lecture ; la phrase est corrigée, l'ancienne rappelée en note |
 | Marquer la porte des 2 épées aux deux appelants | un troisième chemin l'oublierait ; `vaincreEnnemi` est le passage obligé |
+| Ne vider le Champ de bataille qu'en cas d'échec | une victoire consomme l'armée autant qu'une défaite |
+| Détruire l'armée engagée plutôt que l'envoyer à l'Hôpital | le deck fondrait à chaque tentative ; les cartes reviennent par le Château |
 
 ## Reste à faire
 
