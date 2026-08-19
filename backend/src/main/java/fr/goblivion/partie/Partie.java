@@ -582,9 +582,7 @@ public final class Partie {
      * précisément l'emplacement qui traverse les phases (§9).
      */
     void terminerPhase() {
-        champDeBataille.forEach(CarteEnJeu::nettoyerFinDePhase);
-        hopital.addAll(champDeBataille);
-        champDeBataille.clear();
+        viderChampDeBataille();
 
         entrainementChoisi = null;
         ressourcesVerseesEntrainement = 0;
@@ -593,6 +591,24 @@ public final class Partie {
         combatResolu = false;
         ennemisEngages.clear();
         assautEngage = null;
+    }
+
+    /**
+     * L'armée quitte la table et rejoint l'Hôpital.
+     *
+     * <p>Deux moments l'appellent : la fin de phase (§5), et la résolution d'un
+     * assaut de Boss — une tentative <strong>consomme</strong> ce qu'on a engagé,
+     * réussie ou non. Sans ça, les assauts s'empilaient : chaque tentative
+     * ajoutait sa pioche à la précédente et la force ne pouvait que monter.
+     *
+     * <p>Les cartes passent par {@code nettoyerFinDePhase} au passage : un jeton
+     * Bannière, un pivot ou une copie ne survivent pas à leur sortie du Champ de
+     * bataille, sinon une carte repiochée plus tard les traînerait avec elle.
+     */
+    void viderChampDeBataille() {
+        champDeBataille.forEach(CarteEnJeu::nettoyerFinDePhase);
+        hopital.addAll(champDeBataille);
+        champDeBataille.clear();
     }
 
     // ------------------------------------------------------------------

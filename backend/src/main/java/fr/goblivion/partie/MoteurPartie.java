@@ -498,6 +498,12 @@ public final class MoteurPartie {
      * <p>Le seuil est inclusif, comme au Combat : égaler la force du Boss suffit
      * à l'abattre. Un échec coûte la différence en ressources et laisse le Boss
      * en place — le joueur peut réengager, et le Boss relancera son action.
+     *
+     * <p>Dans les deux cas, <strong>l'armée engagée part à l'Hôpital</strong> :
+     * une tentative consomme ce qu'on y a jeté. Sans ce balayage les assauts
+     * s'empilaient — la pioche de chacun s'ajoutait à la précédente, et il
+     * suffisait de réessayer assez souvent pour que la force finisse par
+     * dépasser n'importe quel Boss.
      */
     private void resoudreAssaut() {
         CarteBoss cible = partie.assautEngage()
@@ -513,6 +519,8 @@ public final class MoteurPartie {
             partie.perdreRessources(cible.force() - alliee);
         }
         partie.terminerAssaut();
+        partie.viderChampDeBataille();
+        partie.noter("L'armee engagee dans l'assaut part a l'Hopital.");
     }
 
     // ------------------------------------------------------------------

@@ -88,12 +88,16 @@ class MoteurBossTest {
         assertThat(partie.ressources()).isLessThan(18);
     }
 
-    /** Vaincre les quatre Boss d'une partie Normale, c'est gagner (§10). */
+    /**
+     * Vaincre les quatre Boss d'une partie Normale, c'est gagner (§10).
+     *
+     * <p>L'armée est reposée avant chaque tentative : une résolution vide le
+     * Champ de bataille, donc un assaut ne profite jamais du précédent.
+     */
     @Test
     void vaincre_tous_les_boss_gagne_la_partie() {
-        poserEnJeu(CataloguesFictifs.BLEUE_OBJET, 12);
-
         while (!partie.bossRestants().isEmpty()) {
+            poserEnJeu(CataloguesFictifs.BLEUE_OBJET, 12);
             assaut();
         }
 
@@ -182,6 +186,53 @@ class MoteurBossTest {
                 .isLessThan(apresLePremier);
         assertThat(partie.journal().stream().filter(l -> l.contains("lance son action")).count())
                 .isEqualTo(2);
+    }
+
+    /**
+     * Retour de partie : « à chaque résolution, il faut retirer tous les soldats
+     * du Champ de bataille ».
+     *
+     * <p>Une tentative <strong>consomme</strong> l'armée engagée, réussie ou
+     * non. Sans ce balayage les assauts s'empilaient : chaque pioche s'ajoutait
+     * à la précédente, et réessayer assez souvent suffisait à dépasser
+     * n'importe quel Boss.
+     */
+    @Test
+    void une_resolution_ratee_vide_le_champ_de_bataille_vers_l_hopital() {
+        poserEnJeu(CataloguesFictifs.BLEUE_NULLE, 1);
+
+        assaut();
+
+        assertThat(partie.champDeBataille()).isEmpty();
+        assertThat(partie.hopital()).isNotEmpty();
+        assertThat(partie.bossRestants()).as("le Boss a resiste").isNotEmpty();
+    }
+
+    @Test
+    void une_resolution_gagnee_vide_aussi_le_champ_de_bataille() {
+        poserEnJeu(CataloguesFictifs.BLEUE_OBJET, 12);
+        int bossAuDepart = partie.bossRestants().size();
+
+        assaut();
+
+        assertThat(partie.bossRestants()).as("le Boss est tombe").hasSize(bossAuDepart - 1);
+        assertThat(partie.champDeBataille()).isEmpty();
+    }
+
+    /** Deux tentatives d'affilée : la seconde ne part pas avec l'armée de la première. */
+    @Test
+    void un_second_assaut_repart_de_sa_seule_pioche() {
+        poserEnJeu(CataloguesFictifs.BLEUE_OBJET, 6);
+
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+        int premiere = partie.forceAlliee();
+        moteur.appliquer(Action.de(TypeAction.RESOUDRE_ASSAUT));
+
+        moteur.appliquer(Action.de(TypeAction.ENGAGER_BOSS));
+        int seconde = partie.forceAlliee();
+
+        assertThat(seconde).as("la seconde tentative n'herite pas de la premiere")
+                .isLessThan(premiere);
     }
 
     /** Une tentative complète : engager, puis résoudre. */
